@@ -1,146 +1,198 @@
-# Payments, pricing and subscription periods
+# Subscription offers, payments and renewal
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-05. New purchases require an Ops offer. There is no
+public fixed-price checkout or cash top-up wallet. A rider can opt in to
+renew automatically by card; see [Automatic card renewal](#automatic-card-renewal).
 
-**Status:** Fare-derived checkout, transactional Ride Credit holds, durable
-Paystack processing, renewal, reconciliation, refund/dispute accounting and
-atomic period close are implemented. Staging uses a Paystack test key. The
-filename is retained for stable links; there is no prepaid wallet or top-up API.
+## Request to payment
 
-## Current model
+1. A signed-in commuter completes their name and verifies a Ghana phone.
+2. They request a route, outbound and return journeys, monthly/annual preference
+   and travel weekdays through `POST /v1/me/standby`.
+3. Ops reviews the queue and sends an offer with coverage dates, package price,
+   payment deadline and unused-ride credit for both directions.
+4. The app displays the terms. Acceptance creates one purchase and opens
+   customer-authorized Paystack checkout, optionally applying available credit.
+5. Verified provider evidence fulfils the purchase. A return URL or checkout
+   screen is not proof of payment. The app reads the purchase to recover status.
 
-A rider buys one route-bound entitlement period:
+`POST /v1/me/purchases` cannot bypass the offer requirement. An offer does not
+reserve fleet capacity; Ops must verify supply and reservations still enforce
+capacity. Standby is the subscription request queue, not a single-seat market.
 
-```text
-price = corridor fare × rides per period × price multiplier
-Paystack charge = price − reserved Ride Credit
+## Pricing and dates
+
+Ops publishes an effective-dated fare for each ordered stop-occurrence pair on
+a published route version. B-to-C and C-to-D may differ; B-to-D needs its own
+fare, not their sum. Return journeys have separate prices.
+
+The offer freezes route/version, stops, schedules, applicable weekdays, fares,
+directional allowances, package price and credit values. Ride counts come from
+actual coverage dates intersected with requested and scheduled weekdays, not a
+fixed 44. Coverage starts at midnight Ghana time and excludes the end date.
+Each direction must have service; one-way offers and holiday exclusions are
+not implemented. Coverage lasts at most 366 days.
+
+Ops chooses the package total. Each unused-ride credit is no greater than its
+journey fare; all potential credits together cannot exceed the package price.
+Money is integer pesewas in storage and API `amountMinor`; UI renders GHS.
+There is no fixed 264/2640 product price. Historical plan-pricing controls remain
+for compatibility, not the price source for newly offered packages.
+
+## Renewal
+
+One future paid period may coexist with current coverage without overlap. A
+new offer can start exactly at the current period's midnight end. Legacy
+mid-day boundaries require a later date. The wallet separates upcoming coverage
+from current spendable rides.
+
+Reservations and day-ahead asks select the paid period covering departure.
+A rider can confirm the first renewal trip before midnight without spending
+current-period rides. Old-period settlement is not required to switch coverage.
+
+Only already-created available Ride Credit can reduce early renewal payment.
+Unused current rides are not projected into credit. Pending/paid renewals block
+pauses and commute changes that could extend the preceding period into them.
+This applies to Ops too; resolve/refund the upcoming renewal before changing dates.
+
+## Automatic card renewal
+
+A rider turns it on in the app (`PUT /v1/me/auto-renewal`), usually from the
+offer screen before paying. Nothing is saved until a verified card payment
+arrives; mobile money cannot be charged later, so it never enables renewal.
+
+1. Fulfilment of a verified card payment that Paystack marks reusable saves
+   the card (code and bound email sealed under a key derived for cards only;
+   brand, last four and expiry readable) and schedules the renewal of the
+   period it bought.
+2. Five days before the period ends the rider is emailed the card and amount.
+   The generic "renew it yourself" reminder is not sent for that period.
+3. From three days before the end, the nightly worker rebuilds the terms with
+   the offer builder: same journeys, travel days, package price and unused-ride
+   credit, for a period of the same length starting at the old end. Rides are
+   recounted for the new dates. Available Ride Credit is applied as at checkout.
+4. If a fare changed or the service no longer covers the new dates, nothing is
+   charged: the renewal becomes `needs_offer`, the rider is told, and Ops sends
+   a new offer.
+5. Otherwise it creates the renewal purchase and charges the card through
+   Paystack. Only verified, persisted evidence fulfils it, exactly as for any
+   payment. A decline fails that purchase; the worker retries daily with a new
+   one until the period ends, emailing the rider each time.
+6. A charge that never settles expires when the coverage it buys begins, so it
+   cannot hold the rider's purchase slot.
+
+The rider can turn renewal off or remove the card at any time
+(`DELETE /v1/me/auto-renewal/card` destroys the code). Account erasure does
+both. The database refuses a renewal purchase that differs from the purchase
+it renews in rider, route or price, or that does not start where it ends.
+
+## Settlement and recovery
+
+The API verifies Paystack signatures and persists deduplicated provider events.
+Workers process evidence, verify unresolved attempts and close eligible periods.
+Collections must match the expected purchase, amount, currency and environment.
+Idempotency and transactional fulfilment prevent duplicate allocations.
+
+An expired offer may leave an open Paystack page. Late or conflicting collections
+go to Ops review rather than activating invalid coverage. Local expiry releases
+holds but does not prove that the provider collected nothing. Check the original
+collection before advising another payment.
+
+Ops can initiate a TEST refund and inspect accepted/unknown intent; a submitted
+refund is not settled cash. Processed refund and dispute evidence drive the
+financial effects. Refunds of upcoming coverage affect that purchased period,
+not unrelated current rides. Partial/consumed-value cases require review.
+
+The checked-in GitHub workflow runs payment recovery and email retry every
+15 minutes on main, subject to environment configuration. It does not run
+all rider-service or retention jobs. See [deployment](../DEPLOY.md).
+
+## Limits and verification
+
+Operator payouts, corporate invoicing and automatic standby-seat cascades
+remain separate work. Mobile money cannot renew automatically.
+Staging uses Paystack TEST only.
+
+Sources: `membership/standby.ts`, `membership/offer-terms.ts`,
+`payments/{pricing,foundation,purchases,recovery}.ts` under
+`services/api-next/src`; migrations 041/042; `tests/pricing.pg.test.ts`.
+Use the [staging runbook](../runbooks/rider-services-staging.md) for acceptance.
+
+## Who does what
+
+```mermaid
+sequenceDiagram
+  participant Commuter
+  participant API
+  participant Ops
+  participant Paystack
+  participant Worker
+  Commuter->>API: Submit verified service request
+  Ops->>API: Read request and send priced offer
+  Commuter->>API: Read terms and accept
+  API->>Paystack: Initialize checkout
+  API-->>Commuter: Purchase and checkout instructions
+  Commuter->>Paystack: Authorize TEST payment
+  Paystack->>API: Signed payment evidence
+  API-->>Paystack: Persisted webhook acknowledgement
+  Worker->>API: Process inbox and reconciliation
+  Commuter->>API: Read purchase and membership
+  API-->>Commuter: Fulfilled or actionable state
 ```
 
-Money is integer pesewas and rates are integer basis points. Fares are
-effective-dated per route. Checkout freezes the fare, price, ride count,
-conversion rate, route/stops and applied credit; later configuration changes do
-not rewrite a sold period.
+This is the successful path. Webhook timing can differ, and duplicate callbacks
+are expected. The worker's verified transactional result, not message order or
+the return URL, establishes coverage.
 
-The current plan keys are `monthly` and `annual`. Automatic recurring charges
-are not implemented because Trotxi does not hold a reusable payment mandate;
-renewal is a rider-initiated checkout that advances the existing subscription.
+Ops selects terms; the commuter explicitly accepts/pays; the API freezes and
+enforces them; Paystack reports collection; workers process evidence; Ops
+resolves review/refund cases. Frontend code must not allocate rides itself.
 
-## State and transaction boundaries
+## State and recovery
 
-```text
-checkout: pending + credit hold
-provider success: pending → processing → fulfilled
-provider terminal Verify result: pending|processing → failed + hold released
-full processed refund: fulfilled|disputed → refunded + period reversed
-dispute: fulfilled → disputed; current period/subscription frozen
-```
+| Resource/state                             | Meaning                                   | Correct next step                                                |
+| ------------------------------------------ | ----------------------------------------- | ---------------------------------------------------------------- |
+| Application `submitted`                    | Request exists, no payable offer yet      | Ops checks supply and prepares terms                             |
+| Application `offered`                      | Terms can be reviewed                     | Commuter accepts before expiry or withdraws                      |
+| Offer `accepting`                          | One acceptance key owns checkout creation | Retry the same logical request/key after an uncertain response   |
+| `checkout_open`                            | Purchase is linked                        | Read that purchase; do not create another direct checkout        |
+| Purchase `awaiting_payment` / `processing` | No confirmed fulfilment yet               | Recover the same purchase and check processing                   |
+| Purchase `fulfilled`                       | Its service value was granted             | Read membership; future coverage still shows upcoming            |
+| Purchase `review_required`                 | Automated fulfilment cannot safely finish | Ops reviews evidence; do not instruct another payment            |
+| Purchase `failed` / `cancelled`            | Purchase does not provide new coverage    | Inspect failure/collection evidence before replacement or refund |
 
-One PostgreSQL transaction owns subscription activation/reactivation, immutable
-period creation, credit capture, ride allocation, provider metadata and final
-fulfilment. Per-rider advisory locks serialize checkout and lifecycle changes.
-A second unresolved checkout is rejected and an active or disputed membership
-cannot be bypassed with another purchase.
+Application completion is not proof of payment: it can also follow a failed
+purchase. Always read the purchase state and current membership.
 
-## Rider, webhook and recovery API
+| Refusal                           | Resolution                                                            |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `phone_verification_required`     | Verify the current account's phone                                    |
+| `standby_profile_incomplete`      | Complete rider name                                                   |
+| `invalid_offer_expiry`            | Use an allowed future deadline no later than coverage start           |
+| `coverage_active`                 | Set non-overlapping coverage dates                                    |
+| `offer_expired`                   | Review any existing collection before requesting a fresh offer        |
+| `idempotency_conflict`            | Do not change payload beneath an existing command key                 |
+| Uncertain provider/network result | Keep original identity and reconcile, never assume “nothing happened” |
 
-| Endpoint                                | Auth           | Behaviour                                                                      |
-| --------------------------------------- | -------------- | ------------------------------------------------------------------------------ |
-| `POST /payments/subscribe`              | bearer         | Validate/price, reserve credit, create pending payment and initialize Paystack |
-| `POST /webhooks/paystack`               | HMAC signature | Verify raw body, durably enqueue, acknowledge, then process asynchronously     |
-| `POST /admin/payments/process-webhooks` | admin          | Drain retryable/stale inbox work                                               |
-| `POST /admin/payments/reconcile`        | admin          | Verify stale pending/processing references directly with Paystack              |
-| `POST /admin/payments/maintenance`      | admin          | Inbox → Verify → safe period close, in dependency order                        |
-| `GET /admin/payments/reviews`           | admin          | Unresolved refunds, disputes and consumed-value reversals                      |
+## Worked price and renewal
 
-`charge.success` grants value only when provider reference, status, amount,
-currency, environment, transaction id and paid time pass the strict adapter
-contract. The public webhook has no shared-IP rate-limit bucket: Paystack bursts
-are absorbed by the durable, SHA-256-deduplicated inbox and competing workers
-claim rows with `FOR UPDATE SKIP LOCKED`.
+For coverage from 5 October through the exclusive 2 November 2026 boundary,
+Monday-Friday service gives 20 rides per direction. Example fares are GHS 10
+each, package price GHS 400 and unused credit GHS 5 per ride. API values are
+1000, 40000 and 500 pesewas. Total potential unused credit is GHS 200.
+These are illustrative terms, not a product default.
 
-Paystack references use only provider-supported characters. HTTP calls have
-timeouts and initialization verifies Paystack echoed the reference. Verify is
-the recovery path when a success webhook does not arrive.
-For a stale checkout that Verify cannot find, reconciliation marks the payment
-failed and releases its Ride Credit hold; transient provider/network failures
-remain retryable errors.
+A renewal starting 2 November can be paid before that date. The evening before,
+confirmation of a covered departure uses the renewal period. The wallet still
+shows it as upcoming until midnight. Closing the old period converts only its
+unused value; it must not consume or close the renewal.
 
-The live adapter contract has an opt-in sandbox test that rejects live keys:
-
-```bash
-RUN_PAYSTACK_SANDBOX=1 PAYSTACK_SECRET_KEY=sk_test_... \
-  pnpm --filter @trotxi/api exec vitest run tests/paystack.sandbox.test.ts
-```
-
-## Refunds and disputes
-
-Refund status notifications are recorded, but rider value changes only after
-`refund.processed`. Partial refunds update the audit total without silently
-cancelling the period. Once processed refunds equal the payment's cash amount,
-the transaction atomically:
-
-- revokes only rides still unconsumed in that purchased period;
-- restores Ride Credit captured for the reversed purchase;
-- marks the period `reversed`, the payment `refunded`, and the current
-  subscription `expired`.
-
-If some purchased rides were already consumed, only the remaining rides are
-reversed. The entitlement ledger never goes negative. A durable operations
-review records the consumed ride count and its proportional gross-price value
-in pesewas; repeated or out-of-order provider events cannot regress the stored
-refund/dispute state or duplicate that review.
-
-If the period had already closed, month-end conversion debits are not mistaken
-for boarding. Conversion credit still available to the rider is clawed back
-through the append-only credit ledger. Any conversion credit already spent or
-reserved is added to the operations-review debt instead of driving the balance
-negative.
-
-`charge.dispute.create` and reminders freeze the exact purchased period and
-suspend the current membership. A `declined` resolution restores service. A
-merchant-accepted resolution stays frozen until Paystack's authoritative
-processed-refund event covers the accepted amount, then service resumes for a
-partial refund or reverses for a full refund. Resolution alone is not treated as
-proof that cash moved.
-
-## Period close
-
-`POST /admin/close-subscription-periods` is the canonical operation. Both legacy
-admin paths delegate to it. For each immutable period it converts only that
-period's remaining rides at that period's frozen rate, retires those rides, then
-closes the period and expires the membership in one transaction.
-
-A period with `pending` or `reserved` seats is reported as `blocked`; closing it
-before boarding/no-show settlement would let a later ride debit occur after its
-value had already become credit.
-
-Each period has its own transaction and failure boundary. A malformed period is
-rolled back and returned under `failures` with only its stable period ID and a
-bounded reason code; later periods in the batch still close. The maintenance
-cron treats any isolated failure as a failed run after logging those identifiers
-so operators can reconcile them without exposing rider data.
-
-The compiled `payments-maintenance-cron` runs inbox recovery, Verify and close
-hourly. Each stage processes at most 100 records per invocation, keeping the
-admin request bounded and safely resumable. Its Render declaration is ready but
-commented because Render applies a minimum monthly charge per cron service.
-Until approved, operators call the maintenance endpoint manually.
-
-## Deferred
-
-- Automatic provider-initiated renewal and stored mandates.
-- Automated evidence upload or merchant decisions for disputes.
-- Standby single-journey checkout and operator payouts.
-- Fare bands and final commercial values; current values remain ops-editable
-  placeholders until approved.
-
-## Code and data
-
-- [Manual staging verification runbook](../payments-staging-verification.md)
-- `services/api/src/modules/payments/`
-- `services/api/src/modules/subscriptions/`
-- `services/api/src/cron/payments-maintenance-cron.ts`
-- `services/api/scripts/payments-audit.sql` (read-only rollout/reconciliation audit)
-- migrations `027`–`031`, `039`–`041`, and `044`
-- [ADR-0014](../adr/0014-hybrid-subscription-model.md) and
-  [ADR-0015](../adr/0015-fare-derived-pricing.md)
+Requests: [offer/payment examples](../api/worked-examples.md#3-request-offer-and-pay).
+Code: [standby](../../services/api-next/src/membership/standby.ts),
+[offer terms](../../services/api-next/src/membership/offer-terms.ts),
+[purchases](../../services/api-next/src/payments/purchases.ts),
+[foundation](../../services/api-next/src/payments/foundation.ts),
+[recovery](../../services/api-next/src/payments/recovery.ts).
+UI: [Ops offers](../../apps/ops/src/screens/Standby.tsx),
+[commuter offers](../../apps/trotxi_commuter/lib/Features/Home/widgets/Tabs/standby_page.dart).
+Tests: [pricing and prepaid renewals](../../services/api-next/tests/pricing.pg.test.ts).

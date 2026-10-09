@@ -11,10 +11,18 @@ WebAuthn passkey check. Access tokens remain in memory; the rotating refresh
 token is scoped to the browser tab. Every `/v1/ops/*` request is still
 authorized by current database role and passkey elevation on the API.
 
-The first administrator registers a passkey after their database role is
-provisioned. A verified administrator may promote another rider account; that
-new administrator must create their own passkey. Lost passkeys are reset only
-by another verified administrator—there are no email codes or recovery codes.
+Access is invite only. A superadmin uses **More → Team & access** to enter a
+name and Google email. The recipient follows the email link, signs in with that
+Google account and completes passkey setup before entering Ops. Invitations
+expire after 48 hours; the directory supports resend, cancellation and whole-account
+deletion. Cancelling setup after an invitation is claimed also deletes the account.
+Deletion is confirmed explicitly and does not downgrade the person to commuter.
+Ordinary administrators cannot grant access, delete operators or reset passkeys.
+
+The first superadmin is an existing approved administrator promoted through
+the one-time [installer command](../../docs/DEPLOY.md#first-superadmin-setup).
+The website cannot bootstrap itself. Lost passkeys require another superadmin;
+there are no emailed passwords or recovery codes.
 
 ## Local development
 
@@ -24,7 +32,9 @@ Use Node 24 and run from the repository root:
 pnpm --filter @trotxi/ops dev
 ```
 
-Optional public build values:
+Public build values. `VITE_API_BASE_URL` is required: `dev` and `build` refuse
+to start without it, and it must use HTTPS except for a local API. Staging uses
+the value below; a production build sets its own.
 
 ```text
 VITE_API_BASE_URL=https://trotxi-api-staging.onrender.com

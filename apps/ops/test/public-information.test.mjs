@@ -48,10 +48,14 @@ describe('public privacy and deletion pages', () => {
     expect(blueprint).toMatch(
       /routes:\s+- type: rewrite\s+source: \/privacy\s+destination: \/privacy\.html\s+- type: rewrite\s+source: \/delete-account\s+destination: \/delete-account\.html\s+- type: rewrite\s+source: \/\*\s+destination: \/index\.html/,
     );
+    // The apps build these clean paths on PUBLIC_SITE_URL; staging points
+    // that at this site, and production supplies its own.
     const sharedLinks = readFileSync('../trotxi_client/lib/public_information.dart', 'utf8');
-    expect(sharedLinks).toContain("'https://trotxi-ops-staging.onrender.com/privacy'");
-    expect(sharedLinks).toContain("'https://trotxi-ops-staging.onrender.com/delete-account'");
+    expect(sharedLinks).toContain("_page('privacy')");
+    expect(sharedLinks).toContain("_page('delete-account')");
     expect(sharedLinks).not.toContain('.html');
+    const staging = JSON.parse(readFileSync('../trotxi_commuter/config/staging.json', 'utf8'));
+    expect(staging.PUBLIC_SITE_URL).toBe('https://trotxi-ops-staging.onrender.com');
   });
   it('does not promise automatic deletion or universal retention', () => {
     const html = readFileSync('public/delete-account.html', 'utf8');

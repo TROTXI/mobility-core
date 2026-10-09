@@ -140,7 +140,7 @@ export function Riders() {
         title={mode === 'restrict' ? 'Restrict rider account' : 'Change account role'}
         description={
           mode === 'role'
-            ? 'Role changes take effect from current database facts. Promoting to admin grants access only after passkey registration.'
+            ? 'Change between commuter and driver access. Administrator accounts are managed through Team & access.'
             : 'A restriction blocks access account-wide until an attributed release decision.'
         }
         confirmLabel={mode === 'restrict' ? 'Create restriction' : 'Change role'}
@@ -190,7 +190,6 @@ export function Riders() {
             <select value={role} onChange={(event) => setRole(event.target.value as typeof role)}>
               <option value="commuter">Commuter</option>
               <option value="driver">Driver</option>
-              <option value="admin">Administrator</option>
             </select>
           </label>
         )}
@@ -324,7 +323,7 @@ function RiderDetail({
               </div>
               <div className="drawer-actions">
                 <Button onClick={onRestrict}>Restrict account</Button>
-                <Button onClick={onRole}>Change role</Button>
+                {session.account?.isSuperadmin && <Button onClick={onRole}>Change role</Button>}
               </div>
             </>
           )

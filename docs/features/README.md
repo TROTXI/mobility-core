@@ -1,58 +1,44 @@
 # Feature documentation
 
-**Owner:** Godfred Awuku · **Current-state review:** 2026-09-12
+Source audit: 2026-10-03. These documents describe the implementation on main.
+They replace the retired ADR collection. Product intent is maintained separately
+in [strategy](https://github.com/TROTXI/strategy).
 
-This directory documents the behaviour that exists on the current
-`mobility-core` branch. The generated OpenAPI document at `GET /docs/json` is
-the source of truth for HTTP shapes; the TypeScript implementation is the
-source of truth when prose and code disagree. Update the relevant feature doc
-in the same PR as a behavioural change.
+Read a feature's flow diagram, ownership and recovery rules, then follow its
+code/test links. [Worked API calls](../api/worked-examples.md) connect route
+setup, verification, offers, payment, reservations and driver operation.
 
-The private `strategy` repository explains product intent. ADRs explain durable
-technical decisions. These feature docs explain the system operators and app
-developers can use today.
+| Area                                         | Guide                                         |
+| -------------------------------------------- | --------------------------------------------- |
+| Social, phone, driver and Ops access         | [Authentication](authentication.md)           |
+| Subscription requests and priced offers      | [Payments and wallet](payments-and-wallet.md) |
+| Period-scoped rides and renewal discounts    | [Entitlements](entitlements.md)               |
+| Daily confirmation and capacity              | [Reservations](reservations.md)               |
+| QR, code, photo and no-show settlement       | [Boarding](boarding.md)                       |
+| Routes, versions, schedules, fleet and trips | [Mobility](mobility.md)                       |
+| Driver lifecycle, GPS and requests           | [Driver operations](driver-operations.md)     |
+| Reviewed commute transfers                   | [Commute changes](commute-change-requests.md) |
+| GPS, ETA and retention                       | [Live positions](live-positions.md)           |
+| Shared map rendering                         | [Basemap](basemap.md)                         |
+| Profiles, avatars and erasure                | [Account lifecycle](profile-avatars.md)       |
+| Bootstrap, flags and supported builds        | [Configuration](feature-flags.md)             |
+| Admission and caches                         | [Rate limiting](rate-limiting.md)             |
+| Inbox and preferences                        | [Notifications](../api/notifications.md)      |
+| Ops workflows                                | [Ops guide](ops-console.md)                   |
+| Logs, metrics and traces                     | [Observability](../design/observability.md)   |
 
-## Current feature map
+## Integration conventions
 
-The rider-request/API implementation for [commute changes](commute-change-requests.md)
-is documented separately for handoff to the ops team; it does not implement
-their console.
+Use the implemented [OpenAPI](../design/contracts/replacement.openapi.json),
+not old unversioned endpoint examples. Most product routes start with `/v1`;
+bootstrap, health and the Paystack webhook have explicit exceptions.
 
-| Area                                                 | Document                                                 | Current state                                                   |
-| ---------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
-| Social, session and driver authentication            | [authentication.md](authentication.md)                   | Live; Apple backend complete, production credentials pending    |
-| Profile, avatars and account erasure                 | [profile-avatars.md](profile-avatars.md)                 | Live                                                            |
-| Fare-derived pricing, Paystack lifecycle and renewal | [payments-and-wallet.md](payments-and-wallet.md)         | Implemented; paid scheduler and provider auto-renew deferred    |
-| Ride entitlements and Ride Credits                   | [entitlements.md](entitlements.md)                       | Live, including conversion and credit netting                   |
-| Daily confirmation and capacity                      | [reservations.md](reservations.md)                       | Live; standby allocation deferred                               |
-| Boarding by QR, code or photo                        | [boarding.md](boarding.md)                               | Live                                                            |
-| Routes, stops, trips and route learning              | [mobility.md](mobility.md)                               | Live                                                            |
-| Pilot GPS reporting and ETA                          | [live-positions.md](live-positions.md)                   | Live over HTTP polling                                          |
-| Self-hosted basemap                                  | [basemap.md](basemap.md)                                 | Assets/API live; driver integrated, other clients incomplete    |
-| Driver incidents and work requests                   | [driver-operations.md](driver-operations.md)             | Live                                                            |
-| Feature flags, force-update and operations contact   | [feature-flags.md](feature-flags.md)                     | Live                                                            |
-| Rate limiting                                        | [rate-limiting.md](rate-limiting.md)                     | Live                                                            |
-| Observability                                        | [../design/observability.md](../design/observability.md) | Backend and both mobile SDKs live; Grafana import/alerts remain |
+Clients send the required app/build/platform metadata. Commands use the
+operation's idempotency and edit-token requirements. Most lists use opaque
+cursors; do not invent offset pagination. Amounts use integer pesewas, rendered
+as GHS only at the UI boundary.
 
-## Cross-cutting conventions
-
-- Routes validate with Zod and publish the same schemas through OpenAPI.
-- Protected routes authenticate first, rate-limit second, then enforce role and
-  relationship rules.
-- Domain rules live in services; persistence lives behind repository interfaces.
-- Production uses PostgreSQL/PostGIS, Redis-compatible KV and configured external
-  adapters. Tests and zero-infrastructure development use in-memory adapters.
-- Monetary values use integer pesewas; rates use basis points.
-- Financial and boarding writes are append-only or idempotent where retries can
-  occur.
-- Optional integrations fail narrowly: an unwired feature returns `503` without
-  preventing the rest of the API from starting.
-
-## Deferred by design
-
-- Standby-seat offer cascade and instant single-journey payment.
-- Automatic recurring charges and stored payment mandates.
-- Automated Paystack dispute evidence and merchant decisions.
-- MQTT/EMQX/Go/WebSocket telemetry path; HTTP polling remains the pilot path.
-- SMS/OTP fallback.
-- Production Render service/database and paid scheduled jobs.
+See [status](../STATUS.md) for deferred work, [API integration](../api/README.md)
+for the request sequence and [deployment](../DEPLOY.md) for actual scheduling
+boundaries. For code locations and checks, use the
+[developer guide](../development.md).

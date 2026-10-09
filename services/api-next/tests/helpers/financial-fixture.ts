@@ -83,6 +83,7 @@ export async function setup(
   overrides: Partial<FinancialDependencies> = {},
   upgrade = false,
   through = files.length,
+  serviceFrom = '2025-01-01',
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_finance_${n}`,
@@ -167,16 +168,16 @@ export async function setup(
       ]);
     await owner.query("UPDATE app.route_geometries SET state='published' WHERE id=$1", [geom]);
     await owner.query(
-      "UPDATE app.route_pattern_versions SET state='published',geometry_id=$2,effective_from='2025-01-01' WHERE id=$1",
-      [version, geom],
+      "UPDATE app.route_pattern_versions SET state='published',geometry_id=$2,effective_from=$3 WHERE id=$1",
+      [version, geom, serviceFrom],
     );
     const departure = await id('INSERT INTO app.service_departures(pattern_id) VALUES ($1)', [
       pattern,
     ]);
     const schedule = await id(
       `INSERT INTO app.service_schedules(departure_id,pattern_id,pattern_version_id,service_window,local_departure,weekdays,effective_from)
-    VALUES ($1,$2,$3,$4,'06:30',ARRAY[1,2,3,4,5,6,7]::smallint[],'2025-01-01')`,
-      [departure, pattern, version, direction === 'outbound' ? 'morning' : 'evening'],
+    VALUES ($1,$2,$3,$4,'06:30',ARRAY[1,2,3,4,5,6,7]::smallint[],$5)`,
+      [departure, pattern, version, direction === 'outbound' ? 'morning' : 'evening', serviceFrom],
     );
     legs.push({
       direction,
@@ -204,6 +205,7 @@ export async function setup(
     conversionRatePesewas: 45,
   });
   const dependencies: FinancialDependencies = {
+    requireOffer: false, // Legacy financial invariants; offer enforcement has dedicated integration tests.
     pool: runtime,
     environment: 'test',
     authorizeSession: async (c, a) => {

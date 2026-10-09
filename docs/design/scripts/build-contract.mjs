@@ -46,7 +46,7 @@ const spec = {
     title: 'Trotxi replacement API — stage 1 review',
     version: '1.0.0-draft',
     description:
-      'DESIGN ONLY; not deployed. Engineering choices awaiting review are identified in stage-1-review.md. Generated from target-contract.mjs; do not edit JSON.',
+      'Full contract catalog, including deferred operations. Use replacement.openapi.json for the implemented API. Generated from target-contract.mjs; do not edit JSON.',
   },
   servers: [
     {
@@ -107,7 +107,7 @@ for (const o of operations) {
   for (const code of new Set(failures)) {
     spec.components.responses[`Error${code}`] ??= response(
       'ErrorResponse',
-      `Error ${code}; bounded code, no internal error text. See stage-1-access-and-gps.md.`,
+      `Error ${code}; bounded code, no internal error text. See docs/api/README.md for error handling.`,
     );
     responses[code] = { $ref: `#/components/responses/Error${code}` };
   }
@@ -150,9 +150,15 @@ for (const o of operations) {
       query('cursor', str, 'Opaque cursor bound to caller, sort and filters.'),
       query(
         'limit',
-        { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+        o.operationId === 'listNotifications'
+          ? { type: 'integer', minimum: 1, maximum: 100, default: 30 }
+          : { type: 'integer', minimum: 1, maximum: 200, default: 50 },
         'Page size. No silent truncation.',
       ),
+    );
+  if (o.operationId === 'listNotifications')
+    parameters.push(
+      query('unreadOnly', { type: 'boolean', default: false }, 'Only unread notifications.'),
     );
   // The board's morning/evening toggle. Required, not defaulted: the schema is
   // explicit that the service window is stated and never inferred from a
@@ -182,13 +188,28 @@ for (const o of operations) {
         'Name, phone or email, partial.',
       ),
     );
+  if (o.operationId === 'listOpsAutoRenewals')
+    parameters.push(
+      query(
+        'filter',
+        { type: 'string', enum: ['attention', 'open', 'all'], default: 'attention' },
+        'attention: declined, unconfirmed or waiting on a new offer. open: not yet paid or ended.',
+      ),
+    );
   if (o.operationId === 'listOpsDeliveries')
     parameters.push(
       query('channel', { type: 'string', enum: ['email', 'push'] }, 'Delivery channel.'),
       query('state', { type: 'string', maxLength: 50 }, 'Provider delivery state.'),
     );
   if (o.operationId === 'listOpsAuditEvents')
-    parameters.push(query('area', { type: 'string', maxLength: 50 }, 'Audit domain.'));
+    parameters.push(
+      query('area', { type: 'string', maxLength: 50 }, 'Audit domain.'),
+      query('actorId', { type: 'string', format: 'uuid' }, 'Operator user ID.'),
+      query('action', { type: 'string', minLength: 1, maxLength: 100 }, 'Exact audit action.'),
+      query('targetId', { type: 'string', minLength: 1, maxLength: 128 }, 'Exact resource ID.'),
+      query('fromDate', { type: 'string', format: 'date' }, 'Earliest UTC date, inclusive.'),
+      query('toDate', { type: 'string', format: 'date' }, 'Latest UTC date, inclusive.'),
+    );
   if (o.operationId === 'getOpsReportSummary')
     parameters.push(
       query('fromDate', { type: 'string', format: 'date' }, 'Inclusive reporting day.'),
@@ -231,7 +252,9 @@ for (const o of operations) {
         'If-Match',
         str,
         true,
-        'Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.',
+        retry === 'conditional_state'
+          ? 'Missing = 428; stale = 412. Reload the current preferences and retry with its ETag.'
+          : 'Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.',
       ),
     );
   if (['idempotency_key', 'short_lived', 'erasure'].includes(retry))
@@ -498,7 +521,7 @@ function checkRefs(value) {
 checkRefs(spec);
 await writeArtifact(
   new URL('../stage-2-operation-scope.md', import.meta.url),
-  `# Operation scope after stage-1 review\n\nGenerated from contracts/operation-scope.mjs. ${additions.length} target operations have no direct baseline mapping: ${operationScope.filter((s) => s.delivery === 'cutover').length} are required for cutover and ${operationScope.filter((s) => s.delivery === 'deferred').length} are deferred proposals. The full 132-operation OpenAPI remains a design catalog, **not** a commitment to implement every operation in stage 3. Deferred entries are marked x-delivery-stage: deferred; do not implement or generate a launch client dependency on them. No deployed endpoints change here. An entity or accounting rule remains required even when its optional history UI is deferred.\n\nFor deferred detail GETs, versioned list rows must supply the same per-resource edit token required by If-Match; collection ETags cannot substitute. Review that consumer contract during implementation.\n\n| Operation | Delivery | Requirement | Existing endpoint assessment |\n| --- | --- | --- | --- |\n${additions
+  `# Operation scope after stage-1 review\n\nGenerated from contracts/operation-scope.mjs. ${additions.length} target operations have no direct baseline mapping: ${operationScope.filter((s) => s.delivery === 'cutover').length} are required for cutover and ${operationScope.filter((s) => s.delivery === 'deferred').length} are deferred proposals. The full ${operations.length}-operation OpenAPI remains a design catalog, **not** a commitment to implement every operation in stage 3. Deferred entries are marked x-delivery-stage: deferred; do not implement or generate a launch client dependency on them. No deployed endpoints change here. An entity or accounting rule remains required even when its optional history UI is deferred.\n\nFor deferred detail GETs, versioned list rows must supply the same per-resource edit token required by If-Match; collection ETags cannot substitute. Review that consumer contract during implementation.\n\n| Operation | Delivery | Requirement | Existing endpoint assessment |\n| --- | --- | --- | --- |\n${additions
     .map((o) => {
       const s = operationScope.find((s) => s.operationId === o.operationId);
       return `| \`${o.method.toUpperCase()} ${o.path}\` | ${s.delivery} | ${s.requirement} | ${s.existingEndpointAssessment} |`;

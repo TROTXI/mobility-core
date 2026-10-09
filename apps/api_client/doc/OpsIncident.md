@@ -16,6 +16,7 @@ Name | Type | Description | Notes
 **location** | [**IncidentLocation**](IncidentLocation.md) |  | 
 **status** | **String** |  | 
 **resolution** | **String** |  | 
+**redactedAt** | [**DateTime**](DateTime.md) |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 **driverId** | **String** |  | 
 **handledBy** | **String** |  | 

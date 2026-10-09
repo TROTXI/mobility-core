@@ -154,6 +154,10 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
   @override
   final OpsOverviewTripsInnerStatusEnum status;
   @override
+  final String patternId;
+  @override
+  final String patternVersionId;
+  @override
   final String? routeName;
   @override
   final String? driverId;
@@ -192,6 +196,8 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
       {required this.tripId,
       required this.scheduledAt,
       required this.status,
+      required this.patternId,
+      required this.patternVersionId,
       this.routeName,
       this.driverId,
       this.driverName,
@@ -224,6 +230,8 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
         tripId == other.tripId &&
         scheduledAt == other.scheduledAt &&
         status == other.status &&
+        patternId == other.patternId &&
+        patternVersionId == other.patternVersionId &&
         routeName == other.routeName &&
         driverId == other.driverId &&
         driverName == other.driverName &&
@@ -247,6 +255,8 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
     _$hash = $jc(_$hash, tripId.hashCode);
     _$hash = $jc(_$hash, scheduledAt.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
+    _$hash = $jc(_$hash, patternId.hashCode);
+    _$hash = $jc(_$hash, patternVersionId.hashCode);
     _$hash = $jc(_$hash, routeName.hashCode);
     _$hash = $jc(_$hash, driverId.hashCode);
     _$hash = $jc(_$hash, driverName.hashCode);
@@ -272,6 +282,8 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
           ..add('tripId', tripId)
           ..add('scheduledAt', scheduledAt)
           ..add('status', status)
+          ..add('patternId', patternId)
+          ..add('patternVersionId', patternVersionId)
           ..add('routeName', routeName)
           ..add('driverId', driverId)
           ..add('driverName', driverName)
@@ -307,6 +319,15 @@ class OpsOverviewTripsInnerBuilder
   OpsOverviewTripsInnerStatusEnum? get status => _$this._status;
   set status(OpsOverviewTripsInnerStatusEnum? status) =>
       _$this._status = status;
+
+  String? _patternId;
+  String? get patternId => _$this._patternId;
+  set patternId(String? patternId) => _$this._patternId = patternId;
+
+  String? _patternVersionId;
+  String? get patternVersionId => _$this._patternVersionId;
+  set patternVersionId(String? patternVersionId) =>
+      _$this._patternVersionId = patternVersionId;
 
   String? _routeName;
   String? get routeName => _$this._routeName;
@@ -381,6 +402,8 @@ class OpsOverviewTripsInnerBuilder
       _tripId = $v.tripId;
       _scheduledAt = $v.scheduledAt;
       _status = $v.status;
+      _patternId = $v.patternId;
+      _patternVersionId = $v.patternVersionId;
       _routeName = $v.routeName;
       _driverId = $v.driverId;
       _driverName = $v.driverName;
@@ -425,6 +448,10 @@ class OpsOverviewTripsInnerBuilder
                 scheduledAt, r'OpsOverviewTripsInner', 'scheduledAt'),
             status: BuiltValueNullFieldError.checkNotNull(
                 status, r'OpsOverviewTripsInner', 'status'),
+            patternId: BuiltValueNullFieldError.checkNotNull(
+                patternId, r'OpsOverviewTripsInner', 'patternId'),
+            patternVersionId: BuiltValueNullFieldError.checkNotNull(
+                patternVersionId, r'OpsOverviewTripsInner', 'patternVersionId'),
             routeName: routeName,
             driverId: driverId,
             driverName: driverName,

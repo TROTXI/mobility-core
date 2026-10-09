@@ -17,9 +17,14 @@ import { Pricing } from '../payments/pricing.js';
 import { Purchases } from '../payments/purchases.js';
 import { RefundInitiation } from '../payments/refunds.js';
 import { MembershipService } from '../membership/service.js';
+import { StandbyService } from '../membership/standby.js';
+import { AutoRenewals, cardBox } from '../payments/auto-renewal.js';
 import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
 import { R2ObjectStore } from './avatars.js';
+import { R2ErasureJournalStore } from './erasure-journal-store.js';
+import { ErasureJournal } from '../account/erasure-journal.js';
+import { assertErasureRuntime } from '../account/erasure-recovery.js';
 import { sharedAdmission } from './admission.js';
 import { TransactionalEmail } from '../notifications/email.js';
 import { ResendSender } from '../notifications/resend.js';
@@ -28,7 +33,9 @@ import { PhoneOtp } from '../auth/phone-otp.js';
 import { DriverSms } from '../notifications/driver-sms.js';
 import { FcmSender } from '../notifications/fcm.js';
 import { PushNotifications } from '../notifications/push.js';
+import { RiderInbox } from '../notifications/inbox.js';
 import type { RuntimeConfig } from './config.js';
+import { MaintenanceAudit } from './maintenance-audit.js';
 
 export interface Backend {
   app: FastifyInstance;
@@ -40,6 +47,7 @@ export interface Backend {
   /** Closed admission windows are the worker's to clear. */
   admission: import('./admission.js').Admission;
   maintenanceUserId: string;
+  maintenanceAudit: MaintenanceAudit;
   email?: TransactionalEmail;
   sms?: DriverSms;
   push?: PushNotifications;
@@ -56,7 +64,7 @@ export interface Backend {
  * migration owner would otherwise work perfectly and be quietly unauditable,
  * and that mistake is worth catching before the listener opens.
  */
-export async function assertRuntimeRole(pool: Pool, existingStaging = false): Promise<void> {
+export async function assertRuntimeRole(pool: Pool): Promise<void> {
   const row = (
     await pool.query<{
       create_schema: boolean;
@@ -74,16 +82,6 @@ export async function assertRuntimeRole(pool: Pool, existingStaging = false): Pr
     )
   ).rows[0];
   if (!row?.installed) throw new Error('The replacement schema is not installed on this database');
-  // Approved for the disposable, existing staging service only. Configuration
-  // also pins the Render service, host and TEST key. This deliberately gives up
-  // the narrow-login boundary; it is not a claim that owners are restricted.
-  if (existingStaging) {
-    if (row.database !== 'trotxi' || row.login !== 'trotxi')
-      throw new Error(
-        'The staging owner exception requires the existing trotxi database and login',
-      );
-    return;
-  }
   if (row.create_schema)
     throw new Error('Refusing to start: this connection can create objects in the app schema');
   if (row.rewrite_history)
@@ -101,13 +99,22 @@ export async function assertRuntimeRole(pool: Pool, existingStaging = false): Pr
 export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
   const pool = new pg.Pool({
     connectionString: config.databaseUrl,
+    ...(config.databaseSsl ? { ssl: config.databaseSsl } : {}),
     max: config.poolSize,
     application_name: `${config.build.service}@${config.build.commit.slice(0, 12)}`,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 30000,
   });
   try {
-    await assertRuntimeRole(pool, config.existingStaging);
+    await assertRuntimeRole(pool);
+    const erasureJournal = config.erasureJournal
+      ? new ErasureJournal(
+          new R2ErasureJournalStore(config.erasureJournal),
+          config.erasureJournal.namespace,
+          config.erasureJournal.key,
+        )
+      : undefined;
+    await assertErasureRuntime(pool, erasureJournal, config.keys.device);
     const avatars = new R2ObjectStore(config.avatars);
     const push = config.firebaseServiceAccount
       ? new PushNotifications({
@@ -168,6 +175,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       return identity;
     };
     const admission = sharedAdmission(pool);
+    const maintenanceAudit = new MaintenanceAudit(pool);
     const ipAdmissionKey = Buffer.from(
       hkdfSync('sha256', config.keys.cursorSecret, 'trotxi:admission:v1', 'ip-address-digest', 32),
     );
@@ -179,6 +187,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       ...(sms ? { driverSms: sms } : {}),
       authProviders: config.providers,
       admit: (subject) => admission.spend(subject),
+      maintenanceAudit,
       // Do not retain raw network addresses in the disposable budget table.
       admitIp: (ip, bucket) =>
         admission.spend(
@@ -205,6 +214,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         shiftTtlHours: config.shiftTtlHours,
         providerEncryptionKey: config.keys.providerEncryption,
         passkeys: webAuthnRelyingParty(config.opsOrigin),
+        opsOrigin: config.opsOrigin,
+        opsEmail: email,
         google: new GoogleIdTokenVerifier(config.google.clientId),
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),
@@ -223,6 +234,11 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       // then the membership rules that read them, then the money foundation
       // those rules bound, then the surfaces over it.
       compose: ({ auth, authorizeSession }) => {
+        const inbox = new RiderInbox({
+          pool,
+          cursorSecret: config.keys.cursorSecret,
+          authorizeSession,
+        });
         const pricing = new Pricing({
           pool,
           authorizeSession,
@@ -234,7 +250,10 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           cursorSecret: config.keys.cursorSecret,
           fareForSelection: pricing.fareForSelection,
         });
+        // Bound below, once payment recovery exists to settle its charges.
+        let autoRenewals: AutoRenewals | undefined;
         const financial = new FinancialFoundation({
+          requireOffer: true,
           pool,
           environment: provider.environment,
           authorizeSession,
@@ -243,11 +262,13 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           materializeAssignment: membership.materializeAssignment,
           quote: pricing.quote,
           subscriptionActive: email?.subscriptionActive,
+          purchaseSettled: (c, input) => autoRenewals!.purchaseSettled(c, input),
         });
         const account = new AccountService({
           pool,
           authorizeSession,
           deviceKey: config.keys.device,
+          erasureJournal,
           erasureRequested: email?.erasureRequested,
           avatars,
           // Erasure's external half. Marking a row deleted withdraws nothing
@@ -269,8 +290,43 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           avatarUrlTtlSeconds: config.avatars.urlTtlSeconds,
           maxAvatarBytes: config.avatars.maxBytes,
         });
+        const purchases = new Purchases({
+          pool,
+          financial,
+          authorizeSession,
+          cursorSecret: config.keys.cursorSecret,
+          initializeCheckout: async (request) =>
+            provider.initialize({
+              reference: request.reference,
+              amountPesewas: request.amountPesewas,
+              email: await payerEmail(request.userId),
+            }),
+        });
         identity = { auth, membership, account };
+        const recovery = new PaymentRecovery({
+          pool,
+          provider,
+          foundation: financial,
+          authorizeSession,
+          cursorSecret: config.keys.cursorSecret,
+          reversePeriod: membership.reversePeriod,
+        });
+        const cards = cardBox(config.keys.paystackEvidence);
+        autoRenewals = new AutoRenewals({
+          pool,
+          environment: provider.environment,
+          authorizeSession,
+          financial,
+          pricing,
+          seal: cards.seal,
+          open: cards.open,
+          charge: (request) => provider.chargeAuthorization(request),
+          settle: (reference) => recovery.settleReference(reference),
+          cursorSecret: config.keys.cursorSecret,
+          ...(email ? { email } : {}),
+        });
         return {
+          inbox,
           pricing,
           refunds: new RefundInitiation({
             pool,
@@ -281,26 +337,15 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           }),
           membership,
           account,
-          purchases: new Purchases({
+          purchases,
+          standby: new StandbyService({
             pool,
-            financial,
             authorizeSession,
+            purchases,
             cursorSecret: config.keys.cursorSecret,
-            initializeCheckout: async (request) =>
-              provider.initialize({
-                reference: request.reference,
-                amountPesewas: request.amountPesewas,
-                email: await payerEmail(request.userId),
-              }),
           }),
-          payments: new PaymentRecovery({
-            pool,
-            provider,
-            foundation: financial,
-            authorizeSession,
-            cursorSecret: config.keys.cursorSecret,
-            reversePeriod: membership.reversePeriod,
-          }),
+          payments: recovery,
+          autoRenewals,
           config: new ConfigService({
             pool,
             authorizeSession,
@@ -310,6 +355,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             support: config.support,
             fallbackBuilds: { driver: config.floors.driver, commuter: config.floors.commuter },
             docsUrl: config.docsUrl,
+            floorCacheMs: 30_000,
           }),
         };
       },
@@ -326,6 +372,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       account: built().account,
       admission,
       maintenanceUserId: config.maintenanceUserId,
+      maintenanceAudit,
       email,
       sms,
       push,

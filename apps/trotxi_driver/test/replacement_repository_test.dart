@@ -578,6 +578,115 @@ void main() {
     },
   );
 
+  test(
+    'empty live reads are shared and cached without refetching trip details',
+    () async {
+      final gate = Completer<void>();
+      final adapter = Adapter((o) async {
+        expect(o.path, '/v1/trips/trip-1/live');
+        await gate.future;
+        return (
+          200,
+          {
+            'data': {
+              'tripId': 'trip-1',
+              'patternVersionId': 'version-old',
+              'geometryId': null,
+              'riderPickupOccurrenceId': null,
+              'state': 'notStarted',
+              'position': null,
+              'etas': [],
+              'serverTime': at,
+            },
+          },
+        );
+      });
+      final api = withAdapter(adapter);
+      seedTrip(api);
+      final maps = RouteMapRepository(client: api);
+      final first = maps.vehicleOn('trip-1');
+      final second = maps.vehicleOn('trip-1');
+      gate.complete();
+      expect(await first, isNull);
+      expect(await second, isNull);
+      expect(await maps.vehicleOn('trip-1'), isNull);
+      expect(adapter.requests, hasLength(1));
+    },
+  );
+
+  test('a late live read cannot populate the next session cache', () async {
+    final started = Completer<void>();
+    final gate = Completer<void>();
+    final adapter = Adapter((o) async {
+      if (!started.isCompleted) started.complete();
+      await gate.future;
+      return (
+        200,
+        {
+          'data': {
+            'tripId': 'trip-1',
+            'patternVersionId': 'version-old',
+            'geometryId': null,
+            'riderPickupOccurrenceId': null,
+            'state': 'notStarted',
+            'position': null,
+            'etas': [],
+            'serverTime': at,
+          },
+        },
+      );
+    });
+    final api = withAdapter(adapter);
+    seedTrip(api);
+    final maps = RouteMapRepository(client: api);
+    final pending = maps.vehicleOn('trip-1');
+    final rejection = expectLater(
+      pending,
+      throwsA(isA<UnauthorizedException>()),
+    );
+    await started.future;
+    await api.store.clearTokens();
+    gate.complete();
+    await rejection;
+    seedTrip(api);
+    expect(await maps.vehicleOn('trip-1'), isNull);
+    expect(adapter.requests, hasLength(2));
+  });
+
+  test(
+    'live cache evicts old trips instead of growing for the whole session',
+    () async {
+      final adapter = Adapter(
+        (o) => (
+          200,
+          {
+            'data': {
+              'tripId': o.path.split('/')[3],
+              'patternVersionId': 'version-old',
+              'geometryId': null,
+              'riderPickupOccurrenceId': null,
+              'state': 'notStarted',
+              'position': null,
+              'etas': [],
+              'serverTime': at,
+            },
+          },
+        ),
+      );
+      final api = withAdapter(adapter);
+      final maps = RouteMapRepository(client: api);
+      for (var i = 0; i < 17; i++) {
+        seedTrip(api, id: 'trip-$i');
+        await maps.vehicleOn('trip-$i');
+      }
+      expect(adapter.requests, hasLength(17));
+      await maps.vehicleOn('trip-16');
+      expect(adapter.requests, hasLength(17));
+      await maps.vehicleOn('trip-0');
+      expect(adapter.requests, hasLength(18));
+    },
+  );
+
   for (final age in [30, 121]) {
     test(
       'live receipt age $age controls ETA availability, with occurrence identity and provenance',

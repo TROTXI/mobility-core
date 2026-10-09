@@ -1,12 +1,11 @@
-# Driver reliability completion
+# Driver reliability
 
-This change targets the driver app and its existing replacement backend. It
-does not change commuter screens, deploy staging, introduce secrets or enable
-scheduled/paid workers.
+Current capture, delivery, refresh and recovery behavior for the driver app.
 
 ## Behaviour
 
-- Active map and stop ETA reads refresh every five seconds while foregrounded.
+- The active map uses the device's captured GPS fix; it does not read that
+  position back from the server. Stop ETA reads refresh every five seconds while foregrounded.
   Returning to the app refreshes immediately; disposed screens stop polling.
 - The signed-in shell refreshes assignments every 30 seconds and on resume.
   `assignmentChangedAt` comes from committed assignment/reschedule/cancel events.
@@ -57,23 +56,11 @@ The worker is still **manual on staging**, as requested. Polling works without
 it, but remote push delivery requires running the existing worker. No scheduling
 or production configuration has been changed.
 
-## Verification
+## Development and device checks
 
-- Driver regression suite: 201 tests passing; static analysis clean.
-- Android debug APK builds after a clean build (Firebase native dependencies
-  changed with the messaging plugin).
-- Backend: 331 Postgres cases exercised. The first run's sole failure was the
-  historical upgrade inventory missing 026; after updating that explicit
-  expectation, all ten account-recovery cases pass. No required tests skipped.
-- Backend unit and contract checks cover the privacy-safe FCM payload, real
-  driver registration, concurrent delivery, revoked sessions, changed device
-  ownership, rollback, and existing commuter prompts.
-- App regressions cover live-map polling, preserved configuration and retry,
-  stationary capture, stable-ID retries, trip-completion blocking, queue
-  persistence/capacity/expiry, and notification registration/logout.
-
-Not claimed: a real-device push delivery or a new native map/GPS walkthrough.
-Apple push is explicitly deferred until an Apple Developer account and APNs
-setup are available. It is not a blocker for this staging PR. The app reports
-unavailable setup instead of claiming alerts are enabled; foreground assignment
-refresh still works. Store-release signing is separate from these fixes.
+Regression tests cover queue persistence/capacity/expiry, stable-ID retries,
+completion blocking, owner changes, local GPS markers and notification lifecycle.
+Run driver analysis/tests and the relevant API PostgreSQL suites when changing
+these boundaries. Test screen lock, background/resume, network loss and push on
+physical devices separately. Apple push requires APNs configuration; missing
+setup must be shown as unavailable. Foreground assignment refresh still works.

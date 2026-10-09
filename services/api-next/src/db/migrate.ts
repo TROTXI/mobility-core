@@ -108,8 +108,24 @@ export function runtimeRoleIdentifier(name: string): string {
   return `"${name}"`;
 }
 
+/** Read-only startup check. The service must never install its own schema. */
+export async function assertMigrationsCurrent(
+  pool: Pool,
+  files: readonly Migration[],
+): Promise<void> {
+  validateMigrations(files);
+  const applied = await pool.query<{ name: string; sha256: string }>(
+    'SELECT name,sha256 FROM public._replacement_migrations ORDER BY name',
+  );
+  if (
+    applied.rows.length !== files.length ||
+    applied.rows.some((row, i) => row.name !== files[i]!.name || row.sha256 !== files[i]!.sha256)
+  )
+    throw new Error('Install the reviewed migration inventory before starting the API');
+}
+
 // Provision credentials out of band. Never grant to the installer/owner or a
-// role that can SET ROLE to it. No DELETE, TRUNCATE, DDL or migration-table access.
+// role that can SET ROLE to it. No TRUNCATE, DDL or migration-table writes.
 export async function grantRuntime(pool: Pool, role: string): Promise<void> {
   const quoted = runtimeRoleIdentifier(role);
   const client = await pool.connect();
@@ -140,7 +156,15 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
     if (check.rows.length !== 1 || check.rows[0].unsafe)
       throw new Error('Runtime role must exist and be independent of the owner/installer');
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
+    await client.query(`GRANT SELECT ON public._replacement_migrations TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
+    if (
+      (await client.query("SELECT to_regclass('app.erasure_recovery_control') AS name")).rows[0]
+        .name
+    )
+      await client.query(`REVOKE INSERT, UPDATE ON app.erasure_recovery_control FROM ${quoted}`);
+    if ((await client.query("SELECT to_regclass('app.ops_bootstrap') AS name")).rows[0].name)
+      await client.query(`REVOKE INSERT, UPDATE ON app.ops_bootstrap FROM ${quoted}`);
     // UPDATE is revoked on every append-only table, and the set is read from
     // the schema's own triggers rather than kept by hand here: a new event
     // table cannot ship with UPDATE still granted, and a table from a
@@ -159,6 +183,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'driver_commands',
       'driver_events',
       'fleet_events',
+      'incident_redactions',
       'purchase_legs',
       'credit_entries',
       'ride_entries',
@@ -185,13 +210,17 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'account_commands',
       'config_commands',
       'config_events',
+      'maintenance_run_starts',
+      'maintenance_run_outcomes',
     ];
     const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
       `SELECT c.relname AS name, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
           AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.append_only()'),
             to_regprocedure('app.guard_driver_receipt()'), to_regprocedure('app.guard_account_command()'),
-            to_regprocedure('app.guard_receipt_payload()')])
+            to_regprocedure('app.guard_receipt_payload()'),
+            to_regprocedure('app.guard_fleet_event_privacy()'),
+            to_regprocedure('app.guard_gps_event_privacy()')])
           AND (g.tgtype & 16) <> 0
       ) AS append_only, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal

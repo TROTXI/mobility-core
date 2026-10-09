@@ -97,6 +97,11 @@ class PositionPublisher extends ChangeNotifier {
   bool _capturing = false;
   bool _finishing = false;
   DateTime? _lastCaptured;
+  Position? _localPosition;
+
+  /// Device position is not proof of a successful upload. The map may use it
+  /// offline; sharing status and stop ETAs still come from server receipts.
+  Position? get localPosition => _localPosition;
   Future<void> _recording = Future.value();
   int get queuedFixes => queue.rows.length;
   int get expiredFixes => queue.expiredFixes;
@@ -177,6 +182,8 @@ class PositionPublisher extends ChangeNotifier {
         return;
       }
       final run = _runId!;
+      _localPosition = position;
+      if (!_disposed) notifyListeners();
       try {
         await queue.add({
           'tripId': run,
@@ -326,6 +333,7 @@ class PositionPublisher extends ChangeNotifier {
     _captureTimer?.cancel();
     _finishing = false;
     _lastCaptured = null;
+    _localPosition = null;
     _uploading = false;
     _lastAcknowledgedAt = null;
     _lastAccuracyMeters = null;
@@ -399,6 +407,7 @@ class PositionPublisher extends ChangeNotifier {
     final subscription = _subscription;
     _subscription = null;
     _runId = null;
+    _localPosition = null;
     _cancel?.cancel();
     _expiry?.cancel();
     _captureTimer?.cancel();

@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, randomUUID } f
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import type { CredentialMail, DriverCredentialEmail } from './email.js';
+import { ghanaTime } from './format.js';
 import { ghanaPhone, SmsSendError, type SmsSender } from './mnotify.js';
 
 const payloadSchema = z.strictObject({ phone: z.string(), text: z.string().max(1600) });
@@ -32,7 +33,7 @@ export class DriverSms implements DriverCredentialEmail {
       phone,
       text:
         `${this.staging ? '[Trotxi STAGING] ' : 'Trotxi '}${mail.kind === 'driver_pin_reset' ? 'PIN reset. Previous PIN and sessions revoked. ' : 'Driver sign-in: '}` +
-        `Code ${mail.code}. Temporary PIN ${mail.pin}. Expires ${mail.expiresAt.toISOString()} (UTC). Sign in to Trotxi Driver and choose your own PIN. Never share it.`,
+        `Code ${mail.code}. Temporary PIN ${mail.pin}. Expires ${ghanaTime(mail.expiresAt)}. Sign in to Trotxi Driver and choose your own PIN. Never share it.`,
     });
     const iv = randomBytes(12),
       cipher = createCipheriv('aes-256-gcm', this.key, iv);
@@ -63,8 +64,7 @@ export class DriverSms implements DriverCredentialEmail {
     if (!claimed) return;
     const c = await this.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL lock_timeout='3s'");
+      await c.query("BEGIN; SET LOCAL lock_timeout='3s'");
       const user = (
         await c.query('SELECT deleted_at FROM app.users WHERE id=$1 FOR UPDATE', [claimed.user_id])
       ).rows[0];
@@ -110,7 +110,7 @@ export class DriverSms implements DriverCredentialEmail {
         if (!eligible) await finish('cancelled');
         else {
           try {
-            await finish('accepted', await this.sender.send(payload.phone, payload.text, false));
+            await finish('accepted', await this.sender.send(payload.phone, payload.text));
           } catch (error) {
             await finish(
               error instanceof SmsSendError && error.outcome === 'rejected' ? 'failed' : 'unknown',

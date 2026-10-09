@@ -7,9 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/splash_view.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
+import 'package:trotxi_commuter/Features/Onboarding/pages/complete_profile_page.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_client/public_information.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
@@ -18,8 +20,10 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
-const _apiBaseUrl = 'https://trotxi-api-staging.onrender.com';
-const _apiRealm = 'staging-1';
+// Build inputs, never defaults: run with
+// `--dart-define-from-file=config/staging.json` (or a production file).
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
 
 final trotxiClientProvider = Provider<CommuterApi>((ref) {
   throw UnimplementedError(
@@ -33,6 +37,7 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -91,7 +96,7 @@ Future<void> main() async {
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
-                      'This build needs a replacement API URL and session realm. Contact support.',
+                      'This build needs its API URL, session realm and public site address. Contact support.',
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -151,10 +156,13 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
           DateTime.now().difference(pausedAt) >= _revalidateAfter &&
           widget.client.stage.value == CommuterStage.ready) {
         unawaited(
-          widget.client.account().then<void>((_) {}, onError: (Object _) {
-            // Offline or a transient failure: stay put. An expired session is
-            // handled by the client itself, not here.
-          }),
+          widget.client.account().then<void>(
+            (_) {},
+            onError: (Object _) {
+              // Offline or a transient failure: stay put. An expired session is
+              // handled by the client itself, not here.
+            },
+          ),
         );
       }
     }
@@ -201,7 +209,15 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
                     CommuterStage.signedOut => OnBoardPage(
                       client: widget.client,
                     ),
-                    CommuterStage.ready => HomePage(client: widget.client),
+                    CommuterStage.ready =>
+                      switch (widget.client.currentAccount) {
+                        final account? when CommuterApi.needsName(account) =>
+                          CompleteProfilePage(
+                            client: widget.client,
+                            account: account,
+                          ),
+                        _ => HomePage(client: widget.client),
+                      },
                     CommuterStage.failed => Scaffold(
                       body: SafeArea(
                         child: Center(

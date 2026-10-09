@@ -39,7 +39,7 @@ abstract class MembershipCoverage
 
   @BuiltValueField(wireName: r'renewalMode')
   MembershipCoverageRenewalModeEnum get renewalMode;
-  // enum renewalModeEnum {  manual,  };
+  // enum renewalModeEnum {  manual,  automatic,  };
 
   MembershipCoverage._();
 
@@ -222,6 +222,9 @@ class MembershipCoverageRenewalModeEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'manual')
   static const MembershipCoverageRenewalModeEnum manual =
       _$membershipCoverageRenewalModeEnum_manual;
+  @BuiltValueEnumConst(wireName: r'automatic')
+  static const MembershipCoverageRenewalModeEnum automatic =
+      _$membershipCoverageRenewalModeEnum_automatic;
 
   static Serializer<MembershipCoverageRenewalModeEnum> get serializer =>
       _$membershipCoverageRenewalModeEnumSerializer;

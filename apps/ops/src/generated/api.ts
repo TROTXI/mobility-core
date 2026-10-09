@@ -89,6 +89,108 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/ops/google': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** sign In Ops Google */
+    post: operations['signInOpsGoogle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/team': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Team */
+    get: operations['listOpsTeam'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/team/invitations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** invite Operator */
+    post: operations['inviteOperator'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/team/invitations/{id}/resend': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** resend Operator Invitation */
+    post: operations['resendOperatorInvitation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/team/invitations/{id}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** cancel Operator Invitation */
+    post: operations['cancelOperatorInvitation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/team/members/{id}/access': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** update Operator Access */
+    post: operations['updateOperatorAccess'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/auth/google': {
     parameters: {
       query?: never;
@@ -363,6 +465,143 @@ export interface paths {
     patch: operations['updateAccount'];
     trace?: never;
   };
+  '/v1/me/verification': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Verification */
+    get: operations['getVerification'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/phone-verification/start': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** start Phone Verification */
+    post: operations['startPhoneVerification'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/phone-verification/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** confirm Phone Verification */
+    post: operations['confirmPhoneVerification'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/standby': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list My Standby */
+    get: operations['listMyStandby'];
+    put?: never;
+    /** join Standby */
+    post: operations['joinStandby'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/standby/{id}/withdraw': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** withdraw Standby */
+    post: operations['withdrawStandby'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/standby/{id}/accept': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** accept Standby Offer */
+    post: operations['acceptStandbyOffer'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/standby': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Standby */
+    get: operations['listOpsStandby'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/standby/{id}/offers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** offer Standby */
+    post: operations['offerStandby'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/avatar': {
     parameters: {
       query?: never;
@@ -433,6 +672,75 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/notifications': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Notifications */
+    get: operations['listNotifications'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/notifications/read': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** mark All Notifications Read */
+    post: operations['markAllNotificationsRead'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/notifications/{id}/read': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** mark Notification Read */
+    post: operations['markNotificationRead'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/notification-preferences': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Notification Preferences */
+    get: operations['getNotificationPreferences'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** update Notification Preferences */
+    patch: operations['updateNotificationPreferences'];
+    trace?: never;
+  };
   '/v1/me/membership': {
     parameters: {
       query?: never;
@@ -445,6 +753,41 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/auto-renewal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Auto Renewal */
+    get: operations['getAutoRenewal'];
+    /** set Auto Renewal */
+    put: operations['setAutoRenewal'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/auto-renewal/card': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** remove Auto Renewal Card */
+    delete: operations['removeAutoRenewalCard'];
     options?: never;
     head?: never;
     patch?: never;
@@ -1446,6 +1789,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/account-erasures': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Account Erasures */
+    get: operations['listOpsAccountErasures'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/audit-events': {
     parameters: {
       query?: never;
@@ -1944,6 +2304,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/auto-renewals': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Auto Renewals */
+    get: operations['listOpsAutoRenewals'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/purchases/{id}': {
     parameters: {
       query?: never;
@@ -2200,6 +2577,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/maintenance/auto-renewals': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** run Auto Renewals */
+    post: operations['runAutoRenewals'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/maintenance/trip-generation': {
     parameters: {
       query?: never;
@@ -2257,6 +2651,7 @@ export interface components {
       role: 'commuter' | 'driver' | 'admin';
       /** Format: date-time */
       createdAt: string;
+      isSuperadmin?: boolean;
     };
     AccountResponse: {
       data: components['schemas']['Account'];
@@ -2271,6 +2666,42 @@ export interface components {
       stopOccurrenceId: string;
       /** @default false */
       correction: boolean;
+    };
+    AutoRenewal: {
+      enabled: boolean;
+      card: {
+        brand: string;
+        last4: string;
+        expMonth: number;
+        expYear: number;
+      } | null;
+      upcoming: {
+        /** @enum {string} */
+        state: 'scheduled' | 'reminded' | 'charging' | 'failed' | 'needs_offer';
+        /** Format: date-time */
+        periodEndsAt: string;
+        /** Format: date-time */
+        chargeFrom: string;
+        /** Format: date-time */
+        nextAttemptAt: string | null;
+        price: components['schemas']['Money'];
+        /** @enum {string|null} */
+        failureCode:
+          | 'card_declined'
+          | 'charge_unconfirmed'
+          | 'fare_changed'
+          | 'service_changed'
+          | 'no_card'
+          | 'coverage_conflict'
+          | 'renewal_blocked'
+          | null;
+      } | null;
+    };
+    AutoRenewalInput: {
+      enabled: boolean;
+    };
+    AutoRenewalResponse: {
+      data: components['schemas']['AutoRenewal'];
     };
     Avatar: {
       /** Format: uri */
@@ -2722,16 +3153,28 @@ export interface components {
       /** Format: date-time */
       effectiveFrom: string;
       note?: string;
+      patternVersionId?: string;
+      pickupOccurrenceId?: string;
+      dropoffOccurrenceId?: string;
       id: string;
       routeId: string;
       /** Format: date-time */
       effectiveTo: string | null;
+      journey?: {
+        pickup: string;
+        dropoff: string;
+        /** @enum {string} */
+        direction: 'outbound' | 'return';
+      };
     };
     FareInput: {
       amount: components['schemas']['Money'];
       /** Format: date-time */
       effectiveFrom: string;
       note?: string;
+      patternVersionId?: string;
+      pickupOccurrenceId?: string;
+      dropoffOccurrenceId?: string;
     };
     FarePage: {
       data: components['schemas']['Fare'][];
@@ -2801,6 +3244,8 @@ export interface components {
       /** @enum {string} */
       status: 'open' | 'acknowledged' | 'resolved';
       resolution: string | null;
+      /** Format: date-time */
+      redactedAt: string | null;
       /** Format: date-time */
       createdAt: string;
     };
@@ -2911,7 +3356,19 @@ export interface components {
         state: 'open' | 'closed' | 'reversed';
         paused: boolean;
         /** @enum {string} */
-        renewalMode: 'manual';
+        renewalMode: 'manual' | 'automatic';
+      } | null;
+      upcomingCoverage?: {
+        id: string;
+        /** Format: date-time */
+        startsAt: string;
+        /** Format: date-time */
+        endsAt: string | null;
+        /** @enum {string} */
+        state: 'open' | 'closed' | 'reversed';
+        paused: boolean;
+        /** @enum {string} */
+        renewalMode: 'manual' | 'automatic';
       } | null;
       /** Format: date-time */
       lastCoverageEndedAt: string | null;
@@ -2973,6 +3430,62 @@ export interface components {
       /** @enum {string} */
       currency: 'GHS';
     };
+    NotificationPreferences: {
+      dailyAskTime: string;
+      optionalUpdatesEnabled: boolean;
+      /** Format: date-time */
+      updatedAt: string;
+      version: number;
+    };
+    NotificationPreferencesInput: {
+      dailyAskTime: string;
+      optionalUpdatesEnabled: boolean;
+    };
+    NotificationPreferencesResponse: {
+      data: components['schemas']['NotificationPreferences'];
+    };
+    NotificationReadCount: {
+      readCount: number;
+    };
+    NotificationReadCountResponse: {
+      data: components['schemas']['NotificationReadCount'];
+    };
+    OperatorAccessInput: {
+      /** @enum {string} */
+      action: 'delete' | 'make_superadmin' | 'make_admin';
+    };
+    OperatorCommandResult: {
+      id: string;
+    };
+    OperatorCommandResultResponse: {
+      data: components['schemas']['OperatorCommandResult'];
+    };
+    OperatorInvitationInput: {
+      /** Format: email */
+      email: string;
+      name: string;
+    };
+    OpsAccountErasure: {
+      userId: string;
+      /** Format: date-time */
+      erasedAt: string;
+      sessionsRevoked: number;
+      devicesRevoked: number;
+      identitiesScrubbed: number;
+      trackedTasks: number;
+      trackedDone: number;
+      trackedCancelled: number;
+      trackedPending: number;
+      trackedUnavailable: number;
+      /** @enum {string} */
+      trackedCleanupState: 'pending' | 'retry_needed' | 'tracked_complete';
+    };
+    OpsAccountErasurePage: {
+      data: components['schemas']['OpsAccountErasure'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
     OpsAuditEvent: {
       id: string;
       /** @enum {string} */
@@ -2986,7 +3499,10 @@ export interface components {
         | 'boarding'
         | 'pricing'
         | 'configuration'
-        | 'security';
+        | 'security'
+        | 'payments'
+        | 'gps'
+        | 'maintenance';
       action: string;
       actorId: string;
       actorName: string;
@@ -2997,6 +3513,41 @@ export interface components {
     };
     OpsAuditEventPage: {
       data: components['schemas']['OpsAuditEvent'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
+    OpsAutoRenewal: {
+      id: string;
+      riderId: string;
+      riderName: string | null;
+      /** @enum {string} */
+      state:
+        | 'scheduled'
+        | 'reminded'
+        | 'charging'
+        | 'paid'
+        | 'failed'
+        | 'needs_offer'
+        | 'lapsed'
+        | 'cancelled';
+      failureCode: string | null;
+      attempts: number;
+      /** Format: date-time */
+      periodEndsAt: string;
+      /** Format: date-time */
+      nextAttemptAt: string | null;
+      price: components['schemas']['Money'];
+      card: {
+        brand: string;
+        last4: string;
+      } | null;
+      renewalPurchaseId: string | null;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    OpsAutoRenewalPage: {
+      data: components['schemas']['OpsAutoRenewal'][];
       page: {
         nextCursor: string | null;
       };
@@ -3048,6 +3599,10 @@ export interface components {
         nextCursor: string | null;
       };
     };
+    OpsGoogleSignIn: {
+      idToken: string;
+      invitationToken?: string;
+    };
     OpsIncident: {
       id: string;
       tripId: string | null;
@@ -3063,8 +3618,10 @@ export interface components {
       status: 'open' | 'acknowledged' | 'resolved';
       resolution: string | null;
       /** Format: date-time */
+      redactedAt: string | null;
+      /** Format: date-time */
       createdAt: string;
-      driverId: string;
+      driverId: string | null;
       handledBy: string | null;
       /** Format: date-time */
       handledAt: string | null;
@@ -3126,6 +3683,8 @@ export interface components {
         scheduledAt: string;
         /** @enum {string} */
         status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+        patternId: string;
+        patternVersionId: string;
         routeName: string | null;
         driverId: string | null;
         driverName: string | null;
@@ -3166,6 +3725,14 @@ export interface components {
       /** @enum {string} */
       collectionState: 'pending' | 'successful' | 'failed' | 'unknown';
       price: components['schemas']['Money'];
+      offerTerms?: {
+        /** Format: date */
+        coverageStart: string;
+        /** Format: date */
+        coverageEnd: string;
+        price: components['schemas']['Money'];
+        legs: components['schemas']['SubscriptionOfferLeg'][];
+      } | null;
       appliedCredit: components['schemas']['Money'];
       cashDue: components['schemas']['Money'];
       checkout: {
@@ -3311,6 +3878,27 @@ export interface components {
     };
     OpsRiderSummaryResponse: {
       data: components['schemas']['OpsRiderSummary'];
+    };
+    OpsTeamEntry: {
+      id: string;
+      name: string;
+      /** Format: email */
+      email: string | null;
+      /** @enum {string} */
+      kind: 'member' | 'invitation';
+      /** @enum {string} */
+      state: 'active' | 'pending' | 'claimed' | 'expired' | 'cancelled';
+      isSuperadmin: boolean;
+      /** Format: date-time */
+      expiresAt: string | null;
+      /** @enum {string|null} */
+      emailState: 'pending' | 'accepted' | 'cancelled' | 'failed' | 'unknown' | null;
+    };
+    OpsTeamEntryPage: {
+      data: components['schemas']['OpsTeamEntry'][];
+      page: {
+        nextCursor: string | null;
+      };
     };
     OpsTrip: {
       id: string;
@@ -3660,6 +4248,21 @@ export interface components {
       challengeId: string;
       code: string;
     };
+    PhoneVerificationConfirm: {
+      /** Format: uuid */
+      challengeId: string;
+      code: string;
+    };
+    PhoneVerificationResult: {
+      /** @enum {string} */
+      status: 'verified' | 'review';
+    };
+    PhoneVerificationResultResponse: {
+      data: components['schemas']['PhoneVerificationResult'];
+    };
+    PhoneVerificationStart: {
+      phone: string;
+    };
     PinChange: {
       currentPin: string;
       newPin: string;
@@ -3745,6 +4348,14 @@ export interface components {
       /** @enum {string} */
       collectionState: 'pending' | 'successful' | 'failed' | 'unknown';
       price: components['schemas']['Money'];
+      offerTerms?: {
+        /** Format: date */
+        coverageStart: string;
+        /** Format: date */
+        coverageEnd: string;
+        price: components['schemas']['Money'];
+        legs: components['schemas']['SubscriptionOfferLeg'][];
+      } | null;
       appliedCredit: components['schemas']['Money'];
       cashDue: components['schemas']['Money'];
       checkout: {
@@ -3965,6 +4576,37 @@ export interface components {
         nextCursor: string | null;
       };
     };
+    RiderNotification: {
+      id: string;
+      /** @enum {string} */
+      kind:
+        | 'seat_ask'
+        | 'seat_held'
+        | 'seat_unseated'
+        | 'ride_used'
+        | 'credit_converted'
+        | 'trip_changed'
+        | 'trip_cancelled'
+        | 'standby_offered';
+      target: {
+        /** @enum {string} */
+        type: 'reservation' | 'credit' | 'standby';
+        id: string;
+      };
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      readAt: string | null;
+    };
+    RiderNotificationPage: {
+      data: components['schemas']['RiderNotification'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
+    RiderNotificationResponse: {
+      data: components['schemas']['RiderNotification'];
+    };
     RoleEdit: {
       /** @enum {string} */
       role: 'commuter' | 'driver' | 'admin';
@@ -4085,6 +4727,61 @@ export interface components {
         nextCursor: string | null;
       };
     };
+    StandbyApplication: {
+      id: string;
+      riderId: string;
+      riderName: string;
+      routeName: string;
+      /** @enum {string} */
+      state: 'submitted' | 'offered' | 'withdrawn' | 'checkout_open' | 'completed';
+      selection: components['schemas']['PurchaseInput'];
+      travelDays: number[];
+      offer: {
+        id: string;
+        /** @enum {string} */
+        state: 'offered' | 'accepting' | 'checkout_open' | 'cancelled';
+        /** Format: date-time */
+        expiresAt: string;
+        purchaseId: string | null;
+        terms: {
+          /** Format: date */
+          coverageStart: string;
+          /** Format: date */
+          coverageEnd: string;
+          price: components['schemas']['Money'];
+          legs: components['schemas']['SubscriptionOfferLeg'][];
+        } | null;
+      } | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    StandbyApplicationPage: {
+      data: components['schemas']['StandbyApplication'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
+    StandbyApplicationResponse: {
+      data: components['schemas']['StandbyApplication'];
+    };
+    StandbyJoinInput: {
+      selection: components['schemas']['PurchaseInput'];
+      travelDays: number[];
+    };
+    StandbyOfferInput: {
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: date */
+      coverageStart: string;
+      /** Format: date */
+      coverageEnd: string;
+      price: components['schemas']['Money'];
+      credits: {
+        /** @enum {string} */
+        direction: 'outbound' | 'return';
+        creditPerUnusedRide: components['schemas']['Money'];
+      }[];
+    };
     Stop: {
       id: string;
       name: string;
@@ -4128,6 +4825,21 @@ export interface components {
     };
     StopResponse: {
       data: components['schemas']['Stop'];
+    };
+    SubscriptionOfferLeg: {
+      /** @enum {string} */
+      direction: 'outbound' | 'return';
+      scheduleId: string;
+      patternVersionId: string;
+      pickupOccurrenceId: string;
+      dropoffOccurrenceId: string;
+      pickupName: string;
+      dropoffName: string;
+      fareId: string;
+      fare: components['schemas']['Money'];
+      ridesGranted: number;
+      travelDays: number[];
+      creditPerUnusedRide: components['schemas']['Money'];
     };
     Tokens: {
       accessToken: string;
@@ -4285,6 +4997,20 @@ export interface components {
     VehicleResponse: {
       data: components['schemas']['Vehicle'];
     };
+    VerificationStatus: {
+      phone: {
+        /** @enum {string} */
+        status: 'incomplete' | 'pending' | 'verified' | 'review' | 'unavailable';
+        maskedNumber: string | null;
+        /** Format: date-time */
+        verifiedAt: string | null;
+      };
+      standbyEligible: boolean;
+      missing: ('phone' | 'profile')[];
+    };
+    VerificationStatusResponse: {
+      data: components['schemas']['VerificationStatus'];
+    };
     WebhookAck: {
       /** @enum {boolean} */
       received: true;
@@ -4335,7 +5061,7 @@ export interface components {
     };
   };
   responses: {
-    /** @description Error 400; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 400; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error400: {
       headers: {
         [name: string]: unknown;
@@ -4344,7 +5070,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 429; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 429; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error429: {
       headers: {
         /** @description Seconds until another attempt. */
@@ -4355,7 +5081,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 500; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 500; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error500: {
       headers: {
         [name: string]: unknown;
@@ -4364,7 +5090,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 503; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 503; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error503: {
       headers: {
         [name: string]: unknown;
@@ -4373,7 +5099,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 409; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 409; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error409: {
       headers: {
         [name: string]: unknown;
@@ -4382,7 +5108,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 401; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 401; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error401: {
       headers: {
         [name: string]: unknown;
@@ -4391,7 +5117,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 426; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 426; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error426: {
       headers: {
         [name: string]: unknown;
@@ -4400,7 +5126,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 403; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 403; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error403: {
       headers: {
         [name: string]: unknown;
@@ -4409,16 +5135,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 423; bounded code, no internal error text. See stage-1-access-and-gps.md. */
-    Error423: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        'application/json': components['schemas']['ErrorResponse'];
-      };
-    };
-    /** @description Error 404; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 404; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error404: {
       headers: {
         [name: string]: unknown;
@@ -4427,7 +5144,16 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 413; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 423; bounded code, no internal error text. See docs/api/README.md for error handling. */
+    Error423: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        'application/json': components['schemas']['ErrorResponse'];
+      };
+    };
+    /** @description Error 413; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error413: {
       headers: {
         [name: string]: unknown;
@@ -4436,7 +5162,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 415; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 415; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error415: {
       headers: {
         [name: string]: unknown;
@@ -4445,7 +5171,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 412; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 412; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error412: {
       headers: {
         [name: string]: unknown;
@@ -4454,7 +5180,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 428; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 428; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error428: {
       headers: {
         [name: string]: unknown;
@@ -4586,6 +5312,291 @@ export interface operations {
         };
       };
       400: components['responses']['Error400'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  signInOpsGoogle: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['OpsGoogleSignIn'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TokensResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listOpsTeam: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsTeamEntryPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  inviteOperator: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['OperatorInvitationInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorCommandResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  resendOperatorInvitation: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorCommandResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  cancelOperatorInvitation: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorCommandResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  updateOperatorAccess: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['OperatorAccessInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorCommandResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];
       503: components['responses']['Error503'];
@@ -5430,6 +6441,452 @@ export interface operations {
       503: components['responses']['Error503'];
     };
   };
+  getVerification: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['VerificationStatusResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  startPhoneVerification: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PhoneVerificationStart'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PhoneChallengeResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  confirmPhoneVerification: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PhoneVerificationConfirm'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PhoneVerificationResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listMyStandby: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandbyApplicationPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  joinStandby: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StandbyJoinInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      201: {
+        headers: {
+          /** @description Canonical resource URL, even when payment remains pending. */
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandbyApplicationResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  withdrawStandby: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandbyApplicationResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  acceptStandbyOffer: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      201: {
+        headers: {
+          /** @description Canonical resource URL, even when payment remains pending. */
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PurchaseResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listOpsStandby: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandbyApplicationPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  offerStandby: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StandbyOfferInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      201: {
+        headers: {
+          /** @description Canonical resource URL, even when payment remains pending. */
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandbyApplicationResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
   getAvatar: {
     parameters: {
       query?: never;
@@ -5723,6 +7180,252 @@ export interface operations {
       503: components['responses']['Error503'];
     };
   };
+  listNotifications: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+        /** @description Only unread notifications. */
+        unreadOnly?: boolean;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RiderNotificationPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  markAllNotificationsRead: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationReadCountResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  markNotificationRead: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RiderNotificationResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getNotificationPreferences: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationPreferencesResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  updateNotificationPreferences: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Missing = 428; stale = 412. Reload the current preferences and retry with its ETag. */
+        'If-Match': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NotificationPreferencesInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationPreferencesResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      412: components['responses']['Error412'];
+      426: components['responses']['Error426'];
+      428: components['responses']['Error428'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
   getMembership: {
     parameters: {
       query?: never;
@@ -5763,6 +7466,144 @@ export interface operations {
       401: components['responses']['Error401'];
       403: components['responses']['Error403'];
       404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getAutoRenewal: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AutoRenewalResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  setAutoRenewal: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AutoRenewalInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AutoRenewalResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  removeAutoRenewalCard: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
       426: components['responses']['Error426'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];
@@ -9218,6 +11059,54 @@ export interface operations {
       503: components['responses']['Error503'];
     };
   };
+  listOpsAccountErasures: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsAccountErasurePage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
   listOpsAuditEvents: {
     parameters: {
       query?: {
@@ -9227,6 +11116,16 @@ export interface operations {
         limit?: number;
         /** @description Audit domain. */
         area?: string;
+        /** @description Operator user ID. */
+        actorId?: string;
+        /** @description Exact audit action. */
+        action?: string;
+        /** @description Exact resource ID. */
+        targetId?: string;
+        /** @description Earliest UTC date, inclusive. */
+        fromDate?: string;
+        /** @description Latest UTC date, inclusive. */
+        toDate?: string;
       };
       header: {
         /**
@@ -10966,6 +12865,56 @@ export interface operations {
       503: components['responses']['Error503'];
     };
   };
+  listOpsAutoRenewals: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+        /** @description attention: declined, unconfirmed or waiting on a new offer. open: not yet paid or ended. */
+        filter?: 'attention' | 'open' | 'all';
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsAutoRenewalPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
   getOpsPurchase: {
     parameters: {
       query?: never;
@@ -11699,6 +13648,52 @@ export interface operations {
     };
   };
   runGpsRetention: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaintenanceInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaintenanceResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  runAutoRenewals: {
     parameters: {
       query?: never;
       header: {

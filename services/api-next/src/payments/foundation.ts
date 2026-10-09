@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
@@ -5,6 +6,8 @@ import { canonical } from '../transport/service.js';
 import { fail, mapDatabaseError } from '../transport/errors.js';
 import { appliedCredit, billingEnd, priceTerms, whole } from './terms.js';
 import type { Plan, PricedTerms } from './terms.js';
+import type { OfferTerms } from '../membership/offer-terms.js';
+import { expireUnpaidOffers } from './offer-expiry.js';
 
 export interface PurchaseLeg {
   direction: 'outbound' | 'return';
@@ -19,6 +22,20 @@ export interface CheckoutInput {
   legs: PurchaseLeg[];
   useCredit: boolean;
 }
+/**
+ * A reusable card Paystack returned with a verified payment. The code and the
+ * email it is bound to are secrets; the rest identifies the card to the rider.
+ */
+export interface CardAuthorization {
+  code: string;
+  email: string;
+  signature: string;
+  last4: string;
+  brand: string;
+  expMonth: number;
+  expYear: number;
+  bank: string | null;
+}
 export interface Settlement {
   reference: string;
   environment: 'test' | 'live';
@@ -28,6 +45,8 @@ export interface Settlement {
   paidAt: Date;
   channel: string | null;
   feesPesewas: number | null;
+  /** Only for a card payment Paystack marks reusable. */
+  authorization?: CardAuthorization;
 }
 interface Boundary {
   userId: string;
@@ -37,6 +56,8 @@ interface Boundary {
 export interface FinancialDependencies {
   pool: Pool;
   environment: 'test' | 'live';
+  /** Only historical-model tests may opt out. Runtime always requires an offer. */
+  requireOffer?: boolean;
   authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
   subscriptionActive?: (client: PoolClient, userId: string, purchaseId: string) => Promise<void>;
   // These MUST use this transaction client. No HTTP/provider calls or commits.
@@ -52,12 +73,34 @@ export interface FinancialDependencies {
     input: Boundary & { purchaseId: string; periodId: string },
   ) => Promise<void>;
   quote?: (client: PoolClient, input: CheckoutInput & Boundary) => Promise<PricedTerms>;
+  /**
+   * A purchase was fulfilled, with the reusable card Paystack returned if it
+   * was paid by one. Runs in the fulfilment transaction; auto-renewal decides
+   * whether to keep the card and whether to schedule the next renewal.
+   */
+  purchaseSettled?: (
+    client: PoolClient,
+    input: {
+      userId: string;
+      purchaseId: string;
+      periodId: string;
+      attemptId: string;
+      environment: 'test' | 'live';
+      authorization?: CardAuthorization;
+    },
+  ) => Promise<void>;
+}
+/** An automatic renewal: the next period on frozen terms, owed by the rider. */
+export interface RenewalCheckout {
+  terms: OfferTerms;
+  renews: string;
 }
 type PurchaseRow = {
   id: string;
   membership_id: string;
   user_id: string;
   state: string;
+  failure_code?: string | null;
   plan: Plan;
   price_pesewas: number;
   cash_due_pesewas: number;
@@ -66,6 +109,9 @@ type PurchaseRow = {
   conversion_rate_pesewas: number;
   input_hash: string;
   created_at: Date;
+  offer_id?: string | null;
+  offer_terms?: OfferTerms | null;
+  renewal_of?: string | null;
 };
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const normalized = (input: CheckoutInput): CheckoutInput => ({
@@ -90,10 +136,7 @@ export class FinancialFoundation {
   private async tx<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL TIME ZONE 'UTC'");
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(c);
       const result = await work(c);
       await c.query('COMMIT');
       return result;
@@ -127,7 +170,14 @@ export class FinancialFoundation {
       fail(409, 'invalid_credit_balance', 'Credit requires reconciliation.');
     return { credit, held, available: credit - held };
   }
-  async checkout(actor: Actor, raw: CheckoutInput, key: string, now = new Date()) {
+  async checkout(
+    actor: Actor,
+    raw: CheckoutInput,
+    key: string,
+    now = new Date(),
+    offerId?: string,
+    renewal?: RenewalCheckout,
+  ) {
     if (!key || key.length > 128 || !Number.isFinite(now.getTime()))
       fail(400, 'invalid_request', 'Invalid checkout request.');
     const input = normalized(raw),
@@ -140,7 +190,10 @@ export class FinancialFoundation {
       fail(400, 'invalid_request', 'Invalid purchase selection.');
     return this.tx(async (c) => {
       await this.lock(c, actor.userId);
-      await this.options.authorizeSession(c, actor);
+      // A renewal has no rider session: the maintenance operator who runs it
+      // was authorized, and it charges only on terms the rider already paid for.
+      if (!renewal) await this.options.authorizeSession(c, actor);
+      if (this.options.requireOffer !== false) await expireUnpaidOffers(c, actor.userId, now);
       const old = (
         await c.query<PurchaseRow>(
           'SELECT * FROM app.purchases WHERE user_id=$1 AND checkout_key_hash=$2',
@@ -148,15 +201,56 @@ export class FinancialFoundation {
         )
       ).rows[0];
       if (old) {
-        if (old.input_hash !== hash)
+        const historicalOffer =
+          offerId &&
+          !old.offer_id &&
+          (
+            await c.query(
+              'SELECT 1 FROM app.standby_offers WHERE id=$1 AND purchase_id=$2 AND terms IS NULL',
+              [offerId, old.id],
+            )
+          ).rowCount;
+        if (old.input_hash !== hash || (offerId && old.offer_id !== offerId && !historicalOffer))
           fail(409, 'idempotency_conflict', 'This key was used for different input.');
         const clock = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
         if (clock.getTime() - old.created_at.getTime() >= 7 * 86400000)
           fail(409, 'idempotency_expired', 'Use a new request key.');
         return this.purchaseResult(c, old);
       }
+      if (this.options.requireOffer !== false && !offerId && !renewal)
+        fail(409, 'offer_required', 'Request and accept an Ops subscription offer before paying.');
       if (!this.options.assertCheckoutAllowed || !this.options.quote)
         fail(503, 'financial_dependencies_unavailable', 'Checkout is not configured.');
+      let offered: OfferTerms | null = renewal?.terms ?? null;
+      if (offerId) {
+        const offer = (
+          await c.query(
+            `SELECT o.*,a.selection,a.user_id FROM app.standby_offers o
+           JOIN app.standby_applications a ON a.id=o.application_id
+           WHERE o.id=$1 AND a.user_id=$2 FOR UPDATE OF a,o`,
+            [offerId, actor.userId],
+          )
+        ).rows[0];
+        if (
+          !offer?.terms ||
+          offer.state !== 'accepting' ||
+          offer.acceptance_key_hash !== digest(key) ||
+          offer.expires_at <= new Date() ||
+          digest(canonical(JSON.parse(JSON.stringify(normalized(offer.selection))))) !== hash
+        )
+          fail(409, 'offer_unavailable', 'This offer is unavailable.');
+        if (
+          !(
+            await c.query(
+              `SELECT 1 FROM app.commuter_phone_verifications
+          WHERE user_id=$1 AND phone_hash IS NOT NULL AND revoked_at IS NULL FOR SHARE`,
+              [actor.userId],
+            )
+          ).rowCount
+        )
+          fail(409, 'phone_verification_required', 'Verify your phone before paying.');
+        offered = offer.terms as OfferTerms;
+      }
       if (
         (
           await c.query(
@@ -179,18 +273,25 @@ export class FinancialFoundation {
         ).rows[0];
       const boundary = { userId: actor.userId, membershipId: membership.id, now };
       await this.options.assertCheckoutAllowed(c, boundary);
-      const open = (
+      const periods = (
         await c.query(
-          "SELECT id,effective_ends_at FROM app.billing_periods WHERE membership_id=$1 AND state='open' FOR UPDATE",
+          "SELECT id,starts_at,effective_ends_at FROM app.billing_periods WHERE membership_id=$1 AND state='open' ORDER BY starts_at FOR UPDATE",
           [membership.id],
         )
-      ).rows[0];
-      if (open) {
-        if (open.effective_ends_at > now)
+      ).rows;
+      for (const open of periods) {
+        if (offered && open.starts_at > now)
+          fail(409, 'renewal_already_paid', 'Upcoming coverage has already been paid.');
+        if (offered && open.effective_ends_at > new Date(`${offered.coverageStart}T00:00:00Z`))
+          fail(409, 'coverage_active', 'The offer overlaps existing paid coverage.');
+        if (!offered && open.effective_ends_at > now)
           fail(409, 'coverage_active', 'Current paid coverage has not ended.');
-        await this.closeOne(c, open.id, boundary);
+        // Never convert current unused rides to credit for an early renewal.
+        if (open.effective_ends_at <= now) await this.closeOne(c, open.id, boundary);
       }
       // Validate the immutable transport references before freezing the quote.
+      // A paid offer can cover a published service that has not started yet.
+      const serviceAt = offered ? new Date(`${offered.coverageStart}T00:00:00Z`) : now;
       for (const leg of input.legs) {
         const r = (
           await c.query(
@@ -211,24 +312,36 @@ export class FinancialFoundation {
               leg.pickupOccurrenceId,
               leg.dropoffOccurrenceId,
               leg.direction,
-              now,
+              serviceAt,
             ],
           )
         ).rowCount;
         if (!r)
-          fail(409, 'invalid_commute_selection', 'Select current ordered stops and service legs.');
+          fail(
+            409,
+            'invalid_commute_selection',
+            'Select ordered stops and service legs valid for coverage.',
+          );
       }
-      const quoted = await this.options.quote(c, { ...input, ...boundary }),
-        terms = priceTerms(quoted);
-      if (terms.pricePesewas !== quoted.pricePesewas)
+      const quoted = offered
+        ? {
+            pricePesewas: offered.price.amountMinor,
+            ridesGranted: offered.legs.reduce((sum, leg) => sum + leg.ridesGranted, 0),
+            farePesewas: Math.max(...offered.legs.map((leg) => leg.fare.amountMinor)),
+            priceMultiplierBp: 10000,
+            conversionRatePesewas: 0,
+          }
+        : await this.options.quote(c, { ...input, ...boundary });
+      const terms = offered ? quoted : priceTerms(quoted);
+      if (!offered && terms.pricePesewas !== quoted.pricePesewas)
         fail(409, 'invalid_quote', 'Price does not match its terms.');
       const balances = await this.balances(c, actor.userId);
       const applied = appliedCredit(terms.pricePesewas, balances.available, input.useCredit);
       const p = (
         await c.query<PurchaseRow>(
           `INSERT INTO app.purchases(membership_id,user_id,route_id,plan,price_pesewas,
-    applied_credit_pesewas,cash_due_pesewas,currency,rides_granted,fare_pesewas,price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,'GHS',$8,$9,$10,$11,$12,$13) RETURNING *`,
+    applied_credit_pesewas,cash_due_pesewas,currency,rides_granted,fare_pesewas,price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash${offered ? (renewal ? ',renewal_of,offer_terms' : ',offer_id,offer_terms') : ''})
+    VALUES ($1,$2,$3,$4,$5,$6,$7,'GHS',$8,$9,$10,$11,$12,$13${offered ? ',$14,$15::jsonb' : ''}) RETURNING *`,
           [
             membership.id,
             actor.userId,
@@ -243,6 +356,7 @@ export class FinancialFoundation {
             terms.conversionRatePesewas,
             digest(key),
             hash,
+            ...(offered ? [renewal ? renewal.renews : offerId, JSON.stringify(offered)] : []),
           ],
         )
       ).rows[0]!;
@@ -265,6 +379,22 @@ export class FinancialFoundation {
         "INSERT INTO app.payment_attempts(purchase_id,user_id,provider,environment,reference,amount_pesewas,currency) VALUES ($1,$2,'paystack',$3,$4,$5,'GHS')",
         [p.id, actor.userId, this.options.environment, reference, p.cash_due_pesewas],
       );
+      if (offered && offerId) {
+        const row = (
+          await c.query(
+            "UPDATE app.standby_offers SET state='checkout_open',purchase_id=$2 WHERE id=$1 RETURNING application_id",
+            [offerId, p.id],
+          )
+        ).rows[0];
+        await c.query(
+          "UPDATE app.standby_applications SET state='checkout_open',updated_at=clock_timestamp() WHERE id=$1",
+          [row.application_id],
+        );
+        await c.query(
+          "INSERT INTO app.standby_events(application_id,actor_user_id,action) VALUES ($1,$2,'accept')",
+          [row.application_id, actor.userId],
+        );
+      }
       return this.purchaseResult(c, p);
     });
   }
@@ -329,6 +459,12 @@ export class FinancialFoundation {
         a.purchase_id,
       ])
     ).rows[0]!;
+    if (
+      a.state === 'successful' &&
+      a.provider_transaction_id === s.transactionId &&
+      ['offer_expired', 'offer_coverage_conflict'].includes(p.failure_code ?? '')
+    )
+      return 'not_pending';
     if (a.state === 'successful')
       return a.provider_transaction_id === s.transactionId && p.state === 'fulfilled'
         ? 'already_fulfilled'
@@ -340,6 +476,42 @@ export class FinancialFoundation {
       return 'not_pending';
     if (!this.options.materializeAssignment)
       fail(503, 'financial_dependencies_unavailable', 'Fulfilment is not configured.');
+    const start = p.offer_terms ? new Date(`${p.offer_terms.coverageStart}T00:00:00Z`) : s.paidAt;
+    const end = p.offer_terms
+      ? new Date(`${p.offer_terms.coverageEnd}T00:00:00Z`)
+      : billingEnd(p.plan, s.paidAt);
+    if (p.offer_id || p.renewal_of) {
+      // A renewal must be paid before the coverage it buys begins, as an
+      // offer must be paid before it expires.
+      const offer = p.offer_id
+        ? (await c.query('SELECT expires_at FROM app.standby_offers WHERE id=$1', [p.offer_id]))
+            .rows[0]
+        : { expires_at: start };
+      const overlap = (
+        await c.query(
+          `SELECT 1 FROM app.billing_periods WHERE membership_id=$1 AND state<>'reversed'
+         AND starts_at<$3 AND effective_ends_at>$2`,
+          [p.membership_id, start, end],
+        )
+      ).rowCount;
+      if (s.paidAt >= start || s.paidAt >= offer.expires_at || overlap) {
+        // Collection evidence stays in recovery's ledger for Ops refund/review.
+        // An expired service promise must not hold credit or the purchase slot.
+        await c.query(
+          "UPDATE app.credit_holds SET state='released',settled_at=clock_timestamp() WHERE purchase_id=$1 AND state='held'",
+          [p.id],
+        );
+        await c.query(
+          "UPDATE app.payment_attempts SET state='successful',provider_transaction_id=$2,paid_at=$3,channel=$4,fees_pesewas=$5 WHERE id=$1",
+          [a.id, s.transactionId, s.paidAt, s.channel, s.feesPesewas],
+        );
+        await c.query(
+          "UPDATE app.purchases SET state='failed',failure_code=$2,updated_at=clock_timestamp() WHERE id=$1",
+          [p.id, overlap ? 'offer_coverage_conflict' : 'offer_expired'],
+        );
+        return 'not_pending';
+      }
+    }
     const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
     await c.query(
       "UPDATE app.payment_attempts SET state='successful',provider_transaction_id=$2,paid_at=$3,channel=$4,fees_pesewas=$5 WHERE id=$1",
@@ -349,12 +521,11 @@ export class FinancialFoundation {
       p.id,
       now,
     ]);
-    const end = billingEnd(p.plan, s.paidAt);
     const period = (
       await c.query(
         `INSERT INTO app.billing_periods(purchase_id,membership_id,user_id,starts_at,original_ends_at,effective_ends_at)
     VALUES ($1,$2,$3,$4,$5,$5) RETURNING id`,
-        [p.id, p.membership_id, p.user_id, s.paidAt, end],
+        [p.id, p.membership_id, p.user_id, start, end],
       )
     ).rows[0];
     if (p.applied_credit_pesewas > 0) {
@@ -379,7 +550,16 @@ export class FinancialFoundation {
       membershipId: p.membership_id,
       purchaseId: p.id,
       periodId: period.id,
-      now: s.paidAt,
+      now: start,
+    });
+    // Before the confirmation email, which says whether this card will renew.
+    await this.options.purchaseSettled?.(c, {
+      userId: p.user_id,
+      purchaseId: p.id,
+      periodId: period.id,
+      attemptId: a.id,
+      environment: s.environment,
+      ...(s.authorization ? { authorization: s.authorization } : {}),
     });
     await this.options.subscriptionActive?.(c, p.user_id, p.id);
     return 'fulfilled';
@@ -422,12 +602,37 @@ export class FinancialFoundation {
     );
     if (!Number.isSafeInteger(rides) || rides < 0 || rides > p.rides_granted)
       fail(409, 'invalid_ride_balance', 'Period requires reconciliation.');
-    const credit = whole(rides * p.conversion_rate_pesewas);
+    let credit = whole(rides * p.conversion_rate_pesewas);
+    let breakdown: { direction: string; rides: number; creditPerRide: number }[] | null = null;
+    if (p.offer_terms) {
+      const balances = (
+        await c.query('SELECT * FROM app.offer_ride_balances($1) ORDER BY direction', [periodId])
+      ).rows;
+      breakdown = balances.map((row) => ({
+        direction: row.direction,
+        rides: row.granted - row.charged,
+        creditPerRide: row.credit_rate,
+      }));
+      if (
+        breakdown.some((row) => row.rides < 0) ||
+        breakdown.reduce((sum, row) => sum + row.rides, 0) !== rides
+      )
+        fail(409, 'invalid_ride_balance', 'Journey balances require reconciliation.');
+      credit = whole(breakdown.reduce((sum, row) => sum + row.rides * row.creditPerRide, 0));
+    }
     const close = (
       await c.query(
-        `INSERT INTO app.period_closures(period_id,user_id,rides_converted,conversion_rate_pesewas,credit_granted_pesewas,closed_at)
-   VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [periodId, b.userId, rides, p.conversion_rate_pesewas, credit, b.now],
+        `INSERT INTO app.period_closures(period_id,user_id,rides_converted,conversion_rate_pesewas,credit_granted_pesewas,closed_at${breakdown ? ',journey_breakdown' : ''})
+   VALUES ($1,$2,$3,$4,$5,$6${breakdown ? ',$7::jsonb' : ''}) RETURNING id`,
+        [
+          periodId,
+          b.userId,
+          rides,
+          p.conversion_rate_pesewas,
+          credit,
+          b.now,
+          ...(breakdown ? [JSON.stringify(breakdown)] : []),
+        ],
       )
     ).rows[0];
     if (rides > 0)

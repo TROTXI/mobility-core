@@ -8,6 +8,12 @@ import 'package:uuid/uuid.dart';
 import 'scoped_token_store.dart';
 import 'trotxi_client.dart';
 
+class NotificationPreferencesSnapshot {
+  const NotificationPreferencesSnapshot(this.preferences, this.editToken);
+  final NotificationPreferences preferences;
+  final String editToken;
+}
+
 /// Commuter data over the generated replacement contract. All reads are
 /// session-bound; an old screen cannot consume a new rider's response or send
 /// a queued command with that rider's bearer. Native sign-in lives separately
@@ -327,6 +333,167 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  /// Load one bounded page; the screen requests the next cursor on demand.
+  Future<RiderNotificationPage> notificationPage({
+    String? cursor,
+    bool unreadOnly = false,
+  }) async =>
+      await _read((extra) => client.getRiderOwnApi().listNotifications(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            cursor: cursor,
+            limit: 30,
+            unreadOnly: unreadOnly,
+            extra: extra,
+          ));
+
+  Future<RiderNotification> markNotificationRead(String id) async =>
+      (await _read((extra) => client.getRiderOwnApi().markNotificationRead(
+                id: id,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data;
+
+  Future<int> markAllNotificationsRead() async =>
+      (await _read((extra) => client.getRiderOwnApi().markAllNotificationsRead(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data
+          .readCount;
+
+  Future<VerificationStatus> verificationStatus() async =>
+      (await _read((extra) => client.getRiderOwnApi().getVerification(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data;
+
+  Future<PhoneChallenge> startPhoneVerification(String phone) async =>
+      (await _read((extra) => client.getRiderOwnApi().startPhoneVerification(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                phoneVerificationStart:
+                    PhoneVerificationStart((b) => b..phone = phone),
+                extra: extra,
+              )))
+          .data;
+
+  Future<PhoneVerificationResult> confirmPhoneVerification(
+          String challengeId, String code) async =>
+      (await _read((extra) => client.getRiderOwnApi().confirmPhoneVerification(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                phoneVerificationConfirm: PhoneVerificationConfirm((b) => b
+                  ..challengeId = challengeId
+                  ..code = code),
+                extra: extra,
+              )))
+          .data;
+
+  Future<List<StandbyApplication>> standbyApplications() => _pages(
+      (cursor, extra) => client.getRiderOwnApi().listMyStandby(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            cursor: cursor,
+            extra: extra,
+          ),
+      (page) => page.data,
+      (page) => page.page.nextCursor);
+
+  Future<StandbyApplication> joinStandby(StandbyJoinInput selection) async =>
+      (await _command(
+              'joinStandby',
+              selection.toString(),
+              (key, extra) => client.getRiderOwnApi().joinStandby(
+                    idempotencyKey: key,
+                    xTrotxiClient: metadata.app,
+                    xTrotxiBuild: metadata.build,
+                    xTrotxiPlatform: metadata.platform,
+                    standbyJoinInput: selection,
+                    extra: extra,
+                  )))
+          .data;
+
+  Future<StandbyApplication> withdrawStandby(String id) async =>
+      (await _command(
+              'withdrawStandby',
+              id,
+              (key, extra) => client.getRiderOwnApi().withdrawStandby(
+                    id: id,
+                    xTrotxiClient: metadata.app,
+                    xTrotxiBuild: metadata.build,
+                    xTrotxiPlatform: metadata.platform,
+                    extra: extra,
+                  )))
+          .data;
+
+  Future<Purchase> acceptStandbyOffer(String id) async => (await _command(
+          'acceptStandbyOffer',
+          id,
+          (key, extra) => client.getRiderOwnApi().acceptStandbyOffer(
+                id: id,
+                idempotencyKey: key,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+      .data;
+
+  Future<NotificationPreferencesSnapshot> notificationPreferences() async {
+    String? editToken;
+    final response = await _read((extra) async {
+      final result = await client.getRiderOwnApi().getNotificationPreferences(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            extra: extra,
+          );
+      editToken = result.headers.value('etag');
+      return result;
+    });
+    if (editToken == null) {
+      throw const ApiException(502, 'Notification settings had no edit token.');
+    }
+    return NotificationPreferencesSnapshot(response.data, editToken!);
+  }
+
+  Future<NotificationPreferencesSnapshot> updateNotificationPreferences(
+    NotificationPreferencesInput input,
+    String editToken,
+  ) async {
+    String? nextToken;
+    final response = await _read((extra) async {
+      final result =
+          await client.getRiderOwnApi().updateNotificationPreferences(
+                ifMatch: editToken,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                notificationPreferencesInput: input,
+                extra: extra,
+              );
+      nextToken = result.headers.value('etag');
+      return result;
+    });
+    if (nextToken == null) {
+      throw const ApiException(502, 'Notification settings had no edit token.');
+    }
+    return NotificationPreferencesSnapshot(response.data, nextToken!);
+  }
+
   /// Date bounds are mandatory. The backend's default window is not the
   /// app's "today", and the phone's timezone must not select a direction.
   Future<List<Reservation>> reservations(
@@ -346,12 +513,12 @@ class CommuterDataClient {
   /// Rider-scoped reservation detail, including its scheduled trip and stops.
   Future<ReservationDetail> reservationDetail(String id) async =>
       (await _read((extra) => client.getRiderOwnApi().getReservation(
-            id: id,
-            xTrotxiClient: metadata.app,
-            xTrotxiBuild: metadata.build,
-            xTrotxiPlatform: metadata.platform,
-            extra: extra,
-          )))
+                id: id,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
           .data;
 
   Future<List<CommuteRequest>> commuteRequests(

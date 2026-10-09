@@ -2,6 +2,16 @@ import createClient, { type Client } from 'openapi-fetch';
 import type { components, paths } from '../generated/api';
 
 const refreshKey = 'trotxi.ops.refresh';
+// Invitation secrets stay out of URLs, logs and persistent storage. Reopen the
+// email if this page is reloaded before sign-in completes.
+let invitationToken: string | null = null;
+if (typeof window !== 'undefined') {
+  const candidate = new URLSearchParams(window.location.hash.slice(1)).get('invite');
+  if (candidate && /^[A-Za-z0-9_-]{43}$/.test(candidate)) {
+    invitationToken = candidate;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+}
 export const opsHeaders = {
   'X-Trotxi-Client': 'ops',
   'X-Trotxi-Build': Number(import.meta.env.VITE_OPS_BUILD ?? '1'),
@@ -55,6 +65,7 @@ export class OpsSession extends EventTarget {
   }
 
   async restore() {
+    if (invitationToken) return;
     if (!this.storage.getItem(refreshKey)) return;
     const epoch = this.epoch;
     try {
@@ -66,14 +77,15 @@ export class OpsSession extends EventTarget {
 
   async signInGoogle(idToken: string) {
     const epoch = this.epoch;
-    const response = await this.publicRequest('/v1/auth/google', {
+    const response = await this.publicRequest('/v1/auth/ops/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify({ idToken, ...(invitationToken ? { invitationToken } : {}) }),
     });
     const tokens = await response.json().then(unwrap<Tokens>);
     if (epoch !== this.epoch) throw new ApiError(401, 'session_changed', 'Sign in again.');
     this.save(tokens);
+    invitationToken = null;
   }
 
   async logout() {
@@ -278,6 +290,6 @@ export async function errorFrom(response: Response) {
   );
 }
 
-export const apiBaseUrl = String(
-  import.meta.env.VITE_API_BASE_URL ?? 'https://trotxi-api-staging.onrender.com',
-).replace(/\/$/, '');
+// Required at build time (vite.config.ts refuses to build without it), so a
+// production bundle can never quietly talk to staging.
+export const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');

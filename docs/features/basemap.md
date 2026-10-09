@@ -1,73 +1,40 @@
-# Self-hosted basemap
+# Basemap
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-03.
 
-**Status:** Ghana PMTiles, light/dark styles, glyphs, CDN hosting and API config
-are live. The shared Flutter map package and driver integration are live.
-Commuter and ops integration remain incomplete.
+Both Flutter apps and Ops integrate MapLibre. Public Ghana PMTiles, generated
+light/dark styles and glyphs are separate from private avatar storage.
+Bootstrap `GET /flags` provides map configuration; clients retain visible
+OpenStreetMap/OpenMapTiles attribution.
 
-## Architecture
+Ops registers the PMTiles protocol and bundles its MapLibre worker for the
+site's CSP. The shared Flutter package is `apps/trotxi_map`. Basemap failure
+must leave route, position/status and trip actions usable where data exists.
 
-```text
-Geofabrik Ghana OSM extract
-  → Planetiler → ghana.pmtiles
-  → generated light/dark MapLibre styles + Noto Sans glyphs
-  → Cloudflare R2/CDN at tiles.trotxi.com
-  → URLs from GET /flags
-  → commuter, driver and ops overlays
-```
+Tiles are reference geography, not Trotxi routing or live vehicle data.
+Route geometry is a versioned API resource. There is no built-in commercial
+geocoding, turn-by-turn navigation or guaranteed offline map download feature.
 
-PMTiles is one range-requested archive, so the platform runs no tile server and
-pays no per-map-view vendor fee. The basemap contains only public map features;
-rider, route and vehicle overlays come from the transactional API.
+Tile hosting must support byte ranges and appropriate CORS; Ops CSP must
+permit the configured tile origin. A source-code deployment alone does not
+apply Render response headers. See [Ops CSP](../operations/ops-csp.md).
 
-## Client contract
+Sources: `maps/`, `apps/trotxi_map/`,
+`apps/ops/src/components/LiveMap.tsx`, `render.yaml`.
 
-`GET /flags` returns:
+## Diagnose the right layer
 
-```json
-{
-  "mapTiles": {
-    "url": "https://tiles.trotxi.com/ghana.pmtiles",
-    "styleUrl": "https://tiles.trotxi.com/style.light.json",
-    "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-    "attribution": "© OpenStreetMap contributors · © OpenMapTiles"
-  }
-}
-```
+| Symptom                                    | Inspect                                                           |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| No background tiles                        | Bootstrap URLs, byte ranges, CORS, style/glyph assets and Ops CSP |
+| Map renders but vehicle is absent          | Authorized live response, freshness and trip state                |
+| Driver dot moves but Ops is stale          | Durable upload queue and matching server receipts                 |
+| Route is a straight line                   | Configured version geometry, not the tile provider                |
+| Map works in a test but not a native build | Platform MapLibre setup and the actual build/device               |
 
-Clients load the style URL, not the archive directly, and must keep attribution
-visible. Any URL may be `null`; the application must continue with ETA and
-boarding information even when the basemap is unavailable.
+Do not make trip/boarding actions depend on tile availability. Keep attribution
+visible and distinguish a missing basemap from missing vehicle data.
 
-The shared `apps/trotxi_map` package owns the Flutter MapLibre surface. Web
-clients must register the `pmtiles://` protocol before constructing the map.
-Changing theme reloads the style, so clients must re-add route, vehicle and stop
-overlays after the style finishes loading.
-
-## Assets
-
-- `ghana.pmtiles`: PMTiles v3, OpenMapTiles 3.16 schema, zoom 0–14.
-- `style.light.json` and `style.dark.json`: generated from one layer definition.
-- Noto Sans Regular/Medium glyph ranges covering Latin and Latin Extended.
-
-The tile host must preserve HTTP range semantics (`206`, `Accept-Ranges`,
-`Content-Range`) and expose those headers through CORS.
-
-## Build and configuration
-
-```bash
-pnpm --filter @trotxi/maps build
-pnpm --filter @trotxi/maps glyphs
-pnpm --filter @trotxi/maps test:coverage
-```
-
-`MAP_TILES_URL`, `MAP_STYLE_URL` and `MAP_STYLE_DARK_URL` populate the public
-flags response. They are public configuration, not secrets.
-
-## Code
-
-- `maps/`
-- `apps/trotxi_map/`
-- `services/api/src/modules/flags/`
-- [ADR-0004](../adr/0004-flutter-mobile.md)
+Code: [Ops map](../../apps/ops/src/components/LiveMap.tsx),
+[shared mobile map](../../apps/trotxi_map/).
+Test: [Ops map regression](../../apps/ops/src/components/LiveMap.test.tsx).

@@ -11,6 +11,7 @@ import { trotxiDark, trotxiLight } from './theme';
 const Overview = lazy(() =>
   import('./screens/Overview').then((module) => ({ default: module.Overview })),
 );
+const Team = lazy(() => import('./screens/Team').then((module) => ({ default: module.Team })));
 const Trips = lazy(() => import('./screens/Trips').then((module) => ({ default: module.Trips })));
 const Network = lazy(() =>
   import('./screens/Network').then((module) => ({ default: module.Network })),
@@ -38,13 +39,16 @@ const Audit = lazy(() => import('./screens/Audit').then((module) => ({ default: 
 const Profile = lazy(() =>
   import('./screens/Profile').then((module) => ({ default: module.Profile })),
 );
+const Standby = lazy(() =>
+  import('./screens/Standby').then((module) => ({ default: module.Standby })),
+);
 
 export function App() {
   const [appearance, setAppearance] = useState<'dark' | 'light'>(() => {
     try {
-      return window.localStorage.getItem('trotxi-ops-appearance') === 'light' ? 'light' : 'dark';
+      return window.localStorage.getItem('trotxi-ops-appearance') === 'dark' ? 'dark' : 'light';
     } catch {
-      return 'dark';
+      return 'light';
     }
   });
   const toggleAppearance = () => {
@@ -104,10 +108,12 @@ function Entry({
               <Route path="fleet" element={<Fleet view="vehicles" />} />
               <Route path="drivers" element={<Fleet view="drivers" />} />
               <Route path="riders" element={<Riders />} />
+              <Route path="standby" element={<Standby />} />
               <Route path="support" element={<Support />} />
               <Route path="payments" element={<Payments />} />
               <Route path="reports" element={<Reports />} />
               <Route path="people" element={<People />} />
+              <Route path="team" element={<Team />} />
               <Route path="audit" element={<Audit />} />
               <Route path="platform" element={<Platform />} />
               <Route path="profile" element={<Profile />} />

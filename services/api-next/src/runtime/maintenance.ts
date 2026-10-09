@@ -3,6 +3,9 @@ import { purgeExpiredDriverSecrets } from '../auth/driver-service.js';
 import type { Backend } from './compose.js';
 import { jobFailed } from './job-outcome.js';
 import { purgeExpiredCommandPayloads } from './receipt-retention.js';
+import { redactExpiredIncidents } from './incident-retention.js';
+import { purgeExpiredPhoneOtpChallenges } from '../auth/phone-otp.js';
+import { redactExpiredPaymentEvidence } from '../payments/evidence-retention.js';
 
 export const JOBS = [
   'personal-pause-resumes',
@@ -12,12 +15,15 @@ export const JOBS = [
   'no-shows',
   'route-learning',
   'gps-retention',
+  'incident-retention',
+  'payment-evidence-retention',
   'erasures',
   'driver-secrets',
   'admission',
   'emails',
   'trip-generation',
   'push',
+  'auto-renewals',
 ] as const;
 export type Job = (typeof JOBS)[number];
 export interface JobRequest {
@@ -55,6 +61,7 @@ const BATCH: Record<string, string> = {
   payments: '/v1/ops/maintenance/payments',
   'route-learning': '/v1/ops/maintenance/route-learning',
   'gps-retention': '/v1/ops/maintenance/gps-retention',
+  'auto-renewals': '/v1/ops/maintenance/auto-renewals',
 };
 
 /**
@@ -83,8 +90,8 @@ async function operatorSession(backend: Backend, minutes = 15) {
       // one is minted by a process holding database access, which is already
       // past anything a second factor protects. Without this, every scheduled
       // job would be refused the moment two-factor sign-in shipped.
-      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
-      VALUES ($1, clock_timestamp() + make_interval(mins => $2), clock_timestamp())
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at,issued_for)
+      VALUES ($1, clock_timestamp() + make_interval(mins => $2), clock_timestamp(),'maintenance')
       RETURNING id,created_at,expires_at`,
       [backend.maintenanceUserId, minutes],
     )
@@ -111,23 +118,23 @@ async function operatorSession(backend: Backend, minutes = 15) {
  *
  * The batch and service-day jobs go through the application's own routes, so
  * they get the same schema validation, authorization, receipts and idempotency
- * as any operator pressing the same button. The two physical sweeps have no
+ * as any operator pressing the same button. The direct physical sweeps have no
  * reviewed operation and are called directly; neither can be triggered over
  * HTTP, which is the point of them living in the worker.
  */
-export async function runJob(backend: Backend, request: JobRequest): Promise<JobResult> {
+async function runJobCore(backend: Backend, request: JobRequest): Promise<JobResult> {
   const limit = request.limit ?? 100;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new Error('A maintenance batch is between 1 and 100');
   const day = SERVICE_DAY[request.job];
   if (day && (!request.travelDate || !request.direction))
     throw new Error(`${request.job} needs a travel date and a direction`);
-  // Opened for every job, including the two with no HTTP route: destroying
+  // Opened for every job, including those with no HTTP route: destroying
   // credential ciphertext and withdrawing a rider's provider grant are not
   // things an unattributed process should be able to start, so the operations
   // account is checked and a session opened before either runs.
   //
-  // KNOWN GAP, flagged rather than invented: those two write no receipt. There
+  // KNOWN GAP, flagged rather than invented: these write no command receipt. There
   // is no reviewed operation and no command store for them, and adding one is
   // a contract and schema decision, not something to improvise here.
   const session = await operatorSession(backend);
@@ -183,10 +190,11 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
       const receiptPayloadsCleared =
         (await backend.account.purgeExpiredReceipts(limit)) +
         (await purgeExpiredCommandPayloads(backend.pool, limit));
+      const phoneChallengesPurged = await purgeExpiredPhoneOtpChallenges(backend.pool, limit);
       return {
         job: request.job,
         status: 200,
-        body: await backend.account.retryErasures(limit),
+        body: { ...(await backend.account.retryErasures(limit)), phoneChallengesPurged },
         receiptPayloadsCleared,
       };
     }
@@ -195,6 +203,23 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
         job: request.job,
         status: 200,
         body: { cleared: await backend.admission.sweep(limit * 10) },
+      };
+    if (request.job === 'incident-retention')
+      return {
+        job: request.job,
+        status: 200,
+        body: await redactExpiredIncidents(backend.pool, backend.maintenanceUserId!, limit),
+      };
+    if (request.job === 'payment-evidence-retention')
+      return {
+        job: request.job,
+        status: 200,
+        body: await redactExpiredPaymentEvidence(
+          backend.pool,
+          limit,
+          request.maxBatches ?? 100,
+          request.maxRunMs ?? 45_000,
+        ),
       };
     const maxBatches = request.job === 'gps-retention' ? (request.maxBatches ?? 1000) : 1;
     const maxRunMs = request.maxRunMs ?? 45000;
@@ -271,5 +296,24 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
     };
   } finally {
     await session.release();
+  }
+}
+
+export async function runJob(backend: Backend, request: JobRequest): Promise<JobResult> {
+  // Do not open an un-attributed worker session if the start cannot be saved.
+  // A missing outcome exposes an interrupted run rather than pretending it
+  // completed. HTTP subcalls use this worker session and do not double-log.
+  const audit = backend.maintenanceAudit;
+  const runId = await audit.startWorker(backend.maintenanceUserId, request.job);
+  let finishAttempted = false;
+  try {
+    const result = await runJobCore(backend, request);
+    const failed = jobFailed(result);
+    finishAttempted = true;
+    await audit.finish(runId, result.status, result.body, failed);
+    return result;
+  } catch (error) {
+    if (!finishAttempted) await audit.finish(runId, 500, null, true);
+    throw error;
   }
 }

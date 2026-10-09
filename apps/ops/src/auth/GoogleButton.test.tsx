@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoogleButton } from './GoogleButton';
 
@@ -37,5 +37,17 @@ describe('GoogleButton', () => {
     expect(await screen.findByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
     expect(initialize).toHaveBeenCalled();
     expect(renderButton).toHaveBeenCalled();
+  });
+
+  it('retries a rejected account without reloading and losing the invitation', async () => {
+    auth.session.signInGoogle.mockRejectedValueOnce(new Error('Use the invited account.'));
+    render(<GoogleButton />);
+    await act(async () =>
+      initialize.mock.calls.at(-1)![0].callback({ credential: 'wrong-account' }),
+    );
+    expect(await screen.findByText('Use the invited account.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(initialize).toHaveBeenCalledTimes(2);
   });
 });

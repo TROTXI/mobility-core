@@ -19,6 +19,11 @@ import 'package:trotxi_api_client/src/model/account.dart';
 import 'package:trotxi_api_client/src/model/account_response.dart';
 import 'package:trotxi_api_client/src/model/apple_sign_in.dart';
 import 'package:trotxi_api_client/src/model/arrival_input.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_card.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_input.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_response.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_upcoming.dart';
 import 'package:trotxi_api_client/src/model/avatar.dart';
 import 'package:trotxi_api_client/src/model/avatar_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_input.dart';
@@ -88,6 +93,7 @@ import 'package:trotxi_api_client/src/model/error_response_error.dart';
 import 'package:trotxi_api_client/src/model/error_response_error_field_errors_inner.dart';
 import 'package:trotxi_api_client/src/model/fare.dart';
 import 'package:trotxi_api_client/src/model/fare_input.dart';
+import 'package:trotxi_api_client/src/model/fare_journey.dart';
 import 'package:trotxi_api_client/src/model/fare_page.dart';
 import 'package:trotxi_api_client/src/model/fare_response.dart';
 import 'package:trotxi_api_client/src/model/flag.dart';
@@ -127,13 +133,28 @@ import 'package:trotxi_api_client/src/model/minimum_version_edit.dart';
 import 'package:trotxi_api_client/src/model/minimum_version_page.dart';
 import 'package:trotxi_api_client/src/model/minimum_version_response.dart';
 import 'package:trotxi_api_client/src/model/money.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences_input.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences_response.dart';
+import 'package:trotxi_api_client/src/model/notification_read_count.dart';
+import 'package:trotxi_api_client/src/model/notification_read_count_response.dart';
+import 'package:trotxi_api_client/src/model/operator_access_input.dart';
+import 'package:trotxi_api_client/src/model/operator_command_result.dart';
+import 'package:trotxi_api_client/src/model/operator_command_result_response.dart';
+import 'package:trotxi_api_client/src/model/operator_invitation_input.dart';
+import 'package:trotxi_api_client/src/model/ops_account_erasure.dart';
+import 'package:trotxi_api_client/src/model/ops_account_erasure_page.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event_page.dart';
+import 'package:trotxi_api_client/src/model/ops_auto_renewal.dart';
+import 'package:trotxi_api_client/src/model/ops_auto_renewal_card.dart';
+import 'package:trotxi_api_client/src/model/ops_auto_renewal_page.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request_page.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request_response.dart';
 import 'package:trotxi_api_client/src/model/ops_delivery.dart';
 import 'package:trotxi_api_client/src/model/ops_delivery_page.dart';
+import 'package:trotxi_api_client/src/model/ops_google_sign_in.dart';
 import 'package:trotxi_api_client/src/model/ops_incident.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_page.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_response.dart';
@@ -147,6 +168,7 @@ import 'package:trotxi_api_client/src/model/ops_purchase.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner_received_amount.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_checkout.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_offer_terms.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_page.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_response.dart';
 import 'package:trotxi_api_client/src/model/ops_report_summary.dart';
@@ -164,6 +186,8 @@ import 'package:trotxi_api_client/src/model/ops_rider_detail_response.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_page.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_summary.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_summary_response.dart';
+import 'package:trotxi_api_client/src/model/ops_team_entry.dart';
+import 'package:trotxi_api_client/src/model/ops_team_entry_page.dart';
 import 'package:trotxi_api_client/src/model/ops_trip.dart';
 import 'package:trotxi_api_client/src/model/ops_trip_page.dart';
 import 'package:trotxi_api_client/src/model/ops_trip_response.dart';
@@ -214,6 +238,10 @@ import 'package:trotxi_api_client/src/model/phone_challenge.dart';
 import 'package:trotxi_api_client/src/model/phone_challenge_response.dart';
 import 'package:trotxi_api_client/src/model/phone_sign_in_request.dart';
 import 'package:trotxi_api_client/src/model/phone_sign_in_verify.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_confirm.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_result.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_result_response.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_start.dart';
 import 'package:trotxi_api_client/src/model/pin_change.dart';
 import 'package:trotxi_api_client/src/model/pin_reset_input.dart';
 import 'package:trotxi_api_client/src/model/plan_pricing.dart';
@@ -258,6 +286,10 @@ import 'package:trotxi_api_client/src/model/restriction_response.dart';
 import 'package:trotxi_api_client/src/model/review_decision.dart';
 import 'package:trotxi_api_client/src/model/ride_entry.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
+import 'package:trotxi_api_client/src/model/rider_notification.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_page.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_response.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_target.dart';
 import 'package:trotxi_api_client/src/model/role_edit.dart';
 import 'package:trotxi_api_client/src/model/root.dart';
 import 'package:trotxi_api_client/src/model/route.dart';
@@ -275,6 +307,13 @@ import 'package:trotxi_api_client/src/model/schedule_response.dart';
 import 'package:trotxi_api_client/src/model/service_day_input.dart';
 import 'package:trotxi_api_client/src/model/session.dart';
 import 'package:trotxi_api_client/src/model/session_page.dart';
+import 'package:trotxi_api_client/src/model/standby_application.dart';
+import 'package:trotxi_api_client/src/model/standby_application_offer.dart';
+import 'package:trotxi_api_client/src/model/standby_application_page.dart';
+import 'package:trotxi_api_client/src/model/standby_application_response.dart';
+import 'package:trotxi_api_client/src/model/standby_join_input.dart';
+import 'package:trotxi_api_client/src/model/standby_offer_input.dart';
+import 'package:trotxi_api_client/src/model/standby_offer_input_credits_inner.dart';
 import 'package:trotxi_api_client/src/model/stop.dart';
 import 'package:trotxi_api_client/src/model/stop_edit.dart';
 import 'package:trotxi_api_client/src/model/stop_eta.dart';
@@ -282,6 +321,7 @@ import 'package:trotxi_api_client/src/model/stop_input.dart';
 import 'package:trotxi_api_client/src/model/stop_occurrence.dart';
 import 'package:trotxi_api_client/src/model/stop_page.dart';
 import 'package:trotxi_api_client/src/model/stop_response.dart';
+import 'package:trotxi_api_client/src/model/subscription_offer_leg.dart';
 import 'package:trotxi_api_client/src/model/tokens.dart';
 import 'package:trotxi_api_client/src/model/tokens_response.dart';
 import 'package:trotxi_api_client/src/model/trace_hold.dart';
@@ -302,6 +342,9 @@ import 'package:trotxi_api_client/src/model/vehicle_edit.dart';
 import 'package:trotxi_api_client/src/model/vehicle_input.dart';
 import 'package:trotxi_api_client/src/model/vehicle_page.dart';
 import 'package:trotxi_api_client/src/model/vehicle_response.dart';
+import 'package:trotxi_api_client/src/model/verification_status.dart';
+import 'package:trotxi_api_client/src/model/verification_status_phone.dart';
+import 'package:trotxi_api_client/src/model/verification_status_response.dart';
 import 'package:trotxi_api_client/src/model/webhook_ack.dart';
 import 'package:trotxi_api_client/src/model/work_decision.dart';
 import 'package:trotxi_api_client/src/model/work_request.dart';
@@ -319,6 +362,11 @@ part 'serializers.g.dart';
   AccountResponse,
   AppleSignIn,
   ArrivalInput,
+  AutoRenewal,
+  AutoRenewalCard,
+  AutoRenewalInput,
+  AutoRenewalResponse,
+  AutoRenewalUpcoming,
   Avatar,
   AvatarResponse,
   BoardingInput,
@@ -388,6 +436,7 @@ part 'serializers.g.dart';
   ErrorResponseErrorFieldErrorsInner,
   Fare,
   FareInput,
+  FareJourney,
   FarePage,
   FareResponse,
   Flag,
@@ -427,13 +476,28 @@ part 'serializers.g.dart';
   MinimumVersionPage,
   MinimumVersionResponse,
   Money,
+  NotificationPreferences,
+  NotificationPreferencesInput,
+  NotificationPreferencesResponse,
+  NotificationReadCount,
+  NotificationReadCountResponse,
+  OperatorAccessInput,
+  OperatorCommandResult,
+  OperatorCommandResultResponse,
+  OperatorInvitationInput,
+  OpsAccountErasure,
+  OpsAccountErasurePage,
   OpsAuditEvent,
   OpsAuditEventPage,
+  OpsAutoRenewal,
+  OpsAutoRenewalCard,
+  OpsAutoRenewalPage,
   OpsCommuteRequest,
   OpsCommuteRequestPage,
   OpsCommuteRequestResponse,
   OpsDelivery,
   OpsDeliveryPage,
+  OpsGoogleSignIn,
   OpsIncident,
   OpsIncidentPage,
   OpsIncidentResponse,
@@ -447,6 +511,7 @@ part 'serializers.g.dart';
   OpsPurchaseAttemptsInner,
   OpsPurchaseAttemptsInnerReceivedAmount,
   OpsPurchaseCheckout,
+  OpsPurchaseOfferTerms,
   OpsPurchasePage,
   OpsPurchaseResponse,
   OpsReportSummary,
@@ -464,6 +529,8 @@ part 'serializers.g.dart';
   OpsRiderPage,
   OpsRiderSummary,
   OpsRiderSummaryResponse,
+  OpsTeamEntry,
+  OpsTeamEntryPage,
   OpsTrip,
   OpsTripPage,
   OpsTripResponse,
@@ -514,6 +581,10 @@ part 'serializers.g.dart';
   PhoneChallengeResponse,
   PhoneSignInRequest,
   PhoneSignInVerify,
+  PhoneVerificationConfirm,
+  PhoneVerificationResult,
+  PhoneVerificationResultResponse,
+  PhoneVerificationStart,
   PinChange,
   PinResetInput,
   PlanPricing,
@@ -558,6 +629,10 @@ part 'serializers.g.dart';
   ReviewDecision,
   RideEntry,
   RideEntryPage,
+  RiderNotification,
+  RiderNotificationPage,
+  RiderNotificationResponse,
+  RiderNotificationTarget,
   RoleEdit,
   Root,
   Route,
@@ -575,6 +650,13 @@ part 'serializers.g.dart';
   ServiceDayInput,
   Session,
   SessionPage,
+  StandbyApplication,
+  StandbyApplicationOffer,
+  StandbyApplicationPage,
+  StandbyApplicationResponse,
+  StandbyJoinInput,
+  StandbyOfferInput,
+  StandbyOfferInputCreditsInner,
   Stop,
   StopEdit,
   StopEta,
@@ -582,6 +664,7 @@ part 'serializers.g.dart';
   StopOccurrence,
   StopPage,
   StopResponse,
+  SubscriptionOfferLeg,
   Tokens,
   TokensResponse,
   TraceHold,
@@ -602,6 +685,9 @@ part 'serializers.g.dart';
   VehicleInput,
   VehiclePage,
   VehicleResponse,
+  VerificationStatus,
+  VerificationStatusPhone,
+  VerificationStatusResponse,
   WebhookAck,
   WorkDecision,
   WorkRequest,

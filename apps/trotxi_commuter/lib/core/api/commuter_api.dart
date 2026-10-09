@@ -118,13 +118,26 @@ class CommuterApi extends CommuterDataClient {
   Future<wire.PhoneChallenge> requestPhoneCode(String phone) =>
       auth.requestPhoneCode(phone);
 
-  Future<void> signInPhone(String challengeId, String code) async {
-    _loadAttempt++;
-    final account = await auth.signInPhone(challengeId, code);
+  /// Exchanges the code for a session without changing the app stage; call
+  /// [completeSignIn] with the result. The root then shows the profile screen
+  /// instead of Home while the account still has a placeholder name.
+  Future<wire.Account> verifyPhone(String challengeId, String code) {
+    _loadAttempt++; // An older restore must not replace this sign-in's result.
+    return auth.signInPhone(challengeId, code);
+  }
+
+  void completeSignIn(wire.Account account) {
     if (_closed) return;
     currentAccount = account;
     identityRevision.value++;
     stage.value = CommuterStage.ready;
+  }
+
+  /// The API names accounts with a placeholder until the rider sets a name:
+  /// "New commuter" for phone sign-up, "New user" when the name is blank.
+  static bool needsName(wire.Account account) {
+    final name = account.displayName.trim().toLowerCase();
+    return name.isEmpty || name == 'new commuter' || name == 'new user';
   }
 
   @override

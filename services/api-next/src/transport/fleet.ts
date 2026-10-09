@@ -76,6 +76,33 @@ const trimmed = (value: unknown, field: string, max: number) => {
   if (!text || text.length > max) fail(400, `invalid_${field}`, `Supply a usable ${field}.`);
   return text;
 };
+const luhn = (digits: string) => {
+  let sum = 0;
+  for (let i = digits.length - 1, doubled = false; i >= 0; i--, doubled = !doubled) {
+    let digit = Number(digits[i]);
+    if (doubled) digit = digit * 2 > 9 ? digit * 2 - 9 : digit * 2;
+    sum += digit;
+  }
+  return sum % 10 === 0;
+};
+/** Refuse obvious payment/auth secrets before they reach rows, receipts or logs. */
+export function incidentText(value: unknown, field: string): string | null {
+  const text = trimmed(value, field, 2000);
+  if (!text) return null;
+  const cardLike = text.match(/(?:^|\D)(?:\d[ -]?){13,19}(?=\D|$)/g) ?? [];
+  if (
+    /\b(?:sk_(?:test|live)_|pk_(?:test|live)_|bearer\s+\S+|eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/i.test(
+      text,
+    ) ||
+    /\b(?:otp|pin|password|passcode|cvv|cvc|api[ -]?key)\s*[:= -]\s*\S+/i.test(text) ||
+    cardLike.some((candidate) => {
+      const digits = candidate.replace(/\D/g, '');
+      return digits.length >= 13 && digits.length <= 19 && luhn(digits);
+    })
+  )
+    fail(400, 'incident_sensitive_content', 'Remove payment and sign-in details from the report.');
+  return text;
+}
 
 export interface FleetLocked {
   row: QueryResultRow | null;
@@ -203,7 +230,7 @@ export class Fleet {
         `UPDATE app.driver_incidents
         SET status=$2,resolution=$3,handled_by=$4,handled_at=clock_timestamp(),${BUMP}
         WHERE id=$1`,
-        [id, body.status, trimmed(body.resolution, 'resolution', 2000), actor.userId],
+        [id, body.status, incidentText(body.resolution, 'resolution'), actor.userId],
       );
     } else if (operation === 'createDriverRequest') {
       id = await this.createRequest(client, body, driverId!);
@@ -277,7 +304,7 @@ export class Fleet {
           body.tripId ?? null,
           vehicleId,
           body.category,
-          trimmed(body.note, 'note', 2000),
+          incidentText(body.note, 'note'),
           point ? point.latitude : null,
           point ? point.longitude : null,
         ],
@@ -386,6 +413,7 @@ export class Fleet {
           location: r.latitude === null ? null : { latitude: r.latitude, longitude: r.longitude },
           status: r.status,
           resolution: r.resolution,
+          redactedAt: r.redacted_at?.toISOString() ?? null,
           driverId: r.driver_id,
           handledBy: r.handled_by,
           handledAt: r.handled_at?.toISOString() ?? null,

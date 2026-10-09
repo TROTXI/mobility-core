@@ -167,3 +167,65 @@ test('PROV-04: consumed-value estimation uses exact rounding, not converted ride
   assert.equal(reversalDebt(101, 1, 2, 0), 51);
   assert.throws(() => reversalDebt(26400, 45, 44, 0));
 });
+
+test('PROV-CARD: only a reusable card is kept, and a bad card never casts doubt on the payment', async () => {
+  const card = {
+    channel: 'card',
+    customer: { email: 'payer@example.test' },
+    authorization: {
+      authorization_code: 'AUTH_abc123',
+      reusable: true,
+      signature: 'SIG_def456',
+      last4: '4081',
+      brand: 'Visa',
+      exp_month: '12',
+      exp_year: '2030',
+      bank: 'TEST BANK',
+    },
+  };
+  const success = (extra: object) =>
+    parseProviderFact(raw('charge.success', { ...fields, ...extra }), 'webhook');
+  const kept = success(card);
+  assert.equal(kept?.kind, 'success');
+  assert.deepEqual(kept?.kind === 'success' && kept.authorization, {
+    code: 'AUTH_abc123',
+    email: 'payer@example.test',
+    signature: 'SIG_def456',
+    last4: '4081',
+    brand: 'visa',
+    expMonth: 12,
+    expYear: 2030,
+    bank: 'TEST BANK',
+  });
+  for (const extra of [
+    { ...card, channel: 'mobile_money' },
+    { ...card, authorization: { ...card.authorization, reusable: false } },
+    { ...card, authorization: { ...card.authorization, authorization_code: 'not-a-code' } },
+    { ...card, customer: { email: 'nope' } },
+    { channel: 'card' },
+  ]) {
+    const fact = success(extra);
+    assert.equal(fact?.kind, 'success', 'the payment itself still counts');
+    assert.equal(fact?.kind === 'success' && fact.authorization, undefined);
+  }
+  // Charging a saved card refuses malformed requests before calling Paystack.
+  let calls = 0;
+  const provider = new PaystackEvidence('sk_test_' + 'a'.repeat(20), randomBytes(32), (async () => {
+    calls++;
+    return new Response('{}');
+  }) as typeof fetch);
+  for (const bad of [
+    { reference: 'tx-ok', amountPesewas: 0, email: 'a@b.c', authorizationCode: 'AUTH_x' },
+    { reference: 'tx-ok', amountPesewas: 100, email: 'a@b.c', authorizationCode: 'nope' },
+    { reference: 'bad ref', amountPesewas: 100, email: 'a@b.c', authorizationCode: 'AUTH_x' },
+  ])
+    await assert.rejects(provider.chargeAuthorization(bad), InvalidProviderFacts);
+  assert.equal(calls, 0);
+  await provider.chargeAuthorization({
+    reference: 'tx-ok',
+    amountPesewas: 100,
+    email: 'a@b.c',
+    authorizationCode: 'AUTH_x',
+  });
+  assert.equal(calls, 1);
+});

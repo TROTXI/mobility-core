@@ -18,6 +18,7 @@ part 'membership.g.dart';
 /// Properties:
 /// * [membership]
 /// * [coverage]
+/// * [upcomingCoverage]
 /// * [lastCoverageEndedAt]
 /// * [access]
 /// * [commute]
@@ -29,6 +30,9 @@ abstract class Membership implements Built<Membership, MembershipBuilder> {
 
   @BuiltValueField(wireName: r'coverage')
   MembershipCoverage? get coverage;
+
+  @BuiltValueField(wireName: r'upcomingCoverage')
+  MembershipCoverage? get upcomingCoverage;
 
   @BuiltValueField(wireName: r'lastCoverageEndedAt')
   DateTime? get lastCoverageEndedAt;
@@ -79,6 +83,13 @@ class _$MembershipSerializer implements PrimitiveSerializer<Membership> {
             object.coverage,
             specifiedType: const FullType.nullable(MembershipCoverage),
           );
+    if (object.upcomingCoverage != null) {
+      yield r'upcomingCoverage';
+      yield serializers.serialize(
+        object.upcomingCoverage,
+        specifiedType: const FullType.nullable(MembershipCoverage),
+      );
+    }
     yield r'lastCoverageEndedAt';
     yield object.lastCoverageEndedAt == null
         ? null
@@ -143,6 +154,14 @@ class _$MembershipSerializer implements PrimitiveSerializer<Membership> {
           ) as MembershipCoverage?;
           if (valueDes == null) continue;
           result.coverage.replace(valueDes);
+          break;
+        case r'upcomingCoverage':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(MembershipCoverage),
+          ) as MembershipCoverage?;
+          if (valueDes == null) continue;
+          result.upcomingCoverage.replace(valueDes);
           break;
         case r'lastCoverageEndedAt':
           final valueDes = serializers.deserialize(

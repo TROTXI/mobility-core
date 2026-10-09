@@ -41,14 +41,14 @@ jobs:
             files: >-
               tests/transport-commands.pg.test.ts tests/driver-credentials.pg.test.ts
               tests/catalog.pg.test.ts tests/fleet.pg.test.ts
-              tests/account-recovery.pg.test.ts tests/email.pg.test.ts tests/boarding.pg.test.ts
+              tests/account-recovery.pg.test.ts tests/erasure-recovery.pg.test.ts tests/email.pg.test.ts tests/boarding.pg.test.ts
               tests/payment-recovery.pg.test.ts
           - part: 3 of 3
             slug: part-3
             files: >-
               tests/transport.pg.test.ts tests/auth.pg.test.ts tests/account.pg.test.ts
               tests/trips.pg.test.ts tests/personal-pauses.pg.test.ts tests/push.pg.test.ts
-              tests/membership.pg.test.ts
+              tests/membership.pg.test.ts tests/performance.pg.test.ts
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -67,9 +67,9 @@ jobs:
       HARNESS_ADMIN_DATABASE_URL: postgres://harness:harness-ci-only@127.0.0.1:5432/postgres
       HARNESS_ALLOW_CREATE_DATABASES: '1'
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -81,7 +81,7 @@ jobs:
           mkdir -p .harness-artifacts/api
           cd services/api-next
           node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/api/tests.xml ${{ matrix.files }}
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: api-postgres-${{ matrix.slug }}
@@ -95,11 +95,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -117,9 +117,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -139,7 +139,7 @@ jobs:
     timeout-minutes: 5
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -186,9 +186,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -198,6 +198,10 @@ jobs:
       - run: pnpm -r --if-present run lint
       - run: pnpm -r --if-present run test:coverage
       - run: pnpm -r --if-present run build
+        env:
+          # A compile check, never deployed. Ops refuses to build without an
+          # explicit API address, so give it one that cannot reach anything.
+          VITE_API_BASE_URL: https://api.example.invalid
 
   flutter:
     name: Flutter (${{ matrix.app }})
@@ -211,8 +215,8 @@ jobs:
       run:
         working-directory: apps/${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           cache: true

@@ -9,6 +9,8 @@ import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/api_util.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_input.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_response.dart';
 import 'package:trotxi_api_client/src/model/commute_request_input.dart';
 import 'package:trotxi_api_client/src/model/commute_request_page.dart';
 import 'package:trotxi_api_client/src/model/commute_request_response.dart';
@@ -16,12 +18,19 @@ import 'package:trotxi_api_client/src/model/credit_entry_page.dart';
 import 'package:trotxi_api_client/src/model/date.dart';
 import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/membership_response.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences_input.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences_response.dart';
+import 'package:trotxi_api_client/src/model/notification_read_count_response.dart';
 import 'package:trotxi_api_client/src/model/optional_personal_pause_response.dart';
 import 'package:trotxi_api_client/src/model/pass_response.dart';
 import 'package:trotxi_api_client/src/model/personal_pause_input.dart';
 import 'package:trotxi_api_client/src/model/personal_pause_preview_response.dart';
 import 'package:trotxi_api_client/src/model/personal_pause_response.dart';
 import 'package:trotxi_api_client/src/model/personal_resume_input.dart';
+import 'package:trotxi_api_client/src/model/phone_challenge_response.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_confirm.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_result_response.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_start.dart';
 import 'package:trotxi_api_client/src/model/purchase_input.dart';
 import 'package:trotxi_api_client/src/model/purchase_page.dart';
 import 'package:trotxi_api_client/src/model/purchase_quote_input.dart';
@@ -32,6 +41,12 @@ import 'package:trotxi_api_client/src/model/reservation_decision_result_response
 import 'package:trotxi_api_client/src/model/reservation_detail_response.dart';
 import 'package:trotxi_api_client/src/model/reservation_page.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_page.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_response.dart';
+import 'package:trotxi_api_client/src/model/standby_application_page.dart';
+import 'package:trotxi_api_client/src/model/standby_application_response.dart';
+import 'package:trotxi_api_client/src/model/standby_join_input.dart';
+import 'package:trotxi_api_client/src/model/verification_status_response.dart';
 
 class RiderOwnApi {
   final Dio _dio;
@@ -39,6 +54,214 @@ class RiderOwnApi {
   final Serializers _serializers;
 
   const RiderOwnApi(this._dio, this._serializers);
+
+  /// accept Standby Offer
+  ///
+  ///
+  /// Parameters:
+  /// * [id]
+  /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [PurchaseResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<PurchaseResponse>> acceptStandbyOffer({
+    required String id,
+    required String idempotencyKey,
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/standby/{id}/accept'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'Idempotency-Key': idempotencyKey,
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    PurchaseResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PurchaseResponse),
+            ) as PurchaseResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<PurchaseResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// confirm Phone Verification
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [phoneVerificationConfirm]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [PhoneVerificationResultResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<PhoneVerificationResultResponse>> confirmPhoneVerification({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required PhoneVerificationConfirm phoneVerificationConfirm,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/phone-verification/confirm';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(PhoneVerificationConfirm);
+      _bodyData = _serializers.serialize(phoneVerificationConfirm,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    PhoneVerificationResultResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PhoneVerificationResultResponse),
+            ) as PhoneVerificationResultResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<PhoneVerificationResultResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
 
   /// create Commute Request
   ///
@@ -495,6 +718,95 @@ class RiderOwnApi {
     );
   }
 
+  /// get Auto Renewal
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [AutoRenewalResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<AutoRenewalResponse>> getAutoRenewal({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/auto-renewal';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    AutoRenewalResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(AutoRenewalResponse),
+            ) as AutoRenewalResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<AutoRenewalResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
   /// get Membership
   ///
   ///
@@ -573,6 +885,95 @@ class RiderOwnApi {
     }
 
     return Response<MembershipResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// get Notification Preferences
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [NotificationPreferencesResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<NotificationPreferencesResponse>> getNotificationPreferences({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/notification-preferences';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    NotificationPreferencesResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(NotificationPreferencesResponse),
+            ) as NotificationPreferencesResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<NotificationPreferencesResponse>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -861,6 +1262,95 @@ class RiderOwnApi {
     );
   }
 
+  /// get Verification
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [VerificationStatusResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<VerificationStatusResponse>> getVerification({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/verification';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    VerificationStatusResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(VerificationStatusResponse),
+            ) as VerificationStatusResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<VerificationStatusResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
   /// issue Pass
   ///
   ///
@@ -947,6 +1437,120 @@ class RiderOwnApi {
     }
 
     return Response<PassResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// join Standby
+  ///
+  ///
+  /// Parameters:
+  /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [standbyJoinInput]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [StandbyApplicationResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<StandbyApplicationResponse>> joinStandby({
+    required String idempotencyKey,
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required StandbyJoinInput standbyJoinInput,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/standby';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'Idempotency-Key': idempotencyKey,
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(StandbyJoinInput);
+      _bodyData =
+          _serializers.serialize(standbyJoinInput, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    StandbyApplicationResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(StandbyApplicationResponse),
+            ) as StandbyApplicationResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<StandbyApplicationResponse>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -1168,6 +1772,217 @@ class RiderOwnApi {
     }
 
     return Response<CreditEntryPage>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// list My Standby
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [cursor] - Opaque cursor bound to caller, sort and filters.
+  /// * [limit] - Page size. No silent truncation.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [StandbyApplicationPage] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<StandbyApplicationPage>> listMyStandby({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? cursor,
+    int? limit = 50,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/standby';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _queryParameters = <String, dynamic>{
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
+    };
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      queryParameters: _queryParameters,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    StandbyApplicationPage? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(StandbyApplicationPage),
+            ) as StandbyApplicationPage;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<StandbyApplicationPage>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// list Notifications
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [cursor] - Opaque cursor bound to caller, sort and filters.
+  /// * [limit] - Page size. No silent truncation.
+  /// * [unreadOnly] - Only unread notifications.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [RiderNotificationPage] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<RiderNotificationPage>> listNotifications({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? cursor,
+    int? limit = 30,
+    bool? unreadOnly = false,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/notifications';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _queryParameters = <String, dynamic>{
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (unreadOnly != null)
+        r'unreadOnly': encodeQueryParameter(
+            _serializers, unreadOnly, const FullType(bool)),
+    };
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      queryParameters: _queryParameters,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    RiderNotificationPage? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RiderNotificationPage),
+            ) as RiderNotificationPage;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<RiderNotificationPage>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -1518,6 +2333,189 @@ class RiderOwnApi {
     );
   }
 
+  /// mark All Notifications Read
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [NotificationReadCountResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<NotificationReadCountResponse>> markAllNotificationsRead({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/notifications/read';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    NotificationReadCountResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(NotificationReadCountResponse),
+            ) as NotificationReadCountResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<NotificationReadCountResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// mark Notification Read
+  ///
+  ///
+  /// Parameters:
+  /// * [id]
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [RiderNotificationResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<RiderNotificationResponse>> markNotificationRead({
+    required String id,
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/notifications/{id}/read'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    RiderNotificationResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RiderNotificationResponse),
+            ) as RiderNotificationResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<RiderNotificationResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
   /// preview Personal Pause
   ///
   ///
@@ -1740,6 +2738,66 @@ class RiderOwnApi {
     );
   }
 
+  /// remove Auto Renewal Card
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future]
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<void>> removeAutoRenewalCard({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/auto-renewal/card';
+    final _options = Options(
+      method: r'DELETE',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    return _response;
+  }
+
   /// resume Personal Pause
   ///
   ///
@@ -1859,6 +2917,343 @@ class RiderOwnApi {
     );
   }
 
+  /// set Auto Renewal
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [autoRenewalInput]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [AutoRenewalResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<AutoRenewalResponse>> setAutoRenewal({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required AutoRenewalInput autoRenewalInput,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/auto-renewal';
+    final _options = Options(
+      method: r'PUT',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(AutoRenewalInput);
+      _bodyData =
+          _serializers.serialize(autoRenewalInput, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    AutoRenewalResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(AutoRenewalResponse),
+            ) as AutoRenewalResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<AutoRenewalResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// start Phone Verification
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [phoneVerificationStart]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [PhoneChallengeResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<PhoneChallengeResponse>> startPhoneVerification({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required PhoneVerificationStart phoneVerificationStart,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/phone-verification/start';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(PhoneVerificationStart);
+      _bodyData =
+          _serializers.serialize(phoneVerificationStart, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    PhoneChallengeResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PhoneChallengeResponse),
+            ) as PhoneChallengeResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<PhoneChallengeResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// update Notification Preferences
+  ///
+  ///
+  /// Parameters:
+  /// * [ifMatch] - Missing = 428; stale = 412. Reload the current preferences and retry with its ETag.
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [notificationPreferencesInput]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [NotificationPreferencesResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<NotificationPreferencesResponse>>
+      updateNotificationPreferences({
+    required String ifMatch,
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required NotificationPreferencesInput notificationPreferencesInput,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/notification-preferences';
+    final _options = Options(
+      method: r'PATCH',
+      headers: <String, dynamic>{
+        r'If-Match': ifMatch,
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(NotificationPreferencesInput);
+      _bodyData = _serializers.serialize(notificationPreferencesInput,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    NotificationPreferencesResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(NotificationPreferencesResponse),
+            ) as NotificationPreferencesResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<NotificationPreferencesResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
   /// withdraw Commute Request
   ///
   ///
@@ -1945,6 +3340,100 @@ class RiderOwnApi {
     }
 
     return Response<CommuteRequestResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// withdraw Standby
+  ///
+  ///
+  /// Parameters:
+  /// * [id]
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [StandbyApplicationResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<StandbyApplicationResponse>> withdrawStandby({
+    required String id,
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/standby/{id}/withdraw'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    StandbyApplicationResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(StandbyApplicationResponse),
+            ) as StandbyApplicationResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<StandbyApplicationResponse>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

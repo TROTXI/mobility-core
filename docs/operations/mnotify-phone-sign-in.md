@@ -100,4 +100,12 @@ The `TrotxiCom` sender ID has been approved. A charged handset-delivery test
 still requires an explicitly authorised recipient; this runbook does not
 imply that such a test has run.
 
+Codes go out as plain SMS, paid from the SMS credit bundle. mNotify bills
+`sms_type: "otp"` messages to the cash wallet instead and answers 402
+"insufficient wallet balance" when it is empty, which is why staging OTPs
+failed on 2026-10-02 with 3,226 credits available. A 402 is a refusal, not an
+unconfirmed send. To check the account without sending, call
+`GET /api/balance/sms` (credits are `balance`, cash is `wallet`) and
+`POST /api/senderid/status` with `{"sender_name":"TrotxiCom"}`.
+
 Provider format: [mNotify API documentation](https://readthedocs.mnotify.com/).

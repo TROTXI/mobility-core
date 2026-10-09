@@ -1,30 +1,80 @@
 # Rider services: manual staging operations
 
+## Ops-priced subscription offer rollout
+
+The offer flow is documented in
+[Subscription offers, payments and renewal](../features/payments-and-wallet.md). It requires migrations 041 and 042, the regenerated API clients and the
+updated Ops and commuter applications. The historical checks below are not
+evidence that this new flow has been deployed or exercised with Paystack.
+
+Publish exact stop-pair fares before sending offers. Set the agreed package
+price and both journey credit rates explicitly. Confirm travel days and actual
+calendar ride counts with the rider. Use Paystack TEST only during staging.
+Retire old direct-checkout builds through the existing minimum-build controls
+as part of the coordinated rollout; they cannot create purchases in this flow.
+
+Expiry releases local held credit on the next rider offer refresh/request or
+checkout. It does not prove that no money was collected. Check late-payment
+reviews before advising another payment or initiating a refund. Existing paid
+subscriptions and provider evidence are not reset by this change.
+
+An already-open Paystack page may still accept a payment after the local offer
+expires. Such a collection does not activate coverage: Ops must review the
+provider evidence and arrange a refund or agree a fresh offer. A fresh offer
+does not automatically transfer the late payment. Do not tell the rider to pay
+again until the first collection is resolved.
+
+Paid future coverage is not reported as current and has no spendable ride
+balance before its start date. The paid purchase and its agreed coverage dates
+remain visible in payment history. Waitlist entry is free and does not promise
+a seat; monthly and annual are requested plans, with final dates and allowances
+set in the Ops offer.
+
+For continuous renewal, set the new start to the current end date and let the
+rider pay before that boundary. The wallet shows paid upcoming coverage
+separately. Only one future period may be prepaid. No job is needed to switch
+current coverage at the start instant; settlement of old unused rides remains
+separate and must finish before those credits can fund another payment.
+Resolve any planned or active pause first. A pending or paid renewal locks
+pause/commute changes on the preceding period. Do not extend coverage manually
+into the new period: overlapping collections require Ops review. Refunds of an
+upcoming purchase must leave current coverage and its ride balance untouched.
+The pause restriction applies to Ops as well as riders, including during a
+service disruption. Resolve the upcoming renewal through the refund/review
+workflow before pausing current coverage and agreeing replacement dates; do
+not edit frozen offer terms or extend one period into another.
+
+On the evening before renewal, generate the next day's trips and run
+ask-dispatch. The rider can confirm those departures immediately. Reservations
+and prompts use the period covering the departure time, while the wallet keeps
+the renewal marked upcoming until its start. Unused renewal rides cannot fund
+departures outside that period.
+
 ## Deployment and operating decision
 
-PR #338 is deployed to `trotxi-api-staging` at `59041f1`, including migrations
-023–025. On 2026-09-20 UTC, the owner chose **manual runs for now** instead of
-adding paid Render cron services. No scheduler, credentials or environment
-settings were changed for this verification.
+The checked-in GitHub Actions workflow runs payment inbox/reconciliation and
+email retry every 15 minutes on main, using the protected staging environment.
+This does not schedule trip generation, asks/defaults, push, pause settlement,
+erasure or retention. Check the relevant job result before claiming it ran.
 
-Without a scheduler, these jobs do **not** run automatically. In particular,
-accepting a payment webhook stores evidence; the inbox must be processed to
-activate a purchase. Lazy pause settlement on selected request paths is not a
-replacement for scheduled maintenance.
+Accepting a webhook stores evidence; inbox processing activates eligible
+purchases. Lazy pause settlement on selected request paths is not a substitute
+for maintenance. See [deployment](../DEPLOY.md) for configuration and permissions.
+Record the deployed revision and job outcome separately for each test.
 
 ## Running existing workers manually
 
-Use the staging service's shell and existing configuration. Each job needs the
-UUID of the existing active operations account for attribution. If it is not
-already configured, supply `REPLACEMENT_MAINTENANCE_USER_ID` for that invocation
-only; it is an account identifier, not a new secret or database credential.
+Use the approved maintenance runtime and its restricted database login, not
+the API service's database credentials. Supply the configured non-human
+maintenance account as `REPLACEMENT_MAINTENANCE_USER_ID`, never a human admin.
+See [staging security](../operations/staging-security.md).
 
 ```sh
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js trip-generation 2026-09-21
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js personal-pause-resumes
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js push
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js emails
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js erasures
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js trip-generation 2026-09-21
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js personal-pause-resumes
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js push
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js emails
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js erasures
 ```
 
 Replace the illustrative travel date before running. Trip generation defaults
@@ -45,66 +95,14 @@ For payment callbacks, authenticated ops can run the existing
 from `/v1/ops/maintenance/payments`, which also reconciles and closes periods.
 Do not use the broader endpoint when only inbox processing is intended.
 
-## Verification performed on 2026-09-20 UTC
-
-- Confirmed deployed migrations 023–025 in staging.
-- Read ride and credit histories and obtained an authoritative price preview
-  through the deployed API using a seeded disposable rider.
-- Previewed and confirmed a September 21–25 pause, replayed confirmation with
-  the same key (same pause, HTTP 201), and shortened resume to September 24.
-  The latest-pause response remained scheduled with no extension applied yet.
-  This did not alter the owner's Google-linked subscription.
-- Uploaded a probe avatar through the deployed multipart API on a separate
-  disposable account, deleted it (204), confirmed avatar reads return 404,
-  and ran the existing cleanup implementation scoped to that account.
-  Its physical R2 object also returned 404 afterwards.
-- Manually ran the current worker implementation against staging: generated
-  six September 21 departures with zero failures; due-pause processing and
-  push both completed with empty queues. These were local worker processes
-  using the staging database/providers, not deployed Render cron executions.
-- Created a separate disposable purchase through the staging API; the owner
-  completed its GHS 264 Paystack TEST checkout. Its real signed charge callback
-  was processed through the deployed inbox endpoint, fulfilling the purchase.
-  The ops refund endpoint returned 202 and Paystack accepted the full TEST
-  refund. Paystack's read-only refund lookup still reported `pending` at the
-  final check; no completed-refund accounting result is claimed.
-
-### Defect found by the real refund callback
-
-The signed `refund.pending` event contains an assigned string `id` but
-`refund_reference: null`. The deployed parser required a non-null reference.
-This branch accepts the provider's refund ID, and uses it consistently even
-if a later status carries a reference, to avoid splitting one refund into two
-accounting rows. Malformed supplied IDs and absent identities still fail closed.
-Reference-only historical evidence remains supported.
-
-The pending callback was deliberately left queued on staging instead of
-feeding it to the old parser, which would quarantine it. Merge/deploy the parser
-fix before processing that inbox. The new regression uses the real field shape
-with synthetic identifiers, then proves against Postgres that pending,
-processed, replayed and out-of-order events produce one refund and one reversal.
-The live check does not fabricate a processed callback while Paystack is pending.
-
-## What remains unproven
-
-- Actual pause activation/resumption on the future dates and its resulting
-  coverage extension on staging. Automated database tests cover that rule;
-  this check did not advance or rewrite the staging clock.
-- Actual push presentation and tap navigation: staging has no active registered
-  devices, and the commuter app has not implemented device registration and
-  native message handling. A zero-delivery worker run is not a delivery pass.
-- Recurring execution, deliberately deferred by the manual-run decision.
-- Provider completion of the pending TEST refund and final accounting after
-  its genuine callback. The initiation passed; completion remains outstanding.
-
-## Frontend handoff
+## Client integration
 
 The canonical package remains `apps/api_client` (`trotxi_api_client`), generated
 from `docs/design/contracts/replacement.openapi.json`. No `_next` fork is used.
 The [rider services guide](../backend-rider-services.md) describes business rules
 and example requests; examples there are illustrative, not live captures.
 
-Adom can now use the generated methods on:
+Use the generated methods on:
 
 - `RiderOwnApi`: `previewPurchase`, `previewPersonalPause`, `createPersonalPause`,
   `getPersonalPause`, `resumePersonalPause`, `listRideEntries`, `listCreditEntries`.

@@ -19,6 +19,7 @@ part 'account.g.dart';
 /// * [avatarUrl]
 /// * [role]
 /// * [createdAt]
+/// * [isSuperadmin]
 @BuiltValue()
 abstract class Account implements Built<Account, AccountBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -42,6 +43,9 @@ abstract class Account implements Built<Account, AccountBuilder> {
 
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
+
+  @BuiltValueField(wireName: r'isSuperadmin')
+  bool? get isSuperadmin;
 
   Account._();
 
@@ -107,6 +111,13 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
       object.createdAt,
       specifiedType: const FullType(DateTime),
     );
+    if (object.isSuperadmin != null) {
+      yield r'isSuperadmin';
+      yield serializers.serialize(
+        object.isSuperadmin,
+        specifiedType: const FullType(bool),
+      );
+    }
   }
 
   @override
@@ -183,6 +194,13 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
             specifiedType: const FullType(DateTime),
           ) as DateTime;
           result.createdAt = valueDes;
+          break;
+        case r'isSuperadmin':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.isSuperadmin = valueDes;
           break;
         default:
           unhandled.add(key);

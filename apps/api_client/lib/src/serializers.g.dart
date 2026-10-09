@@ -15,6 +15,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AccountRoleEnum.serializer)
       ..add(AppleSignIn.serializer)
       ..add(ArrivalInput.serializer)
+      ..add(AutoRenewal.serializer)
+      ..add(AutoRenewalCard.serializer)
+      ..add(AutoRenewalInput.serializer)
+      ..add(AutoRenewalResponse.serializer)
+      ..add(AutoRenewalUpcoming.serializer)
+      ..add(AutoRenewalUpcomingFailureCodeEnum.serializer)
+      ..add(AutoRenewalUpcomingStateEnum.serializer)
       ..add(Avatar.serializer)
       ..add(AvatarResponse.serializer)
       ..add(BoardingInput.serializer)
@@ -119,6 +126,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ErrorResponseErrorFieldErrorsInner.serializer)
       ..add(Fare.serializer)
       ..add(FareInput.serializer)
+      ..add(FareJourney.serializer)
+      ..add(FareJourneyDirectionEnum.serializer)
       ..add(FarePage.serializer)
       ..add(FareResponse.serializer)
       ..add(Flag.serializer)
@@ -174,9 +183,26 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(MinimumVersionResponse.serializer)
       ..add(Money.serializer)
       ..add(MoneyCurrencyEnum.serializer)
+      ..add(NotificationPreferences.serializer)
+      ..add(NotificationPreferencesInput.serializer)
+      ..add(NotificationPreferencesResponse.serializer)
+      ..add(NotificationReadCount.serializer)
+      ..add(NotificationReadCountResponse.serializer)
+      ..add(OperatorAccessInput.serializer)
+      ..add(OperatorAccessInputActionEnum.serializer)
+      ..add(OperatorCommandResult.serializer)
+      ..add(OperatorCommandResultResponse.serializer)
+      ..add(OperatorInvitationInput.serializer)
+      ..add(OpsAccountErasure.serializer)
+      ..add(OpsAccountErasurePage.serializer)
+      ..add(OpsAccountErasureTrackedCleanupStateEnum.serializer)
       ..add(OpsAuditEvent.serializer)
       ..add(OpsAuditEventAreaEnum.serializer)
       ..add(OpsAuditEventPage.serializer)
+      ..add(OpsAutoRenewal.serializer)
+      ..add(OpsAutoRenewalCard.serializer)
+      ..add(OpsAutoRenewalPage.serializer)
+      ..add(OpsAutoRenewalStateEnum.serializer)
       ..add(OpsCommuteRequest.serializer)
       ..add(OpsCommuteRequestPage.serializer)
       ..add(OpsCommuteRequestResponse.serializer)
@@ -184,6 +210,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsDelivery.serializer)
       ..add(OpsDeliveryChannelEnum.serializer)
       ..add(OpsDeliveryPage.serializer)
+      ..add(OpsGoogleSignIn.serializer)
       ..add(OpsIncident.serializer)
       ..add(OpsIncidentCategoryEnum.serializer)
       ..add(OpsIncidentPage.serializer)
@@ -206,6 +233,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsPurchaseAttemptsInnerStatusEnum.serializer)
       ..add(OpsPurchaseCheckout.serializer)
       ..add(OpsPurchaseCollectionStateEnum.serializer)
+      ..add(OpsPurchaseOfferTerms.serializer)
       ..add(OpsPurchasePage.serializer)
       ..add(OpsPurchasePlanEnum.serializer)
       ..add(OpsPurchaseResponse.serializer)
@@ -231,6 +259,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsRiderStatusEnum.serializer)
       ..add(OpsRiderSummary.serializer)
       ..add(OpsRiderSummaryResponse.serializer)
+      ..add(OpsTeamEntry.serializer)
+      ..add(OpsTeamEntryEmailStateEnum.serializer)
+      ..add(OpsTeamEntryKindEnum.serializer)
+      ..add(OpsTeamEntryPage.serializer)
+      ..add(OpsTeamEntryStateEnum.serializer)
       ..add(OpsTrip.serializer)
       ..add(OpsTripDirectionEnum.serializer)
       ..add(OpsTripPage.serializer)
@@ -307,6 +340,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PhoneChallengeResponse.serializer)
       ..add(PhoneSignInRequest.serializer)
       ..add(PhoneSignInVerify.serializer)
+      ..add(PhoneVerificationConfirm.serializer)
+      ..add(PhoneVerificationResult.serializer)
+      ..add(PhoneVerificationResultResponse.serializer)
+      ..add(PhoneVerificationResultStatusEnum.serializer)
+      ..add(PhoneVerificationStart.serializer)
       ..add(PinChange.serializer)
       ..add(PinResetInput.serializer)
       ..add(PlanPricing.serializer)
@@ -368,6 +406,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(RideEntry.serializer)
       ..add(RideEntryPage.serializer)
       ..add(RideEntryReasonEnum.serializer)
+      ..add(RiderNotification.serializer)
+      ..add(RiderNotificationKindEnum.serializer)
+      ..add(RiderNotificationPage.serializer)
+      ..add(RiderNotificationResponse.serializer)
+      ..add(RiderNotificationTarget.serializer)
+      ..add(RiderNotificationTargetTypeEnum.serializer)
       ..add(RoleEdit.serializer)
       ..add(RoleEditRoleEnum.serializer)
       ..add(Root.serializer)
@@ -393,6 +437,16 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ServiceDayInputDirectionEnum.serializer)
       ..add(Session.serializer)
       ..add(SessionPage.serializer)
+      ..add(StandbyApplication.serializer)
+      ..add(StandbyApplicationOffer.serializer)
+      ..add(StandbyApplicationOfferStateEnum.serializer)
+      ..add(StandbyApplicationPage.serializer)
+      ..add(StandbyApplicationResponse.serializer)
+      ..add(StandbyApplicationStateEnum.serializer)
+      ..add(StandbyJoinInput.serializer)
+      ..add(StandbyOfferInput.serializer)
+      ..add(StandbyOfferInputCreditsInner.serializer)
+      ..add(StandbyOfferInputCreditsInnerDirectionEnum.serializer)
       ..add(Stop.serializer)
       ..add(StopEdit.serializer)
       ..add(StopEta.serializer)
@@ -401,6 +455,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(StopOccurrence.serializer)
       ..add(StopPage.serializer)
       ..add(StopResponse.serializer)
+      ..add(SubscriptionOfferLeg.serializer)
+      ..add(SubscriptionOfferLegDirectionEnum.serializer)
       ..add(Tokens.serializer)
       ..add(TokensResponse.serializer)
       ..add(TraceHold.serializer)
@@ -427,6 +483,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(VehicleInput.serializer)
       ..add(VehiclePage.serializer)
       ..add(VehicleResponse.serializer)
+      ..add(VerificationStatus.serializer)
+      ..add(VerificationStatusMissingEnum.serializer)
+      ..add(VerificationStatusPhone.serializer)
+      ..add(VerificationStatusPhoneStatusEnum.serializer)
+      ..add(VerificationStatusResponse.serializer)
       ..add(WebhookAck.serializer)
       ..add(WorkDecision.serializer)
       ..add(WorkDecisionStatusEnum.serializer)
@@ -507,8 +568,14 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(MinimumVersion)]),
           () => ListBuilder<MinimumVersion>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsAccountErasure)]),
+          () => ListBuilder<OpsAccountErasure>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsAuditEvent)]),
           () => ListBuilder<OpsAuditEvent>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsAutoRenewal)]),
+          () => ListBuilder<OpsAutoRenewal>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsCommuteRequest)]),
           () => ListBuilder<OpsCommuteRequest>())
@@ -535,6 +602,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsRider)]),
           () => ListBuilder<OpsRider>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsTeamEntry)]),
+          () => ListBuilder<OpsTeamEntry>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsTrip)]),
           () => ListBuilder<OpsTrip>())
@@ -632,6 +702,9 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(RideEntry)]),
           () => ListBuilder<RideEntry>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RiderNotification)]),
+          () => ListBuilder<RiderNotification>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Route)]),
           () => ListBuilder<Route>())
       ..addBuilderFactory(
@@ -640,6 +713,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Session)]),
           () => ListBuilder<Session>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(StandbyApplication)]),
+          () => ListBuilder<StandbyApplication>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(StandbyOfferInputCreditsInner)]),
+          () => ListBuilder<StandbyOfferInputCreditsInner>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Stop)]),
           () => ListBuilder<Stop>())
@@ -668,6 +748,10 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
       ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(SubscriptionOfferLeg)]),
+          () => ListBuilder<SubscriptionOfferLeg>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(TraceHold)]),
           () => ListBuilder<TraceHold>())
       ..addBuilderFactory(
@@ -677,8 +761,21 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(Vehicle)]),
           () => ListBuilder<Vehicle>())
       ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(VerificationStatusMissingEnum)]),
+          () => ListBuilder<VerificationStatusMissingEnum>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(WorkRequest)]),
           () => ListBuilder<WorkRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(int)]),
           () => ListBuilder<int>())

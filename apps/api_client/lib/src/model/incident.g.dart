@@ -157,6 +157,8 @@ class _$Incident extends Incident {
   @override
   final String? resolution;
   @override
+  final DateTime? redactedAt;
+  @override
   final DateTime createdAt;
 
   factory _$Incident([void Function(IncidentBuilder)? updates]) =>
@@ -171,6 +173,7 @@ class _$Incident extends Incident {
       this.location,
       required this.status,
       this.resolution,
+      this.redactedAt,
       required this.createdAt})
       : super._();
   @override
@@ -192,6 +195,7 @@ class _$Incident extends Incident {
         location == other.location &&
         status == other.status &&
         resolution == other.resolution &&
+        redactedAt == other.redactedAt &&
         createdAt == other.createdAt;
   }
 
@@ -206,6 +210,7 @@ class _$Incident extends Incident {
     _$hash = $jc(_$hash, location.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, resolution.hashCode);
+    _$hash = $jc(_$hash, redactedAt.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -222,6 +227,7 @@ class _$Incident extends Incident {
           ..add('location', location)
           ..add('status', status)
           ..add('resolution', resolution)
+          ..add('redactedAt', redactedAt)
           ..add('createdAt', createdAt))
         .toString();
   }
@@ -264,6 +270,10 @@ class IncidentBuilder implements Builder<Incident, IncidentBuilder> {
   String? get resolution => _$this._resolution;
   set resolution(String? resolution) => _$this._resolution = resolution;
 
+  DateTime? _redactedAt;
+  DateTime? get redactedAt => _$this._redactedAt;
+  set redactedAt(DateTime? redactedAt) => _$this._redactedAt = redactedAt;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -283,6 +293,7 @@ class IncidentBuilder implements Builder<Incident, IncidentBuilder> {
       _location = $v.location?.toBuilder();
       _status = $v.status;
       _resolution = $v.resolution;
+      _redactedAt = $v.redactedAt;
       _createdAt = $v.createdAt;
       _$v = null;
     }
@@ -317,6 +328,7 @@ class IncidentBuilder implements Builder<Incident, IncidentBuilder> {
             status: BuiltValueNullFieldError.checkNotNull(
                 status, r'Incident', 'status'),
             resolution: resolution,
+            redactedAt: redactedAt,
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'Incident', 'createdAt'),
           );

@@ -86,6 +86,7 @@ named(
     avatarUrl: z.url().nullable(),
     role,
     createdAt: instant,
+    isSuperadmin: z.boolean().optional(),
   }),
 );
 named('ProfileUpdate', obj({ displayName: text(100) }));
@@ -182,9 +183,87 @@ named('AvatarUpload', obj({ file: z.string().meta({ format: 'binary' }) }));
 named('Session', obj({ id, createdAt: instant, expiresAt: instant, current: z.boolean() }));
 named('DeviceInput', obj({ token: text(4096), platform: z.enum(['ios', 'android']) }));
 named('Device', obj({ id, platform: z.enum(['ios', 'android']), updatedAt: instant }));
+named(
+  'RiderNotification',
+  obj({
+    id,
+    kind: z.enum([
+      'seat_ask',
+      'seat_held',
+      'seat_unseated',
+      'ride_used',
+      'credit_converted',
+      'trip_changed',
+      'trip_cancelled',
+      'standby_offered',
+    ]),
+    target: obj({ type: z.enum(['reservation', 'credit', 'standby']), id }),
+    createdAt: instant,
+    readAt: instant.nullable(),
+  }),
+);
+named('NotificationReadCount', obj({ readCount: count }));
+const dailyAskTime = z.string().regex(/^(0[6-9]|1\d|20|21):[0-5]\d$/);
+named(
+  'NotificationPreferences',
+  obj({
+    dailyAskTime,
+    optionalUpdatesEnabled: z.boolean(),
+    updatedAt: instant,
+    version,
+  }),
+);
+named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled: z.boolean() }));
 named('GoogleSignIn', obj({ idToken: text(8192) }));
+named(
+  'OpsGoogleSignIn',
+  obj({
+    idToken: text(8192),
+    invitationToken: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{43}$/)
+      .optional(),
+  }),
+);
+named(
+  'OperatorInvitationInput',
+  obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100) }),
+);
+named('OperatorAccessInput', obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']) }));
+named('OperatorCommandResult', obj({ id }));
+named(
+  'OpsTeamEntry',
+  obj({
+    id,
+    name: text(),
+    email: z.email().nullable(),
+    kind: z.enum(['member', 'invitation']),
+    state: z.enum(['active', 'pending', 'claimed', 'expired', 'cancelled']),
+    isSuperadmin: z.boolean(),
+    expiresAt: instant.nullable(),
+    emailState: z.enum(['pending', 'accepted', 'cancelled', 'failed', 'unknown']).nullable(),
+  }),
+);
 named('PhoneSignInRequest', obj({ phone: text(32) }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
+named('PhoneVerificationStart', obj({ phone: text(32) }));
+named(
+  'PhoneVerificationConfirm',
+  obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }),
+);
+named('PhoneVerificationResult', obj({ status: z.enum(['verified', 'review']) }));
+named(
+  'VerificationStatus',
+  obj({
+    phone: obj({
+      status: z.enum(['incomplete', 'pending', 'verified', 'review', 'unavailable']),
+      maskedNumber: text(32).nullable(),
+      verifiedAt: instant.nullable(),
+    }),
+    standbyEligible: z.boolean(),
+    missing: z.array(z.enum(['phone', 'profile'])),
+  }),
+);
 named(
   'PhoneChallenge',
   obj({ challengeId: z.uuid(), expiresAt: instant, resendAfterSeconds: z.int().min(60).max(60) }),
@@ -391,7 +470,69 @@ named(
     endsAt: instant.nullable(),
     state: periodState,
     paused: z.boolean(),
-    renewalMode: z.literal('manual'),
+    // automatic while a saved-card renewal of this period is still pending.
+    renewalMode: z.enum(['manual', 'automatic']),
+  }),
+);
+// Card auto-renewal. The rider's choice, the card that honours it (display
+// details only), and the renewal of their current period if one is pending.
+named('AutoRenewalInput', obj({ enabled: z.boolean() }));
+// One rider's renewal as Ops sees it: whose, when, how it is going, and why
+// it stopped, so a stalled or changed renewal gets a new offer in time.
+named(
+  'OpsAutoRenewal',
+  obj({
+    id,
+    riderId: id,
+    riderName: text().nullable(),
+    state: z.enum([
+      'scheduled',
+      'reminded',
+      'charging',
+      'paid',
+      'failed',
+      'needs_offer',
+      'lapsed',
+      'cancelled',
+    ]),
+    failureCode: text(50).nullable(),
+    attempts: count,
+    periodEndsAt: instant,
+    nextAttemptAt: instant.nullable(),
+    price: money,
+    card: obj({ brand: text(50), last4: z.string().regex(/^[0-9]{4}$/) }).nullable(),
+    renewalPurchaseId: id.nullable(),
+    updatedAt: instant,
+  }),
+);
+named(
+  'AutoRenewal',
+  obj({
+    enabled: z.boolean(),
+    card: obj({
+      brand: text(50),
+      last4: z.string().regex(/^[0-9]{4}$/),
+      expMonth: z.int().min(1).max(12),
+      expYear: z.int().min(2000).max(2100),
+    }).nullable(),
+    upcoming: obj({
+      state: z.enum(['scheduled', 'reminded', 'charging', 'failed', 'needs_offer']),
+      periodEndsAt: instant,
+      chargeFrom: instant,
+      nextAttemptAt: instant.nullable(),
+      price: money,
+      failureCode: z
+        .enum([
+          'card_declined',
+          'charge_unconfirmed',
+          'fare_changed',
+          'service_changed',
+          'no_card',
+          'coverage_conflict',
+          'renewal_blocked',
+        ])
+        .nullable(),
+    }).nullable(),
   }),
 );
 named(
@@ -399,6 +540,7 @@ named(
   obj({
     membership: obj({ id, lifecycle: z.enum(['open', 'ended']) }).nullable(),
     coverage: schemas.Coverage.nullable(),
+    upcomingCoverage: schemas.Coverage.nullable().optional(),
     lastCoverageEndedAt: instant.nullable(),
     access: obj({ canReserve: z.boolean(), blocks: z.array(schemas.AccessBlock) }),
     commute: schemas.CommuteAssignment.nullable(),
@@ -430,6 +572,68 @@ named(
   obj({ plan, routeId: id, legs: z.array(schemas.CommuteLeg).length(2), useCredit: z.boolean() }),
 );
 named(
+  'SubscriptionOfferLeg',
+  schemas.CommuteLeg.extend({
+    pickupName: text(),
+    dropoffName: text(),
+    fareId: id,
+    fare: money,
+    ridesGranted: z.int().min(1).max(366),
+    travelDays: z.array(z.int().min(1).max(7)).min(1).max(7),
+    creditPerUnusedRide: money,
+  }),
+);
+named(
+  'SubscriptionOfferTerms',
+  obj({
+    coverageStart: date,
+    coverageEnd: date,
+    price: money,
+    legs: z.array(schemas.SubscriptionOfferLeg).length(2),
+  }),
+);
+named(
+  'StandbyJoinInput',
+  obj({
+    selection: schemas.PurchaseInput,
+    travelDays: z.array(z.int().min(1).max(7)).min(1).max(7),
+  }),
+);
+named(
+  'StandbyOffer',
+  obj({
+    id,
+    state: z.enum(['offered', 'accepting', 'checkout_open', 'cancelled']),
+    expiresAt: instant,
+    purchaseId: id.nullable(),
+    terms: schemas.SubscriptionOfferTerms.nullable(),
+  }),
+);
+named(
+  'StandbyApplication',
+  obj({
+    id,
+    riderId: id,
+    riderName: text(),
+    routeName: text(),
+    state: z.enum(['submitted', 'offered', 'withdrawn', 'checkout_open', 'completed']),
+    selection: schemas.PurchaseInput,
+    travelDays: z.array(z.int().min(1).max(7)),
+    offer: schemas.StandbyOffer.nullable(),
+    createdAt: instant,
+  }),
+);
+named(
+  'StandbyOfferInput',
+  obj({
+    expiresAt: instant,
+    coverageStart: date,
+    coverageEnd: date,
+    price: money,
+    credits: z.array(obj({ direction, creditPerUnusedRide: money })).length(2),
+  }),
+);
+named(
   'Purchase',
   obj({
     id,
@@ -444,6 +648,7 @@ named(
     ]),
     collectionState: z.enum(['pending', 'successful', 'failed', 'unknown']),
     price: money,
+    offerTerms: schemas.SubscriptionOfferTerms.nullable().optional(),
     appliedCredit: money,
     cashDue: money,
     checkout: obj({ url: z.url(), expiresAt: instant.nullable() }).nullable(),
@@ -829,6 +1034,7 @@ named(
     location: point.nullable(),
     status: z.enum(['open', 'acknowledged', 'resolved']),
     resolution: note.nullable(),
+    redactedAt: instant.nullable(),
     createdAt: instant,
   }),
 );
@@ -978,8 +1184,26 @@ named(
   }),
 );
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));
-named('FareInput', obj({ amount: money, effectiveFrom: instant, note: note.optional() }));
-named('Fare', schemas.FareInput.extend({ id, routeId: id, effectiveTo: instant.nullable() }));
+named(
+  'FareInput',
+  obj({
+    amount: money,
+    effectiveFrom: instant,
+    note: note.optional(),
+    patternVersionId: id.optional(),
+    pickupOccurrenceId: id.optional(),
+    dropoffOccurrenceId: id.optional(),
+  }),
+);
+named(
+  'Fare',
+  schemas.FareInput.extend({
+    id,
+    routeId: id,
+    effectiveTo: instant.nullable(),
+    journey: obj({ pickup: text(), dropoff: text(), direction }).optional(),
+  }),
+);
 named(
   'PlanPricing',
   obj({
@@ -1120,7 +1344,7 @@ named('WebhookAck', obj({ received: z.literal(true) }));
 named(
   'OpsIncident',
   schemas.Incident.extend({
-    driverId: id,
+    driverId: id.nullable(),
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,
@@ -1249,6 +1473,22 @@ named(
   }),
 );
 named(
+  'OpsAccountErasure',
+  obj({
+    userId: id,
+    erasedAt: instant,
+    sessionsRevoked: count,
+    devicesRevoked: count,
+    identitiesScrubbed: count,
+    trackedTasks: count,
+    trackedDone: count,
+    trackedCancelled: count,
+    trackedPending: count,
+    trackedUnavailable: count,
+    trackedCleanupState: z.enum(['pending', 'retry_needed', 'tracked_complete']),
+  }),
+);
+named(
   'OpsAuditEvent',
   obj({
     id,
@@ -1263,6 +1503,9 @@ named(
       'pricing',
       'configuration',
       'security',
+      'payments',
+      'gps',
+      'maintenance',
     ]),
     action: text(100),
     actorId: id,
@@ -1339,6 +1582,8 @@ named(
         tripId: id,
         scheduledAt: instant,
         status: z.enum(['scheduled', 'active', 'completed', 'cancelled']),
+        patternId: id,
+        patternVersionId: id,
         routeName: text().nullable(),
         driverId: id.nullable(),
         driverName: text().nullable(),
@@ -1423,6 +1668,39 @@ get('/healthz', 'getHealth', 'Health', { stable: true });
 get('/readyz', 'getReadiness', 'Health', { stable: true });
 get('/version', 'getBuild', 'Build', { stable: true });
 get('/flags', 'getBootstrap', 'Bootstrap', { stable: true });
+post('/v1/auth/ops/google', 'signInOpsGoogle', 'OpsGoogleSignIn', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
+list('/v1/ops/team', 'listOpsTeam', 'OpsTeamEntry');
+post(
+  '/v1/ops/team/invitations',
+  'inviteOperator',
+  'OperatorInvitationInput',
+  'OperatorCommandResult',
+  { status: 200, sensitive: true },
+);
+post(
+  '/v1/ops/team/invitations/{id}/resend',
+  'resendOperatorInvitation',
+  null,
+  'OperatorCommandResult',
+  { status: 200, sensitive: true },
+);
+post(
+  '/v1/ops/team/invitations/{id}/cancel',
+  'cancelOperatorInvitation',
+  null,
+  'OperatorCommandResult',
+  { status: 200 },
+);
+post(
+  '/v1/ops/team/members/{id}/access',
+  'updateOperatorAccess',
+  'OperatorAccessInput',
+  'OperatorCommandResult',
+  { status: 200 },
+);
 for (const provider of ['google', 'apple', 'driver'])
   post(
     `/v1/auth/${provider}`,
@@ -1509,6 +1787,48 @@ post('/v1/auth/driver/pin', 'changeDriverPin', 'PinChange', null, {
   sensitive: true,
 });
 get('/v1/me', 'getAccount', 'Account', { access: 'self' });
+get('/v1/me/verification', 'getVerification', 'VerificationStatus', { access: 'rider_own' });
+post(
+  '/v1/me/phone-verification/start',
+  'startPhoneVerification',
+  'PhoneVerificationStart',
+  'PhoneChallenge',
+  {
+    access: 'rider_own',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/me/phone-verification/confirm',
+  'confirmPhoneVerification',
+  'PhoneVerificationConfirm',
+  'PhoneVerificationResult',
+  {
+    access: 'rider_own',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+list('/v1/me/standby', 'listMyStandby', 'StandbyApplication', { access: 'rider_own' });
+post('/v1/me/standby', 'joinStandby', 'StandbyJoinInput', 'StandbyApplication', {
+  access: 'rider_own',
+  status: 201,
+});
+post('/v1/me/standby/{id}/withdraw', 'withdrawStandby', null, 'StandbyApplication', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+post('/v1/me/standby/{id}/accept', 'acceptStandbyOffer', null, 'Purchase', {
+  access: 'rider_own',
+  retry: 'idempotency_key',
+  sensitive: true,
+  status: 201,
+});
+list('/v1/ops/standby', 'listOpsStandby', 'StandbyApplication');
+post('/v1/ops/standby/{id}/offers', 'offerStandby', 'StandbyOfferInput', 'StandbyApplication', {
+  status: 201,
+});
 edit('patch', '/v1/me', 'updateAccount', 'ProfileUpdate', 'Account', {
   access: 'self',
   etag: false,
@@ -1524,7 +1844,37 @@ del('/v1/me/avatar', 'deleteAvatar');
 list('/v1/me/sessions', 'listSessions', 'Session');
 del('/v1/me/sessions/{id}', 'revokeSession');
 post('/v1/me/devices', 'registerDevice', 'DeviceInput', 'Device');
+list('/v1/me/notifications', 'listNotifications', 'RiderNotification', { access: 'rider_own' });
+post('/v1/me/notifications/read', 'markAllNotificationsRead', null, 'NotificationReadCount', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+post('/v1/me/notifications/{id}/read', 'markNotificationRead', null, 'RiderNotification', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+get('/v1/me/notification-preferences', 'getNotificationPreferences', 'NotificationPreferences', {
+  access: 'rider_own',
+});
+edit(
+  'patch',
+  '/v1/me/notification-preferences',
+  'updateNotificationPreferences',
+  'NotificationPreferencesInput',
+  'NotificationPreferences',
+  { access: 'rider_own', retry: 'conditional_state' },
+);
 get('/v1/me/membership', 'getMembership', 'Membership', { access: 'rider_own' });
+get('/v1/me/auto-renewal', 'getAutoRenewal', 'AutoRenewal', { access: 'rider_own' });
+op('put', '/v1/me/auto-renewal', 'setAutoRenewal', 'AutoRenewal', {
+  input: 'AutoRenewalInput',
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+del('/v1/me/auto-renewal/card', 'removeAutoRenewalCard', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
 get('/v1/me/membership/pause', 'getPersonalPause', 'OptionalPersonalPause', {
   access: 'rider_own',
 });
@@ -1674,6 +2024,7 @@ get('/v1/ops/riders/summary', 'getOpsRiderSummary', 'OpsRiderSummary');
 get('/v1/ops/riders/{id}', 'getOpsRiderDetail', 'OpsRiderDetail');
 list('/v1/ops/operators', 'listOpsOperators', 'OpsOperator');
 list('/v1/ops/deliveries', 'listOpsDeliveries', 'OpsDelivery');
+list('/v1/ops/account-erasures', 'listOpsAccountErasures', 'OpsAccountErasure');
 list('/v1/ops/audit-events', 'listOpsAuditEvents', 'OpsAuditEvent');
 get('/v1/ops/reports/summary', 'getOpsReportSummary', 'OpsReportSummary');
 for (const [path, name, type, input] of [
@@ -1762,6 +2113,7 @@ edit(
 );
 list('/v1/ops/payments/reviews', 'listPaymentReviews', 'PaymentReview');
 list('/v1/ops/purchases', 'listOpsPurchases', 'OpsPurchase');
+list('/v1/ops/auto-renewals', 'listOpsAutoRenewals', 'OpsAutoRenewal');
 get('/v1/ops/purchases/{id}', 'getOpsPurchase', 'OpsPurchase');
 post(
   '/v1/ops/payments/reviews/{id}/decisions',
@@ -1812,6 +2164,13 @@ for (const task of [
     task === 'payments' ? 'PaymentMaintenanceResult' : 'MaintenanceResult',
     { access: 'ops_or_scoped_worker', retry: 'safe_batch' },
   );
+post(
+  '/v1/ops/maintenance/auto-renewals',
+  'runAutoRenewals',
+  'MaintenanceInput',
+  'MaintenanceResult',
+  { access: 'ops_or_scoped_worker', retry: 'safe_batch' },
+);
 post(
   '/v1/ops/maintenance/trip-generation',
   'runTripGeneration',

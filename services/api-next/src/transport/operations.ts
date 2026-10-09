@@ -5,6 +5,7 @@ import { fail } from './errors.js';
 export const operationsReads = [
   'listOpsOperators',
   'listOpsDeliveries',
+  'listOpsAccountErasures',
   'listOpsAuditEvents',
   'getOpsReportSummary',
 ] as const;
@@ -72,7 +73,7 @@ export async function readOperations(
             SELECT 1 FROM app.account_restrictions ar WHERE ar.user_id=u.id AND ar.released_at IS NULL
           ))::int AS restricted
         FROM app.users u LEFT JOIN app.memberships m ON m.user_id=u.id
-        LEFT JOIN app.billing_periods b ON b.membership_id=m.id AND b.state='open'
+        LEFT JOIN app.billing_periods b ON b.membership_id=m.id AND b.state='open' AND b.starts_at<=$3
           AND (b.effective_ends_at>$3 OR EXISTS (
             SELECT 1 FROM app.membership_pauses mp WHERE mp.period_id=b.id AND mp.ended_at IS NULL))
         WHERE u.role='commuter' AND u.deleted_at IS NULL
@@ -140,7 +141,19 @@ export async function readOperations(
     };
   }
 
-  const context = `ops:${operation}:${actor.userId}:${query.channel ?? ''}:${query.area ?? ''}:${query.state ?? ''}`;
+  const context = JSON.stringify([
+    'ops',
+    operation,
+    actor.userId,
+    query.channel,
+    query.area,
+    query.state,
+    query.actorId,
+    query.action,
+    query.targetId,
+    query.fromDate,
+    query.toDate,
+  ]);
   const { limit, cursor } = pageInput(query, context, cursors, now);
   const page = (rows: Array<Record<string, any>>) => {
     const visible = rows.slice(0, limit);
@@ -196,6 +209,41 @@ export async function readOperations(
     };
   }
 
+  if (operation === 'listOpsAccountErasures') {
+    if (Object.keys(query).some((key) => !['cursor', 'limit'].includes(key)))
+      fail(400, 'invalid_query', 'Unsupported query parameters.');
+    const rows = (
+      await client.query(
+        `SELECT *,to_char(erased_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
+         FROM app.account_erasure_status
+         WHERE ($1::timestamptz IS NULL OR (erased_at,user_id)<($1::timestamptz,$2::uuid))
+         ORDER BY erased_at DESC,user_id DESC LIMIT $3`,
+        [cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+      )
+    ).rows;
+    const result = page(rows.map((r) => ({ ...r, id: r.user_id })));
+    return {
+      status: 200,
+      body: {
+        data: result.rows.map((r) => ({
+          userId: r.user_id,
+          erasedAt: new Date(r.erased_at as string).toISOString(),
+          sessionsRevoked: Number(r.sessions_revoked),
+          devicesRevoked: Number(r.devices_revoked),
+          identitiesScrubbed: Number(r.identities_scrubbed),
+          trackedTasks: Number(r.tracked_tasks),
+          trackedDone: Number(r.tracked_done),
+          trackedCancelled: Number(r.tracked_cancelled),
+          trackedPending: Number(r.tracked_pending),
+          trackedUnavailable: Number(r.tracked_unavailable),
+          trackedCleanupState: r.tracked_cleanup_state,
+        })),
+        page: { nextCursor: result.nextCursor },
+      },
+      headers: {},
+    };
+  }
+
   if (operation === 'listOpsDeliveries') {
     if (Object.keys(query).some((key) => !['cursor', 'limit', 'channel', 'state'].includes(key)))
       fail(400, 'invalid_query', 'Unsupported query parameters.');
@@ -244,7 +292,21 @@ export async function readOperations(
     };
   }
 
-  if (Object.keys(query).some((key) => !['cursor', 'limit', 'area'].includes(key)))
+  if (
+    Object.keys(query).some(
+      (key) =>
+        ![
+          'cursor',
+          'limit',
+          'area',
+          'actorId',
+          'action',
+          'targetId',
+          'fromDate',
+          'toDate',
+        ].includes(key),
+    )
+  )
     fail(400, 'invalid_query', 'Unsupported query parameters.');
   const area = query.area;
   const allowedAreas = [
@@ -258,9 +320,30 @@ export async function readOperations(
     'pricing',
     'configuration',
     'security',
+    'payments',
+    'gps',
+    'maintenance',
   ];
   if (area !== undefined && !allowedAreas.includes(area))
     fail(400, 'invalid_query', 'Unsupported audit area.');
+  const actorId = query.actorId;
+  if (actorId !== undefined && !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(actorId))
+    fail(400, 'invalid_query', 'Invalid operator ID.');
+  if (query.action !== undefined && (query.action.length < 1 || query.action.length > 100))
+    fail(400, 'invalid_query', 'Invalid audit action.');
+  if (query.targetId !== undefined && (query.targetId.length < 1 || query.targetId.length > 128))
+    fail(400, 'invalid_query', 'Invalid target ID.');
+  const date = (value: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number(value.slice(0, 4)) > 0 &&
+    !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) &&
+    new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  if (
+    (query.fromDate !== undefined && !date(query.fromDate)) ||
+    (query.toDate !== undefined && !date(query.toDate)) ||
+    (query.fromDate !== undefined && query.toDate !== undefined && query.toDate < query.fromDate)
+  )
+    fail(400, 'invalid_query', 'Invalid audit date range.');
   const rows = (
     await client.query(
       `WITH events AS (
@@ -270,17 +353,41 @@ export async function readOperations(
       UNION ALL SELECT id,'fleet',operation,actor_user_id,coalesce(vehicle_id,incident_id,request_id)::text,NULL,created_at FROM app.fleet_events
       UNION ALL SELECT id,'driver',operation,actor_user_id,driver_id::text,reason,created_at FROM app.driver_events
       UNION ALL SELECT id,'membership',action,actor_user_id,resource_id::text,NULL,occurred_at FROM app.membership_events
+      UNION ALL SELECT id,'standby',action,actor_user_id,application_id::text,NULL,occurred_at FROM app.standby_events
       UNION ALL SELECT id,'boarding',method,actor_user_id,reservation_id::text,NULL,occurred_at FROM app.boarding_events
       UNION ALL SELECT id,'pricing',action,actor_user_id,resource_id,NULL,occurred_at FROM app.pricing_events
       UNION ALL SELECT id,'configuration',action,actor_user_id,target,reason,occurred_at FROM app.config_events
       UNION ALL SELECT id,'security',action,actor_user_id,user_id::text,NULL,occurred_at FROM app.admin_passkey_events
-    ) SELECT e.*,coalesce(u.display_name,'Administrator') actor_name,
+      UNION ALL SELECT id,'security',action,actor_user_id,target_id::text,NULL,created_at FROM app.ops_team_events
+      UNION ALL SELECT id,'payments','resolvePaymentReview:'||decision,actor_user_id,review_id::text,reason,created_at FROM app.payment_review_commands
+      UNION ALL SELECT id,'payments','initiateRefund',actor_user_id,purchase_id::text,reason,created_at FROM app.refund_initiations
+      UNION ALL SELECT id,'gps',operation,actor_user_id,hold_id::text,NULL,created_at FROM app.gps_events
+      UNION ALL SELECT s.id,'maintenance',s.origin||':'||s.operation,s.actor_user_id,s.id::text,
+        coalesce(o.state,'started'),s.started_at FROM app.maintenance_run_starts s
+        LEFT JOIN app.maintenance_run_outcomes o ON o.run_id=s.id
+    ) SELECT e.*,coalesce(nullif(u.display_name,''),
+      CASE WHEN u.deleted_at IS NOT NULL THEN 'Former user' ELSE 'User' END) actor_name,
       to_char(e.occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
-    FROM events e JOIN app.users u ON u.id=e.actor_user_id
+    FROM events e LEFT JOIN app.users u ON u.id=e.actor_user_id
     WHERE ($1::text IS NULL OR e.area=$1)
       AND ($2::timestamptz IS NULL OR (e.occurred_at,e.id)<($2::timestamptz,$3::uuid))
+      AND ($5::uuid IS NULL OR e.actor_user_id=$5)
+      AND ($6::text IS NULL OR e.action=$6)
+      AND ($7::text IS NULL OR e.target_id=$7)
+      AND ($8::date IS NULL OR e.occurred_at >= $8::date)
+      AND ($9::date IS NULL OR e.occurred_at < $9::date + 1)
     ORDER BY e.occurred_at DESC,e.id DESC LIMIT $4`,
-      [area ?? null, cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+      [
+        area ?? null,
+        cursor?.time ?? null,
+        cursor?.id ?? null,
+        limit + 1,
+        actorId ?? null,
+        query.action ?? null,
+        query.targetId ?? null,
+        query.fromDate ?? null,
+        query.toDate ?? null,
+      ],
     )
   ).rows;
   const result = page(rows);

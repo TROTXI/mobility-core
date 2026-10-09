@@ -26,20 +26,9 @@ databases:
   #   plan: basic-256mb
   #   region: frankfurt
 
-# Shared config for the ask-dispatch cron jobs (E3). Kept while the crons
-# themselves are commented out: the group costs nothing, and deleting it would
-# mean re-entering JWT_SECRET by hand when they are switched on.
-#
-# The crons mint a short-lived admin token, so this JWT_SECRET MUST equal the web
-# service's or every cron gets a 401 that looks like a bug rather than a config
-# mismatch. API_BASE_URL is the public staging URL (not a secret).
-envVarGroups:
-  - name: trotxi-cron-staging
-    envVars:
-      - key: JWT_SECRET
-        sync: false # set in dashboard; MUST match trotxi-api-staging's JWT_SECRET
-      - key: API_BASE_URL
-        value: https://trotxi-api-staging.onrender.com
+# Scheduled maintenance runs in GitHub with purpose-specific keys. Do not copy
+# the staging root secret into a cron environment group. Retire the existing
+# unused trotxi-cron-staging group during the security cutover.
 
 services:
   - type: web
@@ -57,11 +46,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: trotxi-db-staging
-          property: connectionString
-      # Required because NODE_ENV=production (see ADR-0007). Set the value in the
+      # Provision the restricted role before applying this Blueprint. The owner
+      # URL belongs only to the protected GitHub deployment environment.
+      - key: REPLACEMENT_RUNTIME_DATABASE_URL
+        sync: false
+      - key: STAGING_DATABASE_CA_CERT
+        sync: false # optional PEM CA; otherwise use the system trust store
+      # Required because NODE_ENV=production. Set the value in the
       # Render dashboard; never commit it. Generate: openssl rand -base64 48
       - key: JWT_SECRET
         sync: false
@@ -340,12 +331,22 @@ services:
       - key: VITE_OPS_BUILD
         value: '1'
     headers:
+      # Only Vite content-hashed bundles. HTML and public files must revalidate.
+      # Apply this header in Render too; deploying a commit does not sync headers.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
       - path: /*
         name: X-Frame-Options
         value: DENY
       - path: /*
         name: Content-Security-Policy
-        value: "frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+        # Ops is a static Vite bundle. Keep executable scripts and the MapLibre
+        # worker same-origin; Google Identity Services is the sole remote script.
+        # Fluent UI and a few React components inject inline styles, so only
+        # style-src (never script-src) permits inline content. Private avatar
+        # URLs use account-specific R2 hosts supplied at runtime by the API.
+        value: "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob: https://*.r2.cloudflarestorage.com; font-src 'self' data:; connect-src 'self' https://trotxi-api-staging.onrender.com https://tiles.trotxi.com https://accounts.google.com/gsi/ https://accounts.google.com/o/fedcm/; worker-src 'self'; frame-src https://accounts.google.com/gsi/ https://accounts.google.com/o/fedcm/; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
       - path: /*
         name: Referrer-Policy
         value: no-referrer
@@ -591,6 +592,8 @@ services:
   #
   #   worker admission         */5 * * * *  clear request budgets whose window closed
   #   worker gps-retention     */5 * * * *  drain bounded batches; alert on >1h deletion lag
+  #   worker incident-retention 0 2 * * *   redact resolved incident details after 90/365 days
+  #   worker payment-evidence-retention 0 3 * * * redact old settled raw provider bodies
   #   worker driver-secrets    */15 * * * * physically clear expired PIN ciphertext
   #   worker erasures          10 * * * *   retry erasure's external half
   #   worker payments          15 * * * *   inbox, reconciliation, period close
@@ -675,7 +678,7 @@ services:
   #       fromDatabase:
   #         name: trotxi-db-production
   #         property: connectionString
-  #     # Required because NODE_ENV=production (ADR-0007). Generate a NEW one:
+  #     # Required because NODE_ENV=production. Generate a NEW one:
   #     #   openssl rand -base64 48
   #     - key: JWT_SECRET
   #       sync: false

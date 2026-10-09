@@ -4,6 +4,49 @@ import { providerTokenBox } from './credentials.js';
 import { fail } from '../transport/errors.js';
 import { ghanaPhone, SmsSendError, type SmsSender } from '../notifications/mnotify.js';
 
+/** Physical cleanup after the rolling abuse budget no longer needs its hash. */
+export async function purgeExpiredPhoneOtpChallenges(pool: Pool, limit = 100): Promise<number> {
+  const bounded = Math.max(1, Math.min(limit, 1000));
+  const result = await pool.query(
+    `DELETE FROM app.phone_otp_challenges WHERE id IN (
+      SELECT id FROM app.phone_otp_challenges
+      WHERE created_at < clock_timestamp() - interval '24 hours'
+      ORDER BY created_at,id LIMIT $1 FOR UPDATE SKIP LOCKED)`,
+    [bounded],
+  );
+  return result.rowCount ?? 0;
+}
+
+/** Status is readable even when outbound SMS has not been configured. */
+export async function phoneVerificationStatus(c: PoolClient, userId: string) {
+  const verified = (
+    await c.query<{ last_four: string | null; verified_at: Date }>(
+      'SELECT last_four,verified_at FROM app.commuter_phone_verifications WHERE user_id=$1 AND revoked_at IS NULL',
+      [userId],
+    )
+  ).rows[0];
+  const review = (
+    await c.query(
+      'SELECT 1 FROM app.phone_verification_reviews WHERE user_id=$1 AND closed_at IS NULL',
+      [userId],
+    )
+  ).rowCount;
+  const pending = (
+    await c.query(
+      `SELECT 1 FROM app.phone_otp_challenges WHERE owner_user_id=$1
+       AND purpose='standby_verification' AND state='sent' AND expires_at>clock_timestamp() LIMIT 1`,
+      [userId],
+    )
+  ).rowCount;
+  return {
+    phone: {
+      status: review ? 'review' : pending ? 'pending' : verified ? 'verified' : 'incomplete',
+      maskedNumber: verified?.last_four ? `+233 ** *** ${verified.last_four}` : null,
+      verifiedAt: verified?.verified_at.toISOString() ?? null,
+    },
+  };
+}
+
 export class PhoneOtp {
   private readonly key: Buffer;
   private readonly box;
@@ -21,7 +64,11 @@ export class PhoneOtp {
   private digest(value: string) {
     return createHmac('sha256', this.key).update(value).digest('hex');
   }
-  async request(value: string, sourceIp: string) {
+  async request(
+    value: string,
+    sourceIp: string,
+    upgrade?: { userId: string; authorize: (client: PoolClient) => Promise<void> },
+  ) {
     let phone: string;
     try {
       phone = ghanaPhone(value);
@@ -37,12 +84,21 @@ export class PhoneOtp {
     const c = await this.pool.connect();
     let expires: Date;
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL lock_timeout='3s'");
+      await c.query("BEGIN; SET LOCAL lock_timeout='3s'");
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended('phone-otp:daily-budget',0))");
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `phone-otp:${phoneHash}`,
       ]);
+      if (upgrade) {
+        await upgrade.authorize(c);
+        const user = (
+          await c.query('SELECT role,deleted_at FROM app.users WHERE id=$1 FOR SHARE', [
+            upgrade.userId,
+          ])
+        ).rows[0];
+        if (user?.role !== 'commuter' || user.deleted_at)
+          fail(403, 'forbidden', 'Phone verification is for commuters only.');
+      }
       const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
       // The global lock serializes both rolling budgets across replicas. No
       // raw address is stored; caller supplies Fastify's trusted-proxy result.
@@ -58,6 +114,17 @@ export class PhoneOtp {
           'phone_source_limited',
           'This connection has reached its daily SMS limit. Try again later or use Google sign-in.',
         );
+      if (upgrade) {
+        const account = (
+          await c.query(
+            `SELECT count(*)::int AS n FROM app.phone_otp_challenges
+             WHERE owner_user_id=$1 AND created_at>$2::timestamptz-interval '24 hours'`,
+            [upgrade.userId, now],
+          )
+        ).rows[0];
+        if (account.n >= 10)
+          fail(429, 'phone_account_limited', 'This account has reached its daily SMS limit.');
+      }
       const global = (
         await c.query(
           "SELECT count(*)::int AS n FROM app.phone_otp_challenges WHERE created_at > $1::timestamptz - interval '24 hours'",
@@ -100,8 +167,8 @@ export class PhoneOtp {
       );
       expires = new Date(now.getTime() + 300000);
       await c.query(
-        `INSERT INTO app.phone_otp_challenges(id,phone_hash,phone_ciphertext,code_hash,created_at,expires_at,source_hash)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        `INSERT INTO app.phone_otp_challenges(id,phone_hash,phone_ciphertext,code_hash,created_at,expires_at,source_hash,purpose,owner_user_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
         [
           id,
           phoneHash,
@@ -110,6 +177,8 @@ export class PhoneOtp {
           now,
           expires,
           sourceHash,
+          upgrade ? 'standby_verification' : 'sign_in',
+          upgrade?.userId ?? null,
         ],
       );
       await c.query('COMMIT');
@@ -122,8 +191,7 @@ export class PhoneOtp {
     try {
       await this.sender.send(
         phone!,
-        `${this.staging ? '[Trotxi STAGING] ' : 'Trotxi '}${code} is your commuter sign-in code. Expires in 5 minutes. Never share it.`,
-        true,
+        `${this.staging ? '[Trotxi STAGING] ' : 'Trotxi '}${code} is your commuter ${upgrade ? 'phone verification' : 'sign-in'} code. Expires in 5 minutes. Never share it.`,
       );
       const updated = await this.pool.query(
         `UPDATE app.phone_otp_challenges SET state='sent' WHERE id=$1 AND state='sending' RETURNING id`,
@@ -164,7 +232,14 @@ export class PhoneOtp {
         [id],
       )
     ).rows[0];
-    if (!row || row.state !== 'sent' || row.attempts >= 5 || row.expires_at <= row.now) return null;
+    if (
+      !row ||
+      row.purpose !== 'sign_in' ||
+      row.state !== 'sent' ||
+      row.attempts >= 5 ||
+      row.expires_at <= row.now
+    )
+      return null;
     const hash = this.digest(`code:${id}:${code}`);
     const correct = timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(row.code_hash, 'hex'));
     await c.query('UPDATE app.phone_otp_challenges SET attempts=attempts+1 WHERE id=$1', [id]);
@@ -183,6 +258,19 @@ export class PhoneOtp {
         [row.phone_hash],
       )
     ).rows[0]?.user_id;
+    const verifiedOwner = (
+      await c.query(
+        'SELECT user_id FROM app.commuter_phone_verifications WHERE phone_hash=$1 AND revoked_at IS NULL',
+        [row.phone_hash],
+      )
+    ).rows[0]?.user_id;
+    if (verifiedOwner && verifiedOwner !== userId) {
+      await c.query(
+        "UPDATE app.phone_otp_challenges SET state='consumed',code_hash=NULL,phone_ciphertext=NULL WHERE id=$1",
+        [id],
+      );
+      return null;
+    }
     if (!userId) {
       userId = (
         await c.query(
@@ -202,6 +290,139 @@ export class PhoneOtp {
       "UPDATE app.phone_otp_challenges SET state='consumed',code_hash=NULL,phone_ciphertext=NULL WHERE id=$1",
       [id],
     );
-    return user?.role === 'commuter' && !user.deleted_at ? userId : null;
+    if (user?.role !== 'commuter' || user.deleted_at) return null;
+    await c.query(
+      `INSERT INTO app.commuter_phone_verifications(user_id,phone_hash,last_four,verified_at,method)
+       VALUES ($1,$2,$3,clock_timestamp(),'phone_sign_in')
+       ON CONFLICT(user_id) DO UPDATE SET phone_hash=EXCLUDED.phone_hash,
+         last_four=EXCLUDED.last_four,verified_at=EXCLUDED.verified_at,method=EXCLUDED.method,
+         revoked_at=NULL`,
+      [userId, row.phone_hash, phone.slice(-4)],
+    );
+    return userId;
+  }
+
+  /** Caller commits null outcomes: wrong guesses must survive the transaction. */
+  async confirmForAccount(
+    c: PoolClient,
+    actor: { userId: string; sessionId: string },
+    challengeId: string,
+    code: string,
+    authorize: (client: PoolClient) => Promise<void>,
+  ): Promise<'verified' | 'review' | null> {
+    const hint = (
+      await c.query('SELECT phone_hash FROM app.phone_otp_challenges WHERE id=$1', [challengeId])
+    ).rows[0];
+    if (!hint) return null;
+    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      `phone-otp:${hint.phone_hash}`,
+    ]);
+    const challenge = (
+      await c.query(
+        'SELECT *,clock_timestamp() AS now FROM app.phone_otp_challenges WHERE id=$1 FOR UPDATE',
+        [challengeId],
+      )
+    ).rows[0];
+    if (
+      !challenge ||
+      challenge.purpose !== 'standby_verification' ||
+      challenge.owner_user_id !== actor.userId ||
+      challenge.state !== 'sent' ||
+      challenge.attempts >= 5 ||
+      challenge.expires_at <= challenge.now
+    )
+      return null;
+    const user = (
+      await c.query('SELECT role,deleted_at FROM app.users WHERE id=$1 FOR UPDATE', [actor.userId])
+    ).rows[0];
+    await authorize(c);
+    if (user?.role !== 'commuter' || user.deleted_at)
+      fail(403, 'forbidden', 'Phone verification is for commuters only.');
+    const hash = this.digest(`code:${challengeId}:${code}`);
+    const correct = timingSafeEqual(
+      Buffer.from(hash, 'hex'),
+      Buffer.from(challenge.code_hash, 'hex'),
+    );
+    await c.query('UPDATE app.phone_otp_challenges SET attempts=attempts+1 WHERE id=$1', [
+      challengeId,
+    ]);
+    if (!correct) {
+      if (challenge.attempts === 4)
+        await c.query(
+          "UPDATE app.phone_otp_challenges SET state='failed',code_hash=NULL,phone_ciphertext=NULL WHERE id=$1",
+          [challengeId],
+        );
+      return null;
+    }
+    const phone = this.box.open(challenge.phone_ciphertext, challengeId);
+    await c.query(
+      "UPDATE app.phone_otp_challenges SET state='consumed',code_hash=NULL,phone_ciphertext=NULL WHERE id=$1",
+      [challengeId],
+    );
+    const prior = (
+      await c.query(
+        'SELECT phone_hash FROM app.commuter_phone_verifications WHERE user_id=$1 AND revoked_at IS NULL',
+        [actor.userId],
+      )
+    ).rows[0];
+    const phoneIdentity = (
+      await c.query(
+        "SELECT user_id FROM app.auth_identities WHERE provider='phone' AND subject=$1",
+        [challenge.phone_hash],
+      )
+    ).rows[0];
+    const ownPhoneIdentity = (
+      await c.query(
+        "SELECT subject FROM app.auth_identities WHERE provider='phone' AND user_id=$1",
+        [actor.userId],
+      )
+    ).rows[0];
+    const claimed = (
+      await c.query(
+        'SELECT user_id FROM app.commuter_phone_verifications WHERE phone_hash=$1 AND revoked_at IS NULL',
+        [challenge.phone_hash],
+      )
+    ).rows[0];
+    if (
+      (phoneIdentity && phoneIdentity.user_id !== actor.userId) ||
+      (claimed && claimed.user_id !== actor.userId) ||
+      (ownPhoneIdentity && ownPhoneIdentity.subject !== challenge.phone_hash)
+    ) {
+      await c.query(
+        `INSERT INTO app.phone_verification_reviews(user_id,phone_hash) VALUES ($1,$2)
+         ON CONFLICT(user_id) DO UPDATE SET phone_hash=EXCLUDED.phone_hash,
+           created_at=clock_timestamp(),closed_at=NULL`,
+        [actor.userId, challenge.phone_hash],
+      );
+      return 'review';
+    }
+    if (prior && prior.phone_hash !== challenge.phone_hash) {
+      const recent = (
+        await c.query(
+          `SELECT 1 FROM app.auth_sessions WHERE id=$1 AND user_id=$2
+           AND created_at>clock_timestamp()-interval '10 minutes'`,
+          [actor.sessionId, actor.userId],
+        )
+      ).rowCount;
+      if (!recent) fail(403, 'recent_signin_required', 'Sign in again before changing your phone.');
+      await c.query(
+        'UPDATE app.commuter_phone_verifications SET phone_hash=NULL,last_four=NULL,revoked_at=clock_timestamp() WHERE user_id=$1',
+        [actor.userId],
+      );
+    }
+    await c.query(
+      `INSERT INTO app.commuter_phone_verifications(user_id,phone_hash,last_four,verified_at,method)
+       VALUES ($1,$2,$3,clock_timestamp(),'account_upgrade')
+       ON CONFLICT(user_id) DO UPDATE SET phone_hash=EXCLUDED.phone_hash,
+         last_four=EXCLUDED.last_four,verified_at=EXCLUDED.verified_at,method=EXCLUDED.method,
+         revoked_at=NULL`,
+      [actor.userId, challenge.phone_hash, phone.slice(-4)],
+    );
+    await c.query(
+      'UPDATE app.phone_verification_reviews SET phone_hash=NULL,closed_at=clock_timestamp() WHERE user_id=$1 AND closed_at IS NULL',
+      [actor.userId],
+    );
+    await c.query('UPDATE app.users SET phone=$2 WHERE id=$1', [actor.userId, phone]);
+    return 'verified';
   }
 }

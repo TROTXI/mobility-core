@@ -48,11 +48,11 @@ import 'package:trotxi_api_client/trotxi_api_client.dart';
 
 
 final api = TrotxiApiClient().getDriverAssignedOrOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = driver; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final BoardingInput boardingInput = ; // BoardingInput | 
+final BoardingInput boardingInput = ; // BoardingInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -89,6 +89,7 @@ Class | Method | HTTP request | Description
 [*DriverOwnApi*](doc/DriverOwnApi.md) | [**withdrawDriverRequest**](doc/DriverOwnApi.md#withdrawdriverrequest) | **POST** /v1/driver/requests/{id}/withdraw | withdraw Driver Request
 [*LiveEligibleApi*](doc/LiveEligibleApi.md) | [**getLiveTrip**](doc/LiveEligibleApi.md#getlivetrip) | **GET** /v1/trips/{id}/live | get Live Trip
 [*OpsApi*](doc/OpsApi.md) | [**assignTrip**](doc/OpsApi.md#assigntrip) | **PUT** /v1/ops/trips/{id}/assignment | assign Trip
+[*OpsApi*](doc/OpsApi.md) | [**cancelOperatorInvitation**](doc/OpsApi.md#canceloperatorinvitation) | **POST** /v1/ops/team/invitations/{id}/cancel | cancel Operator Invitation
 [*OpsApi*](doc/OpsApi.md) | [**cancelTrip**](doc/OpsApi.md#canceltrip) | **POST** /v1/ops/trips/{id}/cancel | cancel Trip
 [*OpsApi*](doc/OpsApi.md) | [**changeCredentialState**](doc/OpsApi.md#changecredentialstate) | **POST** /v1/ops/drivers/{id}/credentials/actions | change Credential State
 [*OpsApi*](doc/OpsApi.md) | [**changeRole**](doc/OpsApi.md#changerole) | **PATCH** /v1/ops/users/{id}/role | change Role
@@ -115,13 +116,16 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**getOpsRiderDetail**](doc/OpsApi.md#getopsriderdetail) | **GET** /v1/ops/riders/{id} | get Ops Rider Detail
 [*OpsApi*](doc/OpsApi.md) | [**getOpsRiderSummary**](doc/OpsApi.md#getopsridersummary) | **GET** /v1/ops/riders/summary | get Ops Rider Summary
 [*OpsApi*](doc/OpsApi.md) | [**initiateRefund**](doc/OpsApi.md#initiaterefund) | **POST** /v1/ops/purchases/{id}/refunds | initiate Refund
+[*OpsApi*](doc/OpsApi.md) | [**inviteOperator**](doc/OpsApi.md#inviteoperator) | **POST** /v1/ops/team/invitations | invite Operator
 [*OpsApi*](doc/OpsApi.md) | [**issueDriverCredential**](doc/OpsApi.md#issuedrivercredential) | **POST** /v1/ops/drivers/{id}/credentials | issue Driver Credential
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteEvents**](doc/OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteSlots**](doc/OpsApi.md#listcommuteslots) | **GET** /v1/ops/commute-slots | list Commute Slots
 [*OpsApi*](doc/OpsApi.md) | [**listFares**](doc/OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
 [*OpsApi*](doc/OpsApi.md) | [**listFlags**](doc/OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [*OpsApi*](doc/OpsApi.md) | [**listMinimumVersions**](doc/OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
+[*OpsApi*](doc/OpsApi.md) | [**listOpsAccountErasures**](doc/OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [*OpsApi*](doc/OpsApi.md) | [**listOpsAuditEvents**](doc/OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
+[*OpsApi*](doc/OpsApi.md) | [**listOpsAutoRenewals**](doc/OpsApi.md#listopsautorenewals) | **GET** /v1/ops/auto-renewals | list Ops Auto Renewals
 [*OpsApi*](doc/OpsApi.md) | [**listOpsCommuteRequests**](doc/OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDeliveries**](doc/OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDriverRequests**](doc/OpsApi.md#listopsdriverrequests) | **GET** /v1/ops/driver-requests | list Ops Driver Requests
@@ -131,7 +135,9 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listOpsPurchases**](doc/OpsApi.md#listopspurchases) | **GET** /v1/ops/purchases | list Ops Purchases
 [*OpsApi*](doc/OpsApi.md) | [**listOpsRiders**](doc/OpsApi.md#listopsriders) | **GET** /v1/ops/riders | list Ops Riders
 [*OpsApi*](doc/OpsApi.md) | [**listOpsRoutes**](doc/OpsApi.md#listopsroutes) | **GET** /v1/ops/routes | list Ops Routes
+[*OpsApi*](doc/OpsApi.md) | [**listOpsStandby**](doc/OpsApi.md#listopsstandby) | **GET** /v1/ops/standby | list Ops Standby
 [*OpsApi*](doc/OpsApi.md) | [**listOpsStops**](doc/OpsApi.md#listopsstops) | **GET** /v1/ops/stops | list Ops Stops
+[*OpsApi*](doc/OpsApi.md) | [**listOpsTeam**](doc/OpsApi.md#listopsteam) | **GET** /v1/ops/team | list Ops Team
 [*OpsApi*](doc/OpsApi.md) | [**listOpsTrips**](doc/OpsApi.md#listopstrips) | **GET** /v1/ops/trips | list Ops Trips
 [*OpsApi*](doc/OpsApi.md) | [**listOpsVehicles**](doc/OpsApi.md#listopsvehicles) | **GET** /v1/ops/vehicles | list Ops Vehicles
 [*OpsApi*](doc/OpsApi.md) | [**listPatternVersions**](doc/OpsApi.md#listpatternversions) | **GET** /v1/ops/route-patterns/{id}/versions | list Pattern Versions
@@ -141,10 +147,12 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listRefundInitiations**](doc/OpsApi.md#listrefundinitiations) | **GET** /v1/ops/purchases/{id}/refunds | list Refund Initiations
 [*OpsApi*](doc/OpsApi.md) | [**listSchedules**](doc/OpsApi.md#listschedules) | **GET** /v1/ops/service-schedules | list Schedules
 [*OpsApi*](doc/OpsApi.md) | [**listTraceHolds**](doc/OpsApi.md#listtraceholds) | **GET** /v1/ops/trace-holds | list Trace Holds
+[*OpsApi*](doc/OpsApi.md) | [**offerStandby**](doc/OpsApi.md#offerstandby) | **POST** /v1/ops/standby/{id}/offers | offer Standby
 [*OpsApi*](doc/OpsApi.md) | [**publishPatternVersion**](doc/OpsApi.md#publishpatternversion) | **POST** /v1/ops/route-patterns/{id}/versions/{versionId}/publish | publish Pattern Version
 [*OpsApi*](doc/OpsApi.md) | [**releaseAccountRestriction**](doc/OpsApi.md#releaseaccountrestriction) | **POST** /v1/ops/users/{id}/restrictions/{restrictionId}/release | release Account Restriction
 [*OpsApi*](doc/OpsApi.md) | [**releaseTraceHold**](doc/OpsApi.md#releasetracehold) | **POST** /v1/ops/trace-holds/{id}/release | release Trace Hold
 [*OpsApi*](doc/OpsApi.md) | [**rescheduleTrip**](doc/OpsApi.md#rescheduletrip) | **PATCH** /v1/ops/trips/{id} | reschedule Trip
+[*OpsApi*](doc/OpsApi.md) | [**resendOperatorInvitation**](doc/OpsApi.md#resendoperatorinvitation) | **POST** /v1/ops/team/invitations/{id}/resend | resend Operator Invitation
 [*OpsApi*](doc/OpsApi.md) | [**resetDriverPin**](doc/OpsApi.md#resetdriverpin) | **POST** /v1/ops/drivers/{id}/credentials/reset-pin | reset Driver Pin
 [*OpsApi*](doc/OpsApi.md) | [**resetOperatorPasskeys**](doc/OpsApi.md#resetoperatorpasskeys) | **POST** /v1/ops/users/{id}/passkeys/reset | reset Operator Passkeys
 [*OpsApi*](doc/OpsApi.md) | [**resolvePaymentReview**](doc/OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
@@ -153,11 +161,13 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**setFlag**](doc/OpsApi.md#setflag) | **PUT** /v1/ops/flags/{key} | set Flag
 [*OpsApi*](doc/OpsApi.md) | [**setMinimumVersion**](doc/OpsApi.md#setminimumversion) | **PUT** /v1/ops/min-versions/{app}/{platform} | set Minimum Version
 [*OpsApi*](doc/OpsApi.md) | [**updateDriver**](doc/OpsApi.md#updatedriver) | **PATCH** /v1/ops/drivers/{id} | update Driver
+[*OpsApi*](doc/OpsApi.md) | [**updateOperatorAccess**](doc/OpsApi.md#updateoperatoraccess) | **POST** /v1/ops/team/members/{id}/access | update Operator Access
 [*OpsApi*](doc/OpsApi.md) | [**updatePlanPricing**](doc/OpsApi.md#updateplanpricing) | **PATCH** /v1/ops/plan-pricing/{plan} | update Plan Pricing
 [*OpsApi*](doc/OpsApi.md) | [**updateRoute**](doc/OpsApi.md#updateroute) | **PATCH** /v1/ops/routes/{id} | update Route
 [*OpsApi*](doc/OpsApi.md) | [**updateStop**](doc/OpsApi.md#updatestop) | **PATCH** /v1/ops/stops/{id} | update Stop
 [*OpsApi*](doc/OpsApi.md) | [**updateVehicle**](doc/OpsApi.md#updatevehicle) | **PATCH** /v1/ops/vehicles/{id} | update Vehicle
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runAskDispatch**](doc/OpsOrScopedWorkerApi.md#runaskdispatch) | **POST** /v1/ops/maintenance/ask-dispatch | run Ask Dispatch
+[*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runAutoRenewals**](doc/OpsOrScopedWorkerApi.md#runautorenewals) | **POST** /v1/ops/maintenance/auto-renewals | run Auto Renewals
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runGpsRetention**](doc/OpsOrScopedWorkerApi.md#rungpsretention) | **POST** /v1/ops/maintenance/gps-retention | run Gps Retention
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runNoShows**](doc/OpsOrScopedWorkerApi.md#runnoshows) | **POST** /v1/ops/maintenance/no-shows | run No Shows
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runPaymentInbox**](doc/OpsOrScopedWorkerApi.md#runpaymentinbox) | **POST** /v1/ops/maintenance/payment-inbox | run Payment Inbox
@@ -185,25 +195,41 @@ Class | Method | HTTP request | Description
 [*PublicApi*](doc/PublicApi.md) | [**signInApple**](doc/PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [*PublicApi*](doc/PublicApi.md) | [**signInDriver**](doc/PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
 [*PublicApi*](doc/PublicApi.md) | [**signInGoogle**](doc/PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
+[*PublicApi*](doc/PublicApi.md) | [**signInOpsGoogle**](doc/PublicApi.md#signinopsgoogle) | **POST** /v1/auth/ops/google | sign In Ops Google
 [*PublicApi*](doc/PublicApi.md) | [**verifyPhoneSignIn**](doc/PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**acceptStandbyOffer**](doc/RiderOwnApi.md#acceptstandbyoffer) | **POST** /v1/me/standby/{id}/accept | accept Standby Offer
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**confirmPhoneVerification**](doc/RiderOwnApi.md#confirmphoneverification) | **POST** /v1/me/phone-verification/confirm | confirm Phone Verification
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createCommuteRequest**](doc/RiderOwnApi.md#createcommuterequest) | **POST** /v1/me/commute-requests | create Commute Request
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPersonalPause**](doc/RiderOwnApi.md#createpersonalpause) | **POST** /v1/me/membership/pauses | create Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPurchase**](doc/RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**decideReservation**](doc/RiderOwnApi.md#decidereservation) | **POST** /v1/me/reservation-decisions | decide Reservation
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getAutoRenewal**](doc/RiderOwnApi.md#getautorenewal) | **GET** /v1/me/auto-renewal | get Auto Renewal
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getMembership**](doc/RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getNotificationPreferences**](doc/RiderOwnApi.md#getnotificationpreferences) | **GET** /v1/me/notification-preferences | get Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPersonalPause**](doc/RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPurchase**](doc/RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getReservation**](doc/RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getVerification**](doc/RiderOwnApi.md#getverification) | **GET** /v1/me/verification | get Verification
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**issuePass**](doc/RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**joinStandby**](doc/RiderOwnApi.md#joinstandby) | **POST** /v1/me/standby | join Standby
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCommuteRequests**](doc/RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCreditEntries**](doc/RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**listMyStandby**](doc/RiderOwnApi.md#listmystandby) | **GET** /v1/me/standby | list My Standby
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**listNotifications**](doc/RiderOwnApi.md#listnotifications) | **GET** /v1/me/notifications | list Notifications
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listPurchases**](doc/RiderOwnApi.md#listpurchases) | **GET** /v1/me/purchases | list Purchases
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listReservations**](doc/RiderOwnApi.md#listreservations) | **GET** /v1/me/reservations | list Reservations
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listRideEntries**](doc/RiderOwnApi.md#listrideentries) | **GET** /v1/me/ride-entries | list Ride Entries
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**markAllNotificationsRead**](doc/RiderOwnApi.md#markallnotificationsread) | **POST** /v1/me/notifications/read | mark All Notifications Read
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**markNotificationRead**](doc/RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPersonalPause**](doc/RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPurchase**](doc/RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**removeAutoRenewalCard**](doc/RiderOwnApi.md#removeautorenewalcard) | **DELETE** /v1/me/auto-renewal/card | remove Auto Renewal Card
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**resumePersonalPause**](doc/RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**setAutoRenewal**](doc/RiderOwnApi.md#setautorenewal) | **PUT** /v1/me/auto-renewal | set Auto Renewal
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**startPhoneVerification**](doc/RiderOwnApi.md#startphoneverification) | **POST** /v1/me/phone-verification/start | start Phone Verification
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**updateNotificationPreferences**](doc/RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawCommuteRequest**](doc/RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawStandby**](doc/RiderOwnApi.md#withdrawstandby) | **POST** /v1/me/standby/{id}/withdraw | withdraw Standby
 [*SelfApi*](doc/SelfApi.md) | [**deleteAvatar**](doc/SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [*SelfApi*](doc/SelfApi.md) | [**eraseAccount**](doc/SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
 [*SelfApi*](doc/SelfApi.md) | [**finishPasskeyAuthentication**](doc/SelfApi.md#finishpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/verification | finish Passkey Authentication
@@ -229,6 +255,11 @@ Class | Method | HTTP request | Description
  - [AccountResponse](doc/AccountResponse.md)
  - [AppleSignIn](doc/AppleSignIn.md)
  - [ArrivalInput](doc/ArrivalInput.md)
+ - [AutoRenewal](doc/AutoRenewal.md)
+ - [AutoRenewalCard](doc/AutoRenewalCard.md)
+ - [AutoRenewalInput](doc/AutoRenewalInput.md)
+ - [AutoRenewalResponse](doc/AutoRenewalResponse.md)
+ - [AutoRenewalUpcoming](doc/AutoRenewalUpcoming.md)
  - [Avatar](doc/Avatar.md)
  - [AvatarResponse](doc/AvatarResponse.md)
  - [BoardingInput](doc/BoardingInput.md)
@@ -298,6 +329,7 @@ Class | Method | HTTP request | Description
  - [ErrorResponseErrorFieldErrorsInner](doc/ErrorResponseErrorFieldErrorsInner.md)
  - [Fare](doc/Fare.md)
  - [FareInput](doc/FareInput.md)
+ - [FareJourney](doc/FareJourney.md)
  - [FarePage](doc/FarePage.md)
  - [FareResponse](doc/FareResponse.md)
  - [Flag](doc/Flag.md)
@@ -337,13 +369,28 @@ Class | Method | HTTP request | Description
  - [MinimumVersionPage](doc/MinimumVersionPage.md)
  - [MinimumVersionResponse](doc/MinimumVersionResponse.md)
  - [Money](doc/Money.md)
+ - [NotificationPreferences](doc/NotificationPreferences.md)
+ - [NotificationPreferencesInput](doc/NotificationPreferencesInput.md)
+ - [NotificationPreferencesResponse](doc/NotificationPreferencesResponse.md)
+ - [NotificationReadCount](doc/NotificationReadCount.md)
+ - [NotificationReadCountResponse](doc/NotificationReadCountResponse.md)
+ - [OperatorAccessInput](doc/OperatorAccessInput.md)
+ - [OperatorCommandResult](doc/OperatorCommandResult.md)
+ - [OperatorCommandResultResponse](doc/OperatorCommandResultResponse.md)
+ - [OperatorInvitationInput](doc/OperatorInvitationInput.md)
+ - [OpsAccountErasure](doc/OpsAccountErasure.md)
+ - [OpsAccountErasurePage](doc/OpsAccountErasurePage.md)
  - [OpsAuditEvent](doc/OpsAuditEvent.md)
  - [OpsAuditEventPage](doc/OpsAuditEventPage.md)
+ - [OpsAutoRenewal](doc/OpsAutoRenewal.md)
+ - [OpsAutoRenewalCard](doc/OpsAutoRenewalCard.md)
+ - [OpsAutoRenewalPage](doc/OpsAutoRenewalPage.md)
  - [OpsCommuteRequest](doc/OpsCommuteRequest.md)
  - [OpsCommuteRequestPage](doc/OpsCommuteRequestPage.md)
  - [OpsCommuteRequestResponse](doc/OpsCommuteRequestResponse.md)
  - [OpsDelivery](doc/OpsDelivery.md)
  - [OpsDeliveryPage](doc/OpsDeliveryPage.md)
+ - [OpsGoogleSignIn](doc/OpsGoogleSignIn.md)
  - [OpsIncident](doc/OpsIncident.md)
  - [OpsIncidentPage](doc/OpsIncidentPage.md)
  - [OpsIncidentResponse](doc/OpsIncidentResponse.md)
@@ -357,6 +404,7 @@ Class | Method | HTTP request | Description
  - [OpsPurchaseAttemptsInner](doc/OpsPurchaseAttemptsInner.md)
  - [OpsPurchaseAttemptsInnerReceivedAmount](doc/OpsPurchaseAttemptsInnerReceivedAmount.md)
  - [OpsPurchaseCheckout](doc/OpsPurchaseCheckout.md)
+ - [OpsPurchaseOfferTerms](doc/OpsPurchaseOfferTerms.md)
  - [OpsPurchasePage](doc/OpsPurchasePage.md)
  - [OpsPurchaseResponse](doc/OpsPurchaseResponse.md)
  - [OpsReportSummary](doc/OpsReportSummary.md)
@@ -374,6 +422,8 @@ Class | Method | HTTP request | Description
  - [OpsRiderPage](doc/OpsRiderPage.md)
  - [OpsRiderSummary](doc/OpsRiderSummary.md)
  - [OpsRiderSummaryResponse](doc/OpsRiderSummaryResponse.md)
+ - [OpsTeamEntry](doc/OpsTeamEntry.md)
+ - [OpsTeamEntryPage](doc/OpsTeamEntryPage.md)
  - [OpsTrip](doc/OpsTrip.md)
  - [OpsTripPage](doc/OpsTripPage.md)
  - [OpsTripResponse](doc/OpsTripResponse.md)
@@ -424,6 +474,10 @@ Class | Method | HTTP request | Description
  - [PhoneChallengeResponse](doc/PhoneChallengeResponse.md)
  - [PhoneSignInRequest](doc/PhoneSignInRequest.md)
  - [PhoneSignInVerify](doc/PhoneSignInVerify.md)
+ - [PhoneVerificationConfirm](doc/PhoneVerificationConfirm.md)
+ - [PhoneVerificationResult](doc/PhoneVerificationResult.md)
+ - [PhoneVerificationResultResponse](doc/PhoneVerificationResultResponse.md)
+ - [PhoneVerificationStart](doc/PhoneVerificationStart.md)
  - [PinChange](doc/PinChange.md)
  - [PinResetInput](doc/PinResetInput.md)
  - [PlanPricing](doc/PlanPricing.md)
@@ -468,6 +522,10 @@ Class | Method | HTTP request | Description
  - [ReviewDecision](doc/ReviewDecision.md)
  - [RideEntry](doc/RideEntry.md)
  - [RideEntryPage](doc/RideEntryPage.md)
+ - [RiderNotification](doc/RiderNotification.md)
+ - [RiderNotificationPage](doc/RiderNotificationPage.md)
+ - [RiderNotificationResponse](doc/RiderNotificationResponse.md)
+ - [RiderNotificationTarget](doc/RiderNotificationTarget.md)
  - [RoleEdit](doc/RoleEdit.md)
  - [Root](doc/Root.md)
  - [Route](doc/Route.md)
@@ -485,6 +543,13 @@ Class | Method | HTTP request | Description
  - [ServiceDayInput](doc/ServiceDayInput.md)
  - [Session](doc/Session.md)
  - [SessionPage](doc/SessionPage.md)
+ - [StandbyApplication](doc/StandbyApplication.md)
+ - [StandbyApplicationOffer](doc/StandbyApplicationOffer.md)
+ - [StandbyApplicationPage](doc/StandbyApplicationPage.md)
+ - [StandbyApplicationResponse](doc/StandbyApplicationResponse.md)
+ - [StandbyJoinInput](doc/StandbyJoinInput.md)
+ - [StandbyOfferInput](doc/StandbyOfferInput.md)
+ - [StandbyOfferInputCreditsInner](doc/StandbyOfferInputCreditsInner.md)
  - [Stop](doc/Stop.md)
  - [StopEdit](doc/StopEdit.md)
  - [StopEta](doc/StopEta.md)
@@ -492,6 +557,7 @@ Class | Method | HTTP request | Description
  - [StopOccurrence](doc/StopOccurrence.md)
  - [StopPage](doc/StopPage.md)
  - [StopResponse](doc/StopResponse.md)
+ - [SubscriptionOfferLeg](doc/SubscriptionOfferLeg.md)
  - [Tokens](doc/Tokens.md)
  - [TokensResponse](doc/TokensResponse.md)
  - [TraceHold](doc/TraceHold.md)
@@ -512,6 +578,9 @@ Class | Method | HTTP request | Description
  - [VehicleInput](doc/VehicleInput.md)
  - [VehiclePage](doc/VehiclePage.md)
  - [VehicleResponse](doc/VehicleResponse.md)
+ - [VerificationStatus](doc/VerificationStatus.md)
+ - [VerificationStatusPhone](doc/VerificationStatusPhone.md)
+ - [VerificationStatusResponse](doc/VerificationStatusResponse.md)
  - [WebhookAck](doc/WebhookAck.md)
  - [WorkDecision](doc/WorkDecision.md)
  - [WorkRequest](doc/WorkRequest.md)
@@ -536,6 +605,3 @@ Authentication schemes defined for the API:
 
 
 ## Author
-
-
-

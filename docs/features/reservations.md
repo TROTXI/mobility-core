@@ -1,71 +1,69 @@
-# Daily ride confirmation and seat capacity
+# Ride confirmation and capacity
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-03.
 
-**Status:** Confirmation, push dispatch, default-yes, pickup/drop-off snapshots
-and vehicle-capacity handling are live. The standby offer cascade is not built.
+A reservation belongs to a rider, service date, direction, trip and paid period.
+Direction is explicitly `outbound` or `return`; it is not inferred from
+morning/evening or the hour. Pickup/drop-off are version-owned stop occurrences.
 
-## Model
+## Operations
 
-There is one reservation per rider, travel day and direction (`morning` or
-`evening`). It carries the trip and the pickup/drop-off stops copied from the
-subscription at dispatch time.
+- `POST /v1/me/reservation-decisions`: confirm or decline.
+- `GET /v1/me/reservations` and `/{id}`: own reservation state.
+- `POST /v1/ops/maintenance/ask-dispatch`: create eligible prompts.
+- `POST /v1/ops/maintenance/reservation-defaults`: settle unanswered requests.
+- `POST /v1/ops/maintenance/no-shows`: settle eligible unboarded seats.
 
-```text
-pending → reserved → boarded
-        ↘ declined
-        ↘ unseated
-reserved → no_show | operator_cancelled | released
+Confirmation checks paid coverage for the departure, commute selection,
+restrictions/pauses, offered weekdays/allowance and assigned-vehicle capacity.
+A purchased package alone is not a reserved seat. Declining releases intent
+without consuming a ride. Defaults can reserve or mark overflow unseated;
+operator cancellation does not charge.
+
+A prepaid renewal can fund tomorrow's departure before its coverage starts.
+The ride is attributed to the renewal, not the currently active period.
+Generation/ask-dispatch must run in the right order; a preferred notification
+hour alone does not schedule these jobs.
+
+Boarding/no-show consumption is atomic and idempotent. There is no offline
+boarding promise or automatic released-seat offer cascade.
+See [boarding](boarding.md), [notifications](../api/notifications.md) and
+[manual operations](../runbooks/rider-services-staging.md).
+
+Sources: `services/api-next/src/membership/service.ts`,
+`services/api-next/src/boarding/service.ts`, migrations 013 and 042.
+
+## Confirmation flow
+
+```mermaid
+flowchart TD
+  trigger["Rider confirms or default runs"] --> departure["Resolve departure"]
+  departure --> period["Find paid period covering departure"]
+  period --> eligible{"Journey and rider eligible"}
+  eligible -->|"No"| refused["Return refusal"]
+  eligible -->|"Yes"| capacity{"Capacity available"}
+  capacity -->|"Yes"| reserved["Reserved seat"]
+  capacity -->|"No"| unavailable["Capacity refusal or unseated default"]
+  reserved --> boarded["Board or settle no-show"]
 ```
 
-`source` is `confirmation`, `default` or `standby`. The schema reserves the
-standby value, but no allocation service currently creates standby reservations.
+Ask-dispatch creates prompts; it is not payment or boarding. A missing scheduler
+is different from missing coverage. Defaults act on unanswered requests, while
+a commuter's explicit confirm/decline records their decision.
 
-## Rider API
+For day-ahead renewal booking, select the period by the trip's departure time,
+not today's wallet view. An explicit decline does not require a paid booking.
+Do not select a random period when multiple departures make the result ambiguous.
 
-| Endpoint                               | Behaviour                                                                                           |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `POST /me/reservations`                | Confirm or decline one day/direction; returns the four-character boarding code only on confirmation |
-| `GET /me/reservations?from=YYYY-MM-DD` | List the caller's reservations, newest day first                                                    |
+| Result                          | UI/recovery                                                           |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `coverage_required`             | Check the selected departure is inside paid coverage                  |
+| `departure_unavailable`         | Re-read catalog/trips; do not substitute a different journey silently |
+| Capacity or restriction refusal | Show the reason; payment does not override it                         |
+| Confirmation response lost      | Repeat the same command/key, then read the reservation                |
+| Operator cancelled trip         | Show cancellation; do not display an old pass as valid                |
 
-Confirming is the paywall. It returns `402` for no active subscription, no rides
-remaining or a trip outside the subscribed corridor. It returns `409` when the
-vehicle is full. Declining remains allowed after entitlement lapses because it
-releases intent and consumes nothing.
-
-## Scheduled operations
-
-| Endpoint                       | Behaviour                                                                                        |
-| ------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `POST /admin/ask-dispatch`     | For a date/window, create pending reservations for active route subscribers and send FCM prompts |
-| `POST /admin/resolve-defaults` | At cutoff, default unanswered riders to reserved until capacity is full; mark overflow unseated  |
-
-Dispatch is idempotent. Direction is currently inferred from scheduled UTC time
-(before noon = morning), a pilot convention that should eventually become an
-explicit trip field.
-
-The intended windows remain morning ask at 18:00 and cutoff at 21:00, evening
-ask at 12:00 and cutoff at 14:00 Ghana time. Render cron definitions exist but
-are commented out because each job requires a paid plan; operations can invoke
-the admin endpoints manually.
-
-## Capacity and deductions
-
-- Capacity comes from the trip's assigned vehicle. An unassigned vehicle means
-  there is no enforceable ceiling.
-- `unseated` is terminal and distinct from a rider-declined or released seat.
-- Boarding and confirmed no-show handling are owned by `BoardingService` and use
-  the same `board:<reservation-id>` idempotency key.
-- Operator cancellation never consumes a ride.
-
-## Deferred
-
-- Releasing declined seats into a KYC'd standby pool.
-- Offer ordering, expiry and instant single-journey payment.
-- An explicit direction field on trips.
-
-## Code
-
-- `services/api/src/modules/reservations/`
-- `services/api/src/modules/notifications/ask-dispatch.*`
-- migrations `013`, `016_reservation_pin`, `019`, `031` and `033`
+Code: [membership service](../../services/api-next/src/membership/service.ts).
+Tests: [membership](../../services/api-next/tests/membership.pg.test.ts) and
+[renewal booking](../../services/api-next/tests/pricing.pg.test.ts).
+Calls: [confirm and pass](../api/worked-examples.md#4-reserve-and-operate-the-trip).

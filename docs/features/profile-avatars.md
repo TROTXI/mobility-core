@@ -1,52 +1,72 @@
 # Profile, avatars and account erasure
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-03.
 
-**Status:** Live.
+## Account and photo API
 
-## API
+- `GET /v1/me`: own profile and permitted account state.
+- `PATCH /v1/me`: reviewed profile fields.
+- `PUT /v1/me/avatar`: bounded JPEG, PNG or WebP multipart upload.
+- `GET /v1/me/avatar`: short-lived signed private-object URL.
+- `DELETE /v1/me/avatar`: detach photo and queue physical cleanup.
+- `DELETE /v1/me`: account closure and personal-data erasure workflow.
 
-| Endpoint          | Behaviour                                                                |
-| ----------------- | ------------------------------------------------------------------------ |
-| `GET /me`         | Current user with a short-lived avatar URL when present                  |
-| `PATCH /me`       | Update trimmed display name                                              |
-| `POST /me/avatar` | Upload JPEG, PNG or WebP up to 5 MB                                      |
-| `GET /me/avatar`  | Return a new short-lived signed avatar URL                               |
-| `DELETE /me`      | Revoke access and erase personal data while retaining accounting records |
+Upload checks MIME and file bytes with a default 2 MiB bound. The current
+backend does not promise the retired sharp-based 256px re-encoding pipeline.
+Do not document server EXIF stripping without implementing it. Missing object
+storage refuses the feature, not an in-memory production substitute.
 
-All routes require a bearer token and use the per-user rate limit.
+Replaced/deleted photos have durable cleanup intents. Retrying an old removal
+cannot delete a newer avatar. Existing signed URLs may work until expiry or
+physical deletion.
 
-## Avatar processing
+## Closure is more than hiding a user
 
-Uploads are proxied through the API. Every image is decoded, resized to
-256×256 and re-encoded as JPEG with `sharp`; this strips EXIF metadata including
-location. The database stores only `avatars/<userId>`, never a public URL.
+Account closure revokes sessions, invalidates phone challenges/verification,
+scrubs linked personal data and stops eligible future work. Financial/audit
+records retain restricted attribution instead of being cascaded away.
+External avatar removal and Apple grant revocation have retryable cleanup tasks.
 
-Production uses a private Cloudflare R2 bucket and approximately five-minute
-signed GET URLs. Development and tests use an in-memory object store when any
-R2 setting is absent.
+Ops can inspect erasure progress; it cannot certify deletion from external
+provider records or every historical backup. Retention, independent closure
+journal and restore replay are separate controls. A restore must be fenced,
+replay post-snapshot closures and verify writer generation before release.
 
-## Account erasure
+Authoritative scope:
+[data map](../design/account-erasure-data-map.md),
+[retention policy](../design/account-erasure-retention-policy.md),
+[recovery](../design/account-erasure-recovery.md).
+Sources: `services/api-next/src/account/`, migrations and account PG tests.
 
-Deletion is idempotent and ordered to cut access before removing identity:
+## Deletion boundary
 
-1. Revoke all sessions and remove FCM device tokens.
-2. Best-effort revoke Apple access while the provider token is still available.
-3. Delete social-identity links so a later sign-in creates a new account.
-4. Best-effort delete the avatar object.
-5. Anonymise the user row.
+```mermaid
+flowchart TD
+  confirm["Owner confirms deletion"] --> request["Authenticated erasure command"]
+  request --> journal["Record protected intent when enabled"]
+  journal --> local["Commit closure and scrub identity"]
+  local --> access["Revoke sessions and verification"]
+  local --> cleanup["Queue external cleanup"]
+  cleanup --> worker["Retry eligible provider tasks"]
+  worker --> tracked["Tracked cleanup status"]
+  journal --> restore["Replay closures before restore release"]
+```
 
-The row and stable ID remain because payments, entitlement entries and credit
-entries are accounting records. Direct deletion would cascade away the audit
-history.
+The app must explain the action and ask for confirmation before sending it.
+After successful local closure, clear local account state and return to sign-in.
+If the response is lost, recover using the supported idempotency/session outcome;
+do not interpret a now-revoked session as proof that deletion failed.
 
-## Configuration
+Ops displays local closure and tracked task status. It cannot certify all
+provider copies, backups or retained financial records as erased. Keep those
+boundaries visible in support replies and UI copy.
 
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET` must
-all be set for persistent object storage. The bucket remains private.
+An avatar upload is a separate operation. It must not change account ownership.
+Ignore stale photo reads after a newer upload or session change. Physical cleanup
+of the replaced object can complete later without deleting the new photo.
 
-## Code
-
-- `services/api/src/modules/users/`
-- `services/api/src/storage/object-store.*`
-- migration `026_account_deletion.sql`
+Code: [account lifecycle](../../services/api-next/src/account/service.ts),
+[recovery](../../services/api-next/src/account/erasure-recovery.ts).
+Tests: [account](../../services/api-next/tests/account.pg.test.ts),
+[recovery](../../services/api-next/tests/account-recovery.pg.test.ts).
+Use the linked retention/data-map runbooks before changing stored personal data.

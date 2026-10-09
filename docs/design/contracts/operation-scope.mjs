@@ -1,11 +1,67 @@
 // Stage-1 review follow-up: predecessor absence is not proof of feature expansion.
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
+  ...[
+    'getAutoRenewal',
+    'setAutoRenewal',
+    'removeAutoRenewalCard',
+    'runAutoRenewals',
+    'listOpsAutoRenewals',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Opt-in card auto-renewal on the terms the rider already paid for, with rider control of the saved card',
+    'Offer checkout is customer-present and single-use; it cannot hold a card, charge it later or let the rider withdraw consent.',
+  ]),
+  ...[
+    'signInOpsGoogle',
+    'listOpsTeam',
+    'inviteOperator',
+    'resendOperatorInvitation',
+    'cancelOperatorInvitation',
+    'updateOperatorAccess',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Invite-only Ops onboarding and superadmin-owned access management',
+    'A shared social login and generic role editor do not bind invitation ownership or restrict administrator provisioning.',
+  ]),
+  ...[
+    'listNotifications',
+    'markNotificationRead',
+    'markAllNotificationsRead',
+    'getNotificationPreferences',
+    'updateNotificationPreferences',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Owned rider notification inbox and settings',
+    'Push acceptance is not a durable, rider-readable history or a preference policy.',
+  ]),
   ...['requestPhoneSignIn', 'verifyPhoneSignIn'].map((name) => [
     name,
     'post-cutover',
     'Approved Ghana commuter phone OTP sign-up and login',
     'Separate verified phone identities; no linking to existing Google accounts or their subscriptions.',
+  ]),
+  ...['startPhoneVerification', 'confirmPhoneVerification', 'getVerification'].map((name) => [
+    name,
+    'post-cutover',
+    'Approved standby phone-possession eligibility without universal sign-in gating',
+    'Phone sign-in creates a separate identity; a profile or Paystack number does not verify an existing Google account.',
+  ]),
+  ...[
+    'listMyStandby',
+    'joinStandby',
+    'withdrawStandby',
+    'acceptStandbyOffer',
+    'listOpsStandby',
+    'offerStandby',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Approved new-rider standby pool with verified phone and fresh customer-authorized checkout',
+    'Paid-member commute-request waitlisting is a different workflow and cannot enroll new riders.',
   ]),
   ...[
     'getPersonalPause',
@@ -327,6 +383,12 @@ export const operationScope = [
     'post-cutover',
     'Figma 16A: operations needs delivery status for rider communications',
     'Worker metrics expose totals, not which queued email or push failed and needs investigation.',
+  ],
+  [
+    'listOpsAccountErasures',
+    'post-cutover',
+    'account-erasure-data-map.md: operators need local deletion and tracked cleanup status',
+    'The database view exists but is not available to Ops without direct database access. This read deliberately does not claim provider or backup erasure.',
   ],
   [
     'listOpsAuditEvents',

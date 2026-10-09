@@ -1,6 +1,6 @@
 name: Deploy
 
-# Staging only. The server applies pending replacement migrations on startup.
+# Staging only. A protected installer applies migrations before API deployment.
 # The one-time disposable-data reset is never part of a routine deployment.
 on:
   workflow_run:
@@ -19,7 +19,16 @@ concurrency:
 jobs:
   staging:
     name: Deploy staging (Render)
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_ENABLED == 'true'))
+    # workflow_run also fires for PR CI. A fork branch named main must never
+    # get an owner credential by passing CI; accept same-repository pushes only.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        vars.DEPLOY_ENABLED == 'true'))
     runs-on: ubuntu-latest
     # Each Render deployment can take up to 20 minutes; API and Ops run in sequence.
     timeout-minutes: 45
@@ -27,9 +36,27 @@ jobs:
       name: staging
       url: ${{ vars.STAGING_URL }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install migrations with the protected owner connection
+        working-directory: services/api-next
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          STAGING_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_RUNTIME_DATABASE_URL }}
+          STAGING_MAINTENANCE_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
+          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+        run: node --import tsx scripts/migrate-staging.ts
+      - name: Require applied Ops CSP
+        run: bash .github/scripts/check-ops-csp.sh
       - name: Deploy and wait until live
         run: .github/scripts/render-deploy.sh
         env:
@@ -56,3 +83,4 @@ jobs:
           curl -fsS --retry 5 --retry-delay 5 https://trotxi-ops-staging.onrender.com/ | grep -q 'Trotxi Operations'
           curl -fsS --retry 5 --retry-delay 5 https://trotxi-ops-staging.onrender.com/privacy | grep -q 'Your information. Clear boundaries.'
           curl -fsS --retry 5 --retry-delay 5 https://trotxi-ops-staging.onrender.com/delete-account | grep -q 'mailto:privacy@trotxi.com'
+          bash .github/scripts/check-ops-csp.sh

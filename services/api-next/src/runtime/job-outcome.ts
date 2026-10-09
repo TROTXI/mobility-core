@@ -21,7 +21,22 @@ const schemas = {
   'no-shows': envelope(batch),
   'route-learning': envelope(batch),
   'gps-retention': envelope(batch),
-  erasures: z.object({ considered: count, completed: count, failed: count }).strict(),
+  'auto-renewals': envelope(batch),
+  'incident-retention': z
+    .object({
+      considered: count,
+      redacted: count,
+      held: count,
+      remainingEligible: count,
+      oldestEligibleAt: z.string().nullable(),
+    })
+    .strict(),
+  'payment-evidence-retention': z
+    .object({ redacted: count, batches: count, backlogRemaining: z.boolean() })
+    .strict(),
+  erasures: z
+    .object({ considered: count, completed: count, failed: count, phoneChallengesPurged: count })
+    .strict(),
   'driver-secrets': z.object({ cleared: count }).strict(),
   admission: z.object({ cleared: count }).strict(),
   push: z
@@ -54,7 +69,11 @@ export function jobFailed(result: JobResult): boolean {
     failures(parsed.data) ||
     ((result.job === 'emails' || result.job === 'push') &&
       ((parsed.data as any).retried > 0 || (parsed.data as any).unknown > 0)) ||
-    (result.retention?.overdueSeconds ?? 0) > 3600
+    (result.retention?.overdueSeconds ?? 0) > 3600 ||
+    (result.job === 'payment-evidence-retention' &&
+      (parsed.data as unknown as { backlogRemaining: boolean }).backlogRemaining) ||
+    (result.job === 'incident-retention' &&
+      (parsed.data as unknown as { remainingEligible: number }).remainingEligible > 0)
   );
 }
 

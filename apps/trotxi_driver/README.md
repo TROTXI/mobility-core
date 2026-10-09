@@ -1,17 +1,23 @@
-# trotxi_driver
+# Trotxi driver app
 
-A new Flutter project.
+Flutter driver app using `trotxi_client`, generated `api_client` and
+`trotxi_map`. See [build setup](../README.md).
 
-## Getting Started
+Ops creates drivers and issues a code plus temporary six-digit PIN through
+SMS/email or private handoff. The app requires a private PIN before normal work.
+Recovery is Ops-managed; it is not commuter phone-OTP sign-in.
 
-This project is a starting point for a Flutter application.
+Implemented: assigned trips, readiness/location checks, start/arrival/complete,
+QR/code/photo boarding, manifests, summaries, incidents, work requests,
+profile photo/PIN controls and privacy/support guidance.
 
-A few resources to get you started if this is your first Flutter project:
+One active-trip GPS publisher continues in supported background/locked states.
+It uses a bounded secure-storage queue with original fix IDs/timestamps and
+matching server receipts. It does not promise collection after force-quit.
+The map shows local device GPS separately from server-confirmed delivery.
+Failed completion flushes surface unsent data rather than silently discarding it.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+See [driver operations](../../docs/features/driver-operations.md),
+[reliability](../../docs/driver-reliability.md) and
+[onboarding](../../docs/driver-onboarding.md).
+Physical-device GPS/push and store-signing checks remain release gates.

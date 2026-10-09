@@ -148,8 +148,9 @@ class _SearchPanelState extends State<_SearchPanel> {
     );
     if (!mounted) return;
     setState(
-      () => _reservations = [...rows]
-        ..sort((a, b) => b.travelDate.compareTo(a.travelDate)),
+      () =>
+          _reservations = [...rows]
+            ..sort((a, b) => b.travelDate.compareTo(a.travelDate)),
     );
   });
 
@@ -157,8 +158,9 @@ class _SearchPanelState extends State<_SearchPanel> {
     final rows = await widget.client.routes();
     if (!mounted) return;
     setState(
-      () => _routes = [...rows.where((r) => !r.archived)]
-        ..sort((a, b) => a.name.compareTo(b.name)),
+      () =>
+          _routes = [...rows.where((r) => !r.archived)]
+            ..sort((a, b) => a.name.compareTo(b.name)),
     );
   });
 
@@ -166,8 +168,9 @@ class _SearchPanelState extends State<_SearchPanel> {
     final rows = await widget.client.purchases();
     if (!mounted) return;
     setState(
-      () => _purchases = [...rows]
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+      () =>
+          _purchases = [...rows]
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
     );
   });
 
@@ -176,9 +179,8 @@ class _SearchPanelState extends State<_SearchPanel> {
 
   List<SearchEntry> _entries() {
     final navigator = widget.navigatorContext;
-    void push(Widget Function(BuildContext) builder) => Navigator.of(
-      navigator,
-    ).push(MaterialPageRoute<void>(builder: builder));
+    void push(Widget Function(BuildContext) builder) =>
+        Navigator.of(navigator).push(MaterialPageRoute<void>(builder: builder));
     SearchEntry tab(
       CommuterDestination d,
       String title,
@@ -229,7 +231,8 @@ class _SearchPanelState extends State<_SearchPanel> {
         title: 'Commute preferences',
         subtitle: 'Your current commute and route change requests',
         icon: Icons.alt_route_rounded,
-        keywords: 'route change request new route pickup destination operations',
+        keywords:
+            'route change request new route pickup destination operations',
         onSelected: () =>
             push((_) => CommutePreferencesPage(client: widget.client)),
       ),
@@ -241,17 +244,16 @@ class _SearchPanelState extends State<_SearchPanel> {
         keywords:
             'route routes schedule timetable departures departure times '
             'service date bus live track tracking',
-        onSelected: () => pushScaffold(
-          'Departures',
-          RoutesTab(client: widget.client),
-        ),
+        onSelected: () =>
+            pushScaffold('Departures', RoutesTab(client: widget.client)),
       ),
       SearchEntry(
         group: 'Go to',
         title: 'Notifications',
         icon: Icons.notifications_none_rounded,
         keywords: 'alerts push reminders',
-        onSelected: () => push((_) => const ProfileNotificationsPage()),
+        onSelected: () =>
+            push((_) => ProfileNotificationsPage(client: widget.client)),
       ),
       SearchEntry(
         group: 'Go to',
@@ -331,10 +333,7 @@ class _SearchPanelState extends State<_SearchPanel> {
         : searchEntries(all, query);
     // Keep the whole panel above the keyboard.
     final listMaxHeight =
-        (media.size.height -
-                media.viewInsets.bottom -
-                media.padding.top -
-                140)
+        (media.size.height - media.viewInsets.bottom - media.padding.top - 140)
             .clamp(120.0, 420.0);
 
     return SafeArea(
@@ -358,10 +357,7 @@ class _SearchPanelState extends State<_SearchPanel> {
                     padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.search_rounded,
-                          color: colors.textSecondary,
-                        ),
+                        Icon(Icons.search_rounded, color: colors.textSecondary),
                         const SizedBox(width: 12),
                         Expanded(
                           child: TextField(

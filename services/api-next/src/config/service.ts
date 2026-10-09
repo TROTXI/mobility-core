@@ -1,3 +1,5 @@
+import { beginTransaction } from '../db/transaction.js';
+import { requireSuperadmin, teamLock } from '../auth/ops-team.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
@@ -92,6 +94,8 @@ export function inRollout(userId: string, key: string, percentage: number): bool
 
 export class ConfigService {
   private readonly floors = new Map<string, { build: number; until: number }>();
+  private readonly floorReads = new Map<string, Promise<number>>();
+  private floorRevision = 0;
   private readonly cursors;
   constructor(private readonly options: ConfigOptions) {
     this.cursors = cursorCodec(options.cursorSecret);
@@ -116,10 +120,7 @@ export class ConfigService {
   private async tx<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL TIME ZONE 'UTC'");
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(c);
       const result = await work(c);
       await c.query('COMMIT');
       return result;
@@ -151,6 +152,24 @@ export class ConfigService {
     const cached = this.floors.get(slot);
     const now = this.now().getTime();
     if (cached && cached.until > now) return cached.build;
+    const pending = this.floorReads.get(slot);
+    if (pending) return pending;
+    const revision = this.floorRevision;
+    const read = this.readFloor(app, platform).then((build) => {
+      // A read started before an Ops update must not refill the invalidated cache.
+      if (revision === this.floorRevision)
+        this.floors.set(slot, { build, until: now + (this.options.floorCacheMs ?? 0) });
+      return build;
+    });
+    if ((this.options.floorCacheMs ?? 0) > 0) this.floorReads.set(slot, read);
+    try {
+      return await read;
+    } finally {
+      if (this.floorReads.get(slot) === read) this.floorReads.delete(slot);
+    }
+  }
+
+  private async readFloor(app: 'commuter' | 'driver', platform: 'ios' | 'android') {
     // One statement, no transaction: this runs before every admitted request,
     // and the value it reads changes about as often as an app ships. The
     // window is short enough that raising a floor takes effect immediately
@@ -159,9 +178,7 @@ export class ConfigService {
       'SELECT min_supported_build FROM app.minimum_versions WHERE app=$1 AND platform=$2',
       [app, platform],
     );
-    const build = row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
-    this.floors.set(slot, { build, until: now + (this.options.floorCacheMs ?? 0) });
-    return build;
+    return row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
   }
 
   /**
@@ -323,11 +340,13 @@ export class ConfigService {
     key: string,
     ifMatch?: string,
   ): Promise<Outcome> {
-    return this.tx(async (c) => {
+    const result = await this.tx(async (c) => {
       // Whether this caller may configure anything is decided before the shape
       // of what they sent: a rider fumbling a header should be told they are
       // not an administrator, not which header they got wrong.
+      if (operation === 'changeRole') await teamLock(c);
       await this.authorize(c, actor);
+      if (operation === 'changeRole') await requireSuperadmin(c, actor);
       if (typeof key !== 'string' || !key.length || key.length > 128)
         fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
       if (!ifMatch)
@@ -380,7 +399,7 @@ export class ConfigService {
           ? await this.writeFlag(c, target, input, ifMatch)
           : operation === 'setMinimumVersion'
             ? await this.writeVersion(c, params, input, ifMatch)
-            : await this.writeRole(c, target, input, ifMatch, actor.userId);
+            : await this.writeRole(c, target, input, ifMatch);
       const outcome = await this.render(c, operation, target);
       const receipt = (
         await c.query(
@@ -403,6 +422,12 @@ export class ConfigService {
       );
       return outcome;
     });
+    if (operation === 'setMinimumVersion') {
+      this.floorRevision++;
+      this.floors.clear();
+      this.floorReads.clear();
+    }
+    return result;
   }
 
   private async render(
@@ -552,13 +577,7 @@ export class ConfigService {
     };
   }
 
-  private async writeRole(
-    c: PoolClient,
-    id: string,
-    input: Body,
-    ifMatch: string,
-    actorId: string,
-  ) {
+  private async writeRole(c: PoolClient, id: string, input: Body, ifMatch: string) {
     const role = String(input.role);
     const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
     if (!roles.includes(role)) fail(400, 'invalid_request', 'Supply a supported role.');
@@ -568,6 +587,10 @@ export class ConfigService {
       await c.query('SELECT * FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE', [id])
     ).rows[0];
     if (!user) fail(404, 'not_found', 'Resource not found.');
+    if (role === 'admin' && user.role !== 'admin')
+      fail(409, 'invitation_required', 'Invite this operator from Team & access.');
+    if ((user.role === 'admin' && role !== 'admin') || user.ops_invite_pending)
+      fail(409, 'team_access_required', 'Manage this operator from Team & access.');
     // The one wildcard the service accepts, and only because nothing in the
     // approved contract lets ops read an account to learn its token first.
     if (ifMatch !== '*') this.precondition(ifMatch, userToken(user));
@@ -585,34 +608,6 @@ export class ConfigService {
       ).rowCount
     )
       fail(409, 'driver_record_required', 'Create the driver record before granting this role.');
-    if (user.role === 'admin' && role !== 'admin') {
-      // Removing your own access is how an operations console ends up with
-      // nobody in it. Another administrator does it, deliberately.
-      if (id === actorId)
-        fail(
-          409,
-          'cannot_demote_self',
-          'You cannot remove your own administrator role. Ask another administrator.',
-        );
-      // Demotions take turns, so two administrators demoting each other at
-      // once cannot both pass the count below and leave nobody. Today the
-      // authorization locks already make that pair deadlock and one is
-      // cancelled; this keeps the rule true if that locking ever changes.
-      // With self-demotion refused, the caller always remains otherwise.
-      await c.query("SELECT pg_advisory_xact_lock(hashtextextended('trotxi:admin-roster',0))");
-      const remaining = (
-        await c.query(
-          "SELECT count(*)::int AS n FROM app.users WHERE role='admin' AND deleted_at IS NULL AND id<>$1",
-          [id],
-        )
-      ).rows[0].n as number;
-      if (remaining === 0)
-        fail(
-          409,
-          'last_administrator',
-          'This is the last administrator. Make someone else an administrator first.',
-        );
-    }
     const before = { id: user.id, role: user.role };
     if (user.role !== role) await c.query('UPDATE app.users SET role=$2 WHERE id=$1', [id, role]);
     return { reason, before, after: { id: user.id, role } };

@@ -55,7 +55,7 @@ test('EMAIL-01 fulfilment commits one encrypted activation; replay cannot queue 
   assert.equal((await f.email.drain()).considered, 0);
   assert.equal(f.calls.length, 1);
   assert.match(f.calls[0]!.message.subject, /STAGING TEST/);
-  assert.match(f.calls[0]!.message.text, /Rides added: 44/);
+  assert.match(f.calls[0]!.message.text, /Rides included: 44/);
   assert.match(f.calls[0]!.message.text, /GHS 264.00/);
   assert.match(f.calls[0]!.message.text, /Renewal is manual/);
   const row = (await f.rows())[0];
@@ -206,6 +206,67 @@ test('EMAIL-07 expiry reminder is deduplicated and cancelled if coverage extends
   const result = await f.email.drain();
   assert.equal(result.cancelled, 1);
   assert.equal(f.calls.length, 1);
+});
+/**
+ * A paid period that starts when this one ends: the rider has already renewed.
+ * Written with the purchase and period guards off, because the offer flow
+ * that creates one is exercised in pricing.pg.test.ts, not here.
+ */
+async function prepaidRenewal(f: Awaited<ReturnType<typeof fixture>>, purchaseId: string) {
+  await f.owner.query('ALTER TABLE app.purchases DISABLE TRIGGER USER');
+  await f.owner.query('ALTER TABLE app.billing_periods DISABLE TRIGGER USER');
+  try {
+    const next = (
+      await f.owner.query(
+        `INSERT INTO app.purchases SELECT (jsonb_populate_record(NULL::app.purchases,
+           to_jsonb(p) || jsonb_build_object('id',gen_random_uuid(),'checkout_key_hash',repeat('b',64))
+         )).* FROM app.purchases p WHERE id=$1 RETURNING id`,
+        [purchaseId],
+      )
+    ).rows[0].id;
+    await f.owner.query(
+      `INSERT INTO app.billing_periods(purchase_id,membership_id,user_id,starts_at,original_ends_at,effective_ends_at)
+       SELECT $2,membership_id,user_id,effective_ends_at,effective_ends_at+interval '30 days',
+         effective_ends_at+interval '30 days' FROM app.billing_periods WHERE purchase_id=$1`,
+      [purchaseId, next],
+    );
+  } finally {
+    await f.owner.query('ALTER TABLE app.billing_periods ENABLE TRIGGER USER');
+    await f.owner.query('ALTER TABLE app.purchases ENABLE TRIGGER USER');
+  }
+}
+async function endingSoon(f: Awaited<ReturnType<typeof fixture>>) {
+  const paid = new Date();
+  paid.setUTCDate(1);
+  paid.setUTCMonth(paid.getUTCMonth() - 1);
+  const p = await f.buy(paid);
+  await f.email.drain();
+  await f.owner.query('UPDATE app.billing_periods SET effective_ends_at=$2 WHERE purchase_id=$1', [
+    p.id,
+    new Date(Date.now() + 2 * 86400000),
+  ]);
+  return p;
+}
+test('EMAIL-12 a rider who already paid the next period gets no renewal reminder', async (t) => {
+  const f = await fixture(t);
+  const p = await endingSoon(f);
+  await prepaidRenewal(f, p.id);
+  await f.email.prepareReminders();
+  assert.equal((await f.rows()).filter((r) => r.kind === 'subscription_expiring').length, 0);
+});
+test('EMAIL-13 a reminder queued before the renewal was paid is cancelled, and dates read as Ghana time', async (t) => {
+  const f = await fixture(t);
+  const p = await endingSoon(f);
+  await f.email.prepareReminders();
+  const queued = (await f.rows()).filter((r) => r.kind === 'subscription_expiring');
+  assert.equal(queued.length, 1);
+  await prepaidRenewal(f, p.id);
+  assert.equal((await f.email.drain()).cancelled, 1);
+  assert.equal(f.calls.length, 1, 'only the activation email was sent');
+  assert.equal((await f.rows()).find((r) => r.id === queued[0].id).failure_code, 'stale_reminder');
+  const activation = f.calls[0]!.message.text;
+  assert.match(activation, /Coverage ends: \w{3} \d{1,2} \w{3} \d{4}, \d{2}:\d{2} GMT/);
+  assert.doesNotMatch(activation, /\d{4}-\d{2}-\d{2}T/);
 });
 test('EMAIL-08 permanent rejection is terminal and blank addresses never enqueue', async (t) => {
   const f = await fixture(t, {

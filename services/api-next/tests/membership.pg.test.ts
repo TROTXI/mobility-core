@@ -364,7 +364,10 @@ test('COM-16: real 012-to-013 upgrade preserves purchase/ledger and materializes
   assert.deepEqual(await migrate(f.owner, files.slice(0, 13)), ['013_commute_reservations.sql']);
   await migrate(f.owner, files);
   await grantRuntime(f.owner, f.role);
-  assert.deepEqual((await f.owner.query('SELECT * FROM app.purchases')).rows, before);
+  assert.deepEqual(
+    (await f.owner.query('SELECT * FROM app.purchases')).rows,
+    before.map((row) => ({ ...row, offer_id: null, offer_terms: null, renewal_of: null })),
+  );
   // 015 adds nullable reservation attribution; every pre-existing ledger value
   // remains identical and allocations must not acquire a reservation source.
   assert.deepEqual(
@@ -417,6 +420,18 @@ test('RES-04/05: dispatch persists one prompt; bounded defaults seat capacity an
   assert.equal(
     (await f.owner.query('SELECT count(*)::int n FROM app.reservation_prompts')).rows[0].n,
     2,
+  );
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT kind,count(*)::int AS n FROM app.rider_notifications GROUP BY kind ORDER BY kind',
+      )
+    ).rows,
+    [
+      { kind: 'seat_ask', n: 2 },
+      { kind: 'seat_held', n: 1 },
+      { kind: 'seat_unseated', n: 1 },
+    ],
   );
   assert.equal(
     data(await f.membership.maintenance(f.admin, 'runReservationDefaults', input)).considered,
@@ -1011,7 +1026,58 @@ test('RES-06: unsettled reservation blocks close; real transport cancellation re
     'operator_cancelled',
   );
   assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.ride_entries')).rows[0].n, 1);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        "SELECT kind,count(*)::int AS n FROM app.rider_notifications WHERE user_id=$1 AND kind='trip_cancelled' GROUP BY kind",
+        [f.actor.userId],
+      )
+    ).rows,
+    [{ kind: 'trip_cancelled', n: 1 }],
+  );
   assert.equal(await f.financial.closePeriod(period.id, renewAt), true);
+});
+test('rider trip reassignment creates one notification for a committed command', async (t) => {
+  const f = await fixture(t);
+  await f.buy();
+  const trip = await f.trip();
+  await f.reserve();
+  const driver = (
+    await f.owner.query("INSERT INTO app.drivers(name) VALUES ('Replacement driver') RETURNING id")
+  ).rows[0].id;
+  const vehicle = (
+    await f.owner.query(
+      "INSERT INTO app.vehicles(plate,capacity) VALUES ('NOTIFY-1',2) RETURNING id",
+    )
+  ).rows[0].id;
+  const { TransportService, tripEditToken } = await import('../src/transport/service.js');
+  const transport = new TransportService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: Buffer.alloc(32, 7),
+    coordinateReservations: f.membership.coordinateReservations,
+  });
+  const key = randomUUID();
+  const assign = () =>
+    transport.command(
+      f.admin,
+      'assignTrip',
+      trip.id,
+      { driverId: driver, vehicleId: vehicle },
+      key,
+      tripEditToken(trip),
+    );
+  await assign();
+  await assign();
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        "SELECT kind,count(*)::int AS n FROM app.rider_notifications WHERE user_id=$1 AND kind='trip_changed' GROUP BY kind",
+        [f.actor.userId],
+      )
+    ).rows,
+    [{ kind: 'trip_changed', n: 1 }],
+  );
 });
 test('COM-10: independent account restriction blocks booking until explicitly released; nested ownership checked', async (t) => {
   const f = await fixture(t);

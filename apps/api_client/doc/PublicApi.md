@@ -26,6 +26,7 @@ Method | HTTP request | Description
 [**signInApple**](PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [**signInDriver**](PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
 [**signInGoogle**](PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
+[**signInOpsGoogle**](PublicApi.md#signinopsgoogle) | **POST** /v1/auth/ops/google | sign In Ops Google
 [**verifyPhoneSignIn**](PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
 
 
@@ -770,6 +771,53 @@ Name | Type | Description  | Notes
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
  **googleSignIn** | [**GoogleSignIn**](GoogleSignIn.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**TokensResponse**](TokensResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **signInOpsGoogle**
+> TokensResponse signInOpsGoogle(xTrotxiClient, xTrotxiBuild, opsGoogleSignIn, xTrotxiPlatform)
+
+sign In Ops Google
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getPublicApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final OpsGoogleSignIn opsGoogleSignIn = ; // OpsGoogleSignIn |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.signInOpsGoogle(xTrotxiClient, xTrotxiBuild, opsGoogleSignIn, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PublicApi->signInOpsGoogle: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **opsGoogleSignIn** | [**OpsGoogleSignIn**](OpsGoogleSignIn.md)|  |
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type

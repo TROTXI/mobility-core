@@ -16,6 +16,8 @@ part 'ops_overview_trips_inner.g.dart';
 /// * [tripId]
 /// * [scheduledAt]
 /// * [status]
+/// * [patternId]
+/// * [patternVersionId]
 /// * [routeName]
 /// * [driverId]
 /// * [driverName]
@@ -43,6 +45,12 @@ abstract class OpsOverviewTripsInner
   @BuiltValueField(wireName: r'status')
   OpsOverviewTripsInnerStatusEnum get status;
   // enum statusEnum {  scheduled,  active,  completed,  cancelled,  };
+
+  @BuiltValueField(wireName: r'patternId')
+  String get patternId;
+
+  @BuiltValueField(wireName: r'patternVersionId')
+  String get patternVersionId;
 
   @BuiltValueField(wireName: r'routeName')
   String? get routeName;
@@ -133,6 +141,16 @@ class _$OpsOverviewTripsInnerSerializer
     yield serializers.serialize(
       object.status,
       specifiedType: const FullType(OpsOverviewTripsInnerStatusEnum),
+    );
+    yield r'patternId';
+    yield serializers.serialize(
+      object.patternId,
+      specifiedType: const FullType(String),
+    );
+    yield r'patternVersionId';
+    yield serializers.serialize(
+      object.patternVersionId,
+      specifiedType: const FullType(String),
     );
     yield r'routeName';
     yield object.routeName == null
@@ -274,6 +292,20 @@ class _$OpsOverviewTripsInnerSerializer
             specifiedType: const FullType(OpsOverviewTripsInnerStatusEnum),
           ) as OpsOverviewTripsInnerStatusEnum;
           result.status = valueDes;
+          break;
+        case r'patternId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.patternId = valueDes;
+          break;
+        case r'patternVersionId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.patternVersionId = valueDes;
           break;
         case r'routeName':
           final valueDes = serializers.deserialize(

@@ -1,9 +1,11 @@
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { Protocol } from 'pmtiles';
 import { useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { mapStyleFromBootstrap } from '../api/map-config';
+import { apiBaseUrl } from '../api/session';
 
 type Marker = {
   id: string;
@@ -16,7 +18,10 @@ type Point = { latitude: number; longitude: number };
 
 const sourceId = 'trotxi-live-vehicles';
 const routeSourceId = 'trotxi-route-draft';
+const emptyLine: Point[] = [];
 let protocolReady = false;
+let workerReady = false;
+const overlayOnlyStyle = { version: 8 as const, sources: {}, layers: [] };
 
 function asGeoJson(markers: Marker[]) {
   return {
@@ -61,7 +66,7 @@ function frameLine(instance: MapLibreMap, points: Point[]) {
 
 export function LiveMap({
   markers,
-  line = [],
+  line = emptyLine,
   onMapClick,
 }: {
   markers: Marker[];
@@ -77,6 +82,8 @@ export function LiveMap({
   const currentLine = useRef(line);
   currentLine.current = line;
   const [bootstrap, setBootstrap] = useState<unknown>(null);
+  const [configReady, setConfigReady] = useState(false);
+  const [baseMapFailed, setBaseMapFailed] = useState(false);
   const [appearance, setAppearance] = useState<'dark' | 'light'>(() =>
     document.querySelector('[data-theme]')?.getAttribute('data-theme') === 'dark'
       ? 'dark'
@@ -97,10 +104,7 @@ export function LiveMap({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(
-      `${String(import.meta.env.VITE_API_BASE_URL ?? 'https://trotxi-api-staging.onrender.com').replace(/\/$/, '')}/flags`,
-      { signal: controller.signal },
-    )
+    void fetch(`${apiBaseUrl}/flags`, { signal: controller.signal })
       .then((response) =>
         response.ok ? response.json() : Promise.reject(new Error('map_config_unavailable')),
       )
@@ -111,28 +115,51 @@ export function LiveMap({
         setBootstrap(body);
       })
       .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) setFailed(true);
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setBaseMapFailed(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setConfigReady(true);
       });
     return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    if (!container.current || !styleUrl) return;
+    if (!container.current || !configReady) return;
+    if (styleUrl) setBaseMapFailed(false);
+    if (!workerReady) {
+      // Bundle MapLibre's ESM worker before the first map creates one. Vite's
+      // hashed production chunks cannot resolve its default relative URL.
+      maplibregl.setWorkerUrl(workerUrl);
+      workerReady = true;
+    }
     if (!protocolReady) {
       const protocol = new Protocol();
       maplibregl.addProtocol('pmtiles', protocol.tile);
       protocolReady = true;
     }
-    const instance = new maplibregl.Map({
-      container: container.current,
-      style: styleUrl,
-      center: [-0.187, 5.6037],
-      zoom: 11,
-      attributionControl: false,
-    });
+    let instance: MapLibreMap;
+    try {
+      instance = new maplibregl.Map({
+        container: container.current,
+        style: styleUrl ?? overlayOnlyStyle,
+        center: [-0.187, 5.6037],
+        zoom: 11,
+        attributionControl: false,
+      });
+    } catch {
+      setFailed(true);
+      return;
+    }
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     instance.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-    instance.on('load', () => {
+    let loaded = false;
+    let recovered = !styleUrl;
+    // `load` is a map-lifetime event. A failed remote style may be replaced
+    // before it fires; `style.load` also fires for the overlay-only recovery
+    // style, so the vehicle and route sources are installed in either case.
+    instance.on('style.load', () => {
+      if (loaded) return;
+      loaded = true;
       instance.addSource(routeSourceId, {
         type: 'geojson',
         data: asLineGeoJson(currentLine.current),
@@ -187,15 +214,27 @@ export function LiveMap({
         if (instance.queryRenderedFeatures(event.point, { layers: [sourceId] }).length) return;
         clickHandler.current?.({ latitude: event.lngLat.lat, longitude: event.lngLat.lng });
       });
-      frameLine(instance, currentLine.current);
+      frameLine(instance, [...currentLine.current, ...currentMarkers.current]);
     });
-    instance.on('error', () => setFailed(true));
+    instance.on('error', () => {
+      // Tile failures must not remove the vehicle and route overlays. If the
+      // style itself fails before loading, recover with an overlay-only map.
+      setBaseMapFailed(true);
+      if (!loaded && !recovered) {
+        recovered = true;
+        try {
+          instance.setStyle(overlayOnlyStyle);
+        } catch {
+          setFailed(true);
+        }
+      }
+    });
     map.current = instance;
     return () => {
       instance.remove();
       map.current = null;
     };
-  }, [styleUrl]);
+  }, [configReady, styleUrl]);
 
   useEffect(() => {
     const source = map.current?.getSource(sourceId) as GeoJSONSource | undefined;
@@ -205,16 +244,23 @@ export function LiveMap({
   useEffect(() => {
     const source = map.current?.getSource(routeSourceId) as GeoJSONSource | undefined;
     source?.setData(asLineGeoJson(line));
-    if (source && map.current) frameLine(map.current, line);
+    if (source && map.current) frameLine(map.current, [...line, ...currentMarkers.current]);
   }, [line]);
 
-  if (!styleUrl || failed) return <MapFallback markers={markers} failed={failed} />;
+  if (!configReady || failed) return <MapFallback markers={markers} failed={failed} />;
   return (
-    <div
-      className="live-map"
-      ref={container}
-      aria-label={onMapClick ? 'Route drawing map' : 'Live vehicle map'}
-    />
+    <div className="live-map-shell">
+      <div
+        className="live-map"
+        ref={container}
+        aria-label={onMapClick ? 'Route drawing map' : 'Live vehicle map'}
+      />
+      {baseMapFailed && (
+        <div className="map-meta" role="status">
+          Basemap unavailable. Vehicle positions and route are shown when available.
+        </div>
+      )}
+    </div>
   );
 }
 

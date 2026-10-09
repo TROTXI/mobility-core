@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **tripId** | **String** |  | 
 **scheduledAt** | [**DateTime**](DateTime.md) |  | 
 **status** | **String** |  | 
+**patternId** | **String** |  | 
+**patternVersionId** | **String** |  | 
 **routeName** | **String** |  | 
 **driverId** | **String** |  | 
 **driverName** | **String** |  | 

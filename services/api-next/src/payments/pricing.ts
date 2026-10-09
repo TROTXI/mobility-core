@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
@@ -5,6 +6,7 @@ import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
 import type { PricedTerms } from './terms.js';
+import type { PurchaseLeg } from './foundation.js';
 import { appliedCredit, MIN_CHARGE_PESEWAS, priceTerms } from './terms.js';
 
 export const pricingOperations = [
@@ -59,10 +61,7 @@ export class Pricing {
   private async tx<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL TIME ZONE 'UTC'");
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(c);
       const result = await work(c);
       await c.query('COMMIT');
       return result;
@@ -190,7 +189,8 @@ export class Pricing {
     const row = (
       await c.query(
         `SELECT amount_pesewas FROM app.route_fares
-        WHERE route_id=$1 AND effective_from<=$2 AND (effective_to IS NULL OR $2<effective_to)
+        WHERE route_id=$1 AND pattern_version_id IS NULL
+          AND effective_from<=$2 AND (effective_to IS NULL OR $2<effective_to)
         FOR SHARE`,
         [routeId, at],
       )
@@ -200,6 +200,36 @@ export class Pricing {
     return row.amount_pesewas as number;
   }
 
+  /** An exact journey, never a corridor fallback or a sum of intermediate fares. */
+  quoteJourney = async (
+    c: PoolClient,
+    routeId: string,
+    leg: PurchaseLeg,
+    at: Date,
+  ): Promise<{ fareId: string; amountPesewas: number }> => {
+    const row = (
+      await c.query(
+        `SELECT f.id,f.amount_pesewas FROM app.route_fares f
+         JOIN app.route_pattern_versions v ON v.id=f.pattern_version_id
+         JOIN app.route_patterns p ON p.id=v.pattern_id
+         WHERE f.route_id=$1 AND f.pattern_version_id=$2
+           AND f.pickup_occurrence_id=$3 AND f.dropoff_occurrence_id=$4
+           AND p.direction=$5 AND f.effective_from<=$6
+           AND (f.effective_to IS NULL OR $6<f.effective_to) FOR SHARE OF f`,
+        [
+          id(routeId),
+          id(leg.patternVersionId),
+          id(leg.pickupOccurrenceId),
+          id(leg.dropoffOccurrenceId),
+          leg.direction,
+          at,
+        ],
+      )
+    ).rows[0];
+    if (!row) fail(409, 'journey_pricing_unavailable', 'Ops must publish a fare for these stops.');
+    return { fareId: row.id, amountPesewas: row.amount_pesewas };
+  };
+
   private fareView(r: Row): Body {
     return {
       id: r.id,
@@ -207,6 +237,16 @@ export class Pricing {
       amount: money(r.amount_pesewas),
       effectiveFrom: iso(r.effective_from),
       effectiveTo: r.effective_to ? iso(r.effective_to) : null,
+      ...(r.pattern_version_id
+        ? {
+            patternVersionId: r.pattern_version_id,
+            pickupOccurrenceId: r.pickup_occurrence_id,
+            dropoffOccurrenceId: r.dropoff_occurrence_id,
+          }
+        : {}),
+      ...(r.pickup_name
+        ? { journey: { pickup: r.pickup_name, dropoff: r.dropoff_name, direction: r.direction } }
+        : {}),
       ...(r.note === null ? {} : { note: r.note }),
     };
   }
@@ -255,11 +295,16 @@ export class Pricing {
       const cursor = query.cursor ? this.cursors.decode(query.cursor, context, this.now()) : null;
       const rows = (
         await c.query(
-          `SELECT *,to_char(effective_from AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
-          FROM app.route_fares
-          WHERE route_id=$1
-            AND ($2::timestamptz IS NULL OR (effective_from,id)<($2::timestamptz,$3::uuid))
-          ORDER BY effective_from DESC,id DESC LIMIT $4`,
+          `SELECT f.*,pa.name AS pickup_name,pb.name AS dropoff_name,p.direction,
+          to_char(f.effective_from AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
+          FROM app.route_fares f
+          LEFT JOIN app.route_pattern_stops pa ON pa.id=f.pickup_occurrence_id
+          LEFT JOIN app.route_pattern_stops pb ON pb.id=f.dropoff_occurrence_id
+          LEFT JOIN app.route_pattern_versions v ON v.id=f.pattern_version_id
+          LEFT JOIN app.route_patterns p ON p.id=v.pattern_id
+          WHERE f.route_id=$1
+            AND ($2::timestamptz IS NULL OR (f.effective_from,f.id)<($2::timestamptz,$3::uuid))
+          ORDER BY f.effective_from DESC,f.id DESC LIMIT $4`,
           [routeId, cursor?.time ?? null, cursor?.id ?? null, limit + 1],
         )
       ).rows;
@@ -367,8 +412,34 @@ export class Pricing {
    * priced at.
    */
   private async createFare(c: PoolClient, actor: Actor, routeId: string, input: Body) {
-    if (!(await c.query('SELECT 1 FROM app.routes WHERE id=$1 FOR SHARE', [routeId])).rowCount)
+    // Serialize changes on this route, including simultaneous first prices for
+    // a pair, before reading its predecessor. Pairs still have separate windows.
+    if (!(await c.query('SELECT 1 FROM app.routes WHERE id=$1 FOR UPDATE', [routeId])).rowCount)
       fail(404, 'not_found', 'Resource not found.');
+    const pairFields = [
+      input.patternVersionId,
+      input.pickupOccurrenceId,
+      input.dropoffOccurrenceId,
+    ];
+    const pair = pairFields.some((value) => value !== undefined);
+    if (pair && pairFields.some((value) => value === undefined))
+      fail(400, 'invalid_fare_stop_pair', 'Select a pattern version, pickup and drop-off.');
+    const [version, pickup, dropoff] = pair ? pairFields.map(id) : [null, null, null];
+    if (
+      pair &&
+      !(
+        await c.query(
+          `SELECT 1 FROM app.route_pattern_versions v JOIN app.route_patterns p ON p.id=v.pattern_id
+       JOIN app.route_pattern_stops a ON a.pattern_version_id=v.id AND a.id=$3
+       JOIN app.route_pattern_stops b ON b.pattern_version_id=v.id AND b.id=$4
+       JOIN app.routes r ON r.id=p.route_id
+       WHERE v.id=$2 AND p.route_id=$1 AND a.ordinal<b.ordinal
+         AND v.state='published' AND r.archived_at IS NULL FOR SHARE OF v,p`,
+          [routeId, version, pickup, dropoff],
+        )
+      ).rowCount
+    )
+      fail(409, 'invalid_fare_stop_pair', 'Choose ordered stops on a published route version.');
     const amount = minor(input.amount, 'a fare');
     if (amount < 1) fail(400, 'invalid_request', 'Supply a fare above zero.');
     const from = new Date(String(input.effectiveFrom));
@@ -376,8 +447,11 @@ export class Pricing {
       fail(400, 'invalid_request', 'Supply a real effective date.');
     const open = (
       await c.query(
-        'SELECT * FROM app.route_fares WHERE route_id=$1 AND effective_to IS NULL FOR UPDATE',
-        [routeId],
+        `SELECT * FROM app.route_fares WHERE route_id=$1 AND effective_to IS NULL
+         AND pattern_version_id IS NOT DISTINCT FROM $2::uuid
+         AND pickup_occurrence_id IS NOT DISTINCT FROM $3::uuid
+         AND dropoff_occurrence_id IS NOT DISTINCT FROM $4::uuid FOR UPDATE`,
+        [routeId, version, pickup, dropoff],
       )
     ).rows[0];
     if (open) {
@@ -389,8 +463,10 @@ export class Pricing {
     }
     const row = (
       await c.query(
-        'INSERT INTO app.route_fares(route_id,amount_pesewas,effective_from,note,created_by,command_id) VALUES ($1,$2,$3,$4,$5,gen_random_uuid()) RETURNING *',
-        [routeId, amount, from, input.note ?? null, actor.userId],
+        `INSERT INTO app.route_fares(route_id,amount_pesewas,effective_from,note,created_by,command_id,
+         pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
+         VALUES ($1,$2,$3,$4,$5,gen_random_uuid(),$6,$7,$8) RETURNING *`,
+        [routeId, amount, from, input.note ?? null, actor.userId, version, pickup, dropoff],
       )
     ).rows[0];
     return {

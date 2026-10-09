@@ -3,13 +3,15 @@
 How operations brings a driver onto Trotxi and gets them back in when they
 forget their PIN. Everything here runs through the existing driver credential
 service: there is one way to sign in as a driver (driver code plus six-digit
-PIN), and this adds email delivery and a mandatory private PIN to it.
+PIN), with email or SMS delivery and a mandatory private PIN.
+The sequence below describes the email path; SMS uses the same credential
+lifecycle with different delivery/retry rules.
 
 ## The flow
 
 ```mermaid
 sequenceDiagram
-  participant Ops as Ops website (Fleet → Drivers)
+  participant Ops as Ops website (Drivers)
   participant API as api-next
   participant DB as Postgres
   participant W as email sender (API, then worker)
@@ -29,13 +31,15 @@ sequenceDiagram
   D->>API: sign in again with the new PIN, mustChangePin: false
 ```
 
-1. **Create.** In Ops, Drivers → Add driver. Name is required. The email is
-   where sign-in instructions go. It is not a sign-in method and never becomes
+1. **Create.** In Ops, Drivers > Add driver. Name is required. A phone supports
+   SMS instructions; email supports the email alternative. The email is
+   a delivery address. It is not a sign-in method and never becomes
    the account's email (`app.users.email`), which belongs to a verified Google
    or Apple identity.
 2. **Issue.** "Issue a driver code and temporary PIN now" is on by default in
    the create dialog, and "Email the sign-in instructions" is on when there is
-   an address. If creating works but issuing fails, the dialog keeps the
+   an address for email delivery. When a phone is supplied, Ops supports SMS
+   instead. It does not silently send both. If creating works but issuing fails, the dialog keeps the
    created driver and "Retry sign-in details" repeats only the issue, with the
    same idempotency key. The driver is never created twice.
 3. **Sign in.** The driver signs in with the code and temporary PIN, confirms
@@ -43,6 +47,28 @@ sequenceDiagram
 4. **Private PIN.** Six digits, not one digit repeated, not a run up or down
    (the server's rule, checked in the app first). Saving signs out every
    device, this one included, and the driver signs in with the new PIN.
+
+## Staging setup
+
+Create test drivers and issue or reset their sign-in details through
+**Ops > Drivers**, using the same temporary-PIN lifecycle as other drivers.
+The entire staging seed script and its manual GitHub Actions workflow have
+been removed, including catalogue seeding, trip extension, identity linking,
+bulk enrolment, account inspection and PIN resets. Use the supported Ops and
+commuter workflows instead. Existing staging data is not deleted.
+
+The scheduled payments/email workflow remains. Its payment step now runs
+`scripts/maintain-staging-payments.ts`, which uses the explicitly configured
+non-human maintenance account for a short-lived worker session, processes the
+inbox and reconciliation jobs, and revokes the session afterward. It cannot
+create an administrator or seed data. Logs contain job names, HTTP statuses,
+fixed failure categories and allowlisted batch counts only. The required
+restricted-role and secret setup is in [Staging security cutover](operations/staging-security.md).
+
+Removing this tooling does not revoke existing PINs or remove old Actions
+logs. Treat any driver credentials previously printed there as exposed. Reset
+affected drivers through Ops, which also revokes their sessions, and remove
+the affected historical workflow logs as a separately approved cleanup.
 
 ## What a temporary PIN can do
 
@@ -213,30 +239,12 @@ X-Trotxi-Client: driver
 { "error": { "code": "pin_change_required", "message": "Set your own PIN before you continue." } }
 ```
 
-## Verified, and not
+## Development checks
 
-Verified locally:
-
-- Postgres tests DRV-30 to DRV-39: onboarding, replay, rollback, missing and
-  unconfigured email, plaintext absence, stale cancellation (reset, PIN change,
-  address change, version race, erasure), setup enforcement including a
-  refreshed session, expiry, authorization including passkey elevation,
-  retries with the same provider idempotency key, and upgrade from 028.
-  Removing the worker's recheck makes DRV-34 fail.
-- Ops: create and onboard, partial-failure retry without a second driver,
-  reset with reason and email, delivery wording, no PIN on screen or in
-  storage once emailed.
-- Driver app: PIN rules, no automatic submission, confirmation mismatch,
-  stable key on an unanswered retry and a new one after edits, uncertain
-  outcome, wrong temporary PIN, lockout, rate limit, expiry, restored-session
-  setup, sign-in to setup hand-off, and "Forgot PIN?".
-
-Not verified:
-
-- A real email through Resend. No email was sent while building this.
-- The scheduled retry workflow in GitHub Actions: it starts after merge into
-  the default branch; no live run was made while implementing this change.
-- The flow on a physical phone.
+Cover credential issuance/replay, partial creation retry, private-PIN setup,
+expiry/lockout, session revocation, stale delivery cancellation and ambiguous
+provider outcomes. Real email/SMS and physical-device acceptance require
+separate authorized tests; passing unit tests does not prove delivery.
 
 The canonical Dart API client (`apps/api_client`) and its built-value
 serializers are regenerated from `replacement.openapi.json`, including
@@ -244,19 +252,14 @@ serializers are regenerated from `replacement.openapi.json`, including
 generation stalls on cached inputs, run `dart run build_runner clean` before
 `dart run build_runner build --force-jit` in `apps/api_client`.
 
-## SMS: deferred
+## SMS delivery
 
-SMS is not part of this version: no provider, sending cost, secret or SMS
-fallback is enabled. When it is added it should be a second delivery adapter on
-the same credential lifecycle, not a new one: queued in the credential
-transaction, bound to the credential version, rechecked before sending,
-cancelled by the same events, and never resent. Before building it, decide:
+mNotify delivery is implemented. Ops can issue/reset credentials by SMS to the
+driver's phone instead of email. Sender configuration and authorized live tests
+are separate from implementation. See [mNotify operations](operations/mnotify-phone-sign-in.md).
 
-- **Provider.** Coverage and deliverability on MTN, Telecel and AirtelTigo,
-  sender ID registration, and delivery receipts.
-- **Numbers.** Ghana normalization to E.164 (`+233` and nine digits, local
-  `0` prefix dropped), and what to do with numbers that fail it.
-- **Cost.** Per-message price, who pays, and a daily cap.
-- **Consent.** Recording that the driver agreed to receive credentials by SMS.
-- **Failure handling.** Mapping provider receipts onto the states above, and
-  whether SMS is ever a fallback when email fails. Today it is not.
+Queued credentials are encrypted, bound to their version and rechecked before
+sending. PIN changes, account changes and expiry invalidate stale delivery.
+Unknown SMS outcomes are not automatically replayed. The scheduled email retry
+script processes email only; it is not an SMS resend loop. Never expose a PIN
+or provider key in public logs when investigating delivery.

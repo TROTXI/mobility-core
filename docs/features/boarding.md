@@ -1,75 +1,65 @@
 # Boarding verification
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-03.
 
-**Status:** QR, trip-wide code entry, reservation-targeted PIN, photo-manifest
-boarding, driver-marked no-shows and cutoff no-shows are live.
-
-## Verification paths
-
-Any of the three rider proofs can complete boarding:
-
-1. QR pass: a signed HS256 JWT for audience `trotxi-pass`, approximately 60
-   seconds old and single-use by `jti`.
-2. Daily code: a four-character code stored only as keyed HMAC. The driver can
-   enter it directly for the run or against a selected reservation.
-3. Photo manifest: the assigned driver identifies the rider from name and a
-   short-lived signed avatar URL, then boards the reservation directly.
-
-All successful paths converge on the same operation: mark the reservation
-boarded and append `-1` ride with `idempotency_key = board:<reservation-id>`.
+The assigned driver boards a reservation using a QR proof, boarding code or
+photo-manifest selection. All methods converge on one transactional settlement.
 
 ## API
 
-| Endpoint                         | Role            | Purpose                                                               |
-| -------------------------------- | --------------- | --------------------------------------------------------------------- |
-| `GET /me/pass`                   | rider           | Issue a rotating QR pass                                              |
-| `POST /boarding/scan`            | driver          | Verify QR integrity/single-use and board the rider's open reservation |
-| `POST /boarding/verify-code`     | assigned driver | Find the one actionable seat on a run with this code and board it     |
-| `POST /boarding/verify-pin`      | assigned driver | Verify a code against a known reservation and board it                |
-| `GET /boarding/manifest?tripId=` | assigned driver | Confirmed riders with status, source, name and signed photo           |
-| `POST /boarding/board`           | assigned driver | Board a rider identified from the photo manifest                      |
-| `POST /boarding/no-show`         | assigned driver | Mark one confirmed rider absent and consume the ride                  |
-| `POST /admin/resolve-no-shows`   | admin           | Convert all still-reserved seats at cutoff to no-shows                |
+- Rider: `POST /v1/me/reservations/{id}/pass`.
+- Driver manifest: `GET /v1/driver/trips/{id}/manifest`.
+- Boarding: `POST /v1/driver/trips/{id}/boardings`.
+- No-show: `POST /v1/driver/trips/{id}/reservations/{reservationId}/no-show`.
+- Ops manifest: `GET /v1/ops/trips/{id}/manifest`.
 
-The trip-wide code path refuses ambiguous matches instead of charging the first
-rider found. Old numeric four-digit codes remain accepted; newly generated
-codes use an ambiguity-resistant alphanumeric alphabet.
+Passes are reservation-bound and short-lived. The server validates proofs,
+ownership, current assignment, trip and funded-reservation state. Code attempts
+have a durable budget. A photo URL is resolved from private account storage,
+never trusted from a QR payload.
 
-The QR endpoint is still role-gated rather than assignment-gated and resolves
-the rider's earliest boardable reservation for the current UTC day. Code, PIN
-and photo paths target a specific trip/reservation and enforce assignment. This
-is the current contract, not the desired end state.
+A boarding/no-show charge is unique to the reservation. The reservation,
+charge, ledger effects, receipt and required events commit together or roll
+back. A retry does not deduct another ride. Optional telemetry after commit
+may fail without undoing settlement; required accounting does not fail open.
 
-## Authorization and attempt limits
+A boarding code is an alternative to the camera, not offline authorization.
+The driver still needs an API confirmation. No local offline boarding queue is
+implemented. Declined, cancelled or otherwise ineligible seats cannot be boarded
+simply because an old QR or screenshot exists.
 
-PIN/code/photo actions require the caller to be the trip's assigned driver, not
-merely to hold the driver role. Wrong attempts are budgeted in KV: per
-reservation for targeted PIN entry and per trip/driver for the door flow.
+Sources: `services/api-next/src/boarding/{service,proofs}.ts`,
+`tests/boarding.pg.test.ts`, driver Scan/Manifest screens.
 
-## Failure posture
+## Online settlement
 
-Boarding prioritizes getting a verified rider onto the vehicle:
+```mermaid
+sequenceDiagram
+  participant Commuter
+  participant API
+  participant Driver
+  participant Database
+  Commuter->>API: Issue reservation pass
+  API-->>Commuter: Short-lived proof and code
+  Driver->>API: Submit QR, code or photo selection
+  API->>Database: Check assignment and funded reservation
+  API->>Database: Commit charge, ride effects and receipt
+  API-->>Driver: Authoritative boarding outcome
+```
 
-- KV failure allows the attempt and logs the missing single-use/guess budget.
-- Scan-audit failure is logged without reversing boarding.
-- A QR-path deduction failure does not reject the rider; reconciliation must
-  identify the audit gap.
+Only the driver assigned to the active trip may perform its boarding work.
+The commuter displays the proof; they do not self-board by posting a scan.
+Photo selection is a manifest workflow, not facial-recognition KYC.
 
-This availability posture is deliberately narrower than authentication or
-payment processing, which fail closed.
+On a lost response, retry the same action with its idempotency key. The unique
+reservation charge prevents a second debit. Do not show success just because
+a camera decoded the QR. Wrong trip, stale proof, ineligible reservation or
+lost assignment must remain refusals even if an old image/code looks valid.
 
-## Idempotency and corrections
+A later correction must use the supported server behavior; do not directly
+edit ride balances. A no-show and boarding must never become two charges.
 
-- QR, code, photo and no-show use the same `board:<reservation-id>` key.
-- Repeated boarding returns `already_boarded` without another deduction.
-- A driver can board a rider after marking them no-show; the shared key prevents
-  a second charge.
-- Declined, released, unseated and operator-cancelled rows are not boardable.
-
-## Code
-
-- `services/api/src/modules/boarding/`
-- `services/api/src/modules/reservations/pin.ts`
-- migrations `010`, `016_reservation_pin` and `017`
-- [ADR-0014](../adr/0014-hybrid-subscription-model.md)
+Code: [settlement](../../services/api-next/src/boarding/service.ts),
+[proofs](../../services/api-next/src/boarding/proofs.ts).
+Tests: [database cases](../../services/api-next/tests/boarding.pg.test.ts).
+Calls: [pass and code boarding](../api/worked-examples.md#4-reserve-and-operate-the-trip).
