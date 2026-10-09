@@ -441,6 +441,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(StandbyApplicationOffer.serializer)
       ..add(StandbyApplicationOfferStateEnum.serializer)
       ..add(StandbyApplicationPage.serializer)
+      ..add(StandbyApplicationPageRouteDemandInner.serializer)
       ..add(StandbyApplicationResponse.serializer)
       ..add(StandbyApplicationStateEnum.serializer)
       ..add(StandbyJoinInput.serializer)
@@ -716,6 +717,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(StandbyApplication)]),
           () => ListBuilder<StandbyApplication>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(StandbyApplicationPageRouteDemandInner)]),
+          () => ListBuilder<StandbyApplicationPageRouteDemandInner>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType(StandbyOfferInputCreditsInner)]),

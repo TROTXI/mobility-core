@@ -546,6 +546,7 @@ Class | Method | HTTP request | Description
  - [StandbyApplication](doc/StandbyApplication.md)
  - [StandbyApplicationOffer](doc/StandbyApplicationOffer.md)
  - [StandbyApplicationPage](doc/StandbyApplicationPage.md)
+ - [StandbyApplicationPageRouteDemandInner](doc/StandbyApplicationPageRouteDemandInner.md)
  - [StandbyApplicationResponse](doc/StandbyApplicationResponse.md)
  - [StandbyJoinInput](doc/StandbyJoinInput.md)
  - [StandbyOfferInput](doc/StandbyOfferInput.md)

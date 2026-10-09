@@ -846,7 +846,11 @@ export async function createTransportApp(options: AppOptions) {
               Object.entries(query).some(
                 ([k, v]) =>
                   !listing ||
-                  !['cursor', 'limit'].includes(k) ||
+                  !(
+                    name === 'listOpsStandby'
+                      ? ['cursor', 'limit', 'routeId', 'state', 'plan', 'day', 'q']
+                      : ['cursor', 'limit']
+                  ).includes(k) ||
                   typeof v !== 'string' ||
                   v.length > 128,
               )

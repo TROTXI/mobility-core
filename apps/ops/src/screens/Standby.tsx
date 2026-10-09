@@ -1,5 +1,5 @@
 import { Button } from '@fluentui/react-components';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { opsHeaders } from '../api/session';
@@ -7,23 +7,43 @@ import { useQuery } from '../hooks/useQuery';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../components/Page';
 import { ActionDialog } from '../components/ActionDialog';
 import { ReasonField } from '../components/ReasonField';
+import { BulkStandbyOffers } from './BulkStandbyOffers';
+import { estimateOffers, futureDate, pesewas, weekdays } from './standby-offers';
+import { useStandbyPricing } from './useStandbyPricing';
 
 type Application = components['schemas']['StandbyApplication'];
-type PageResult = { data: Application[]; nextCursor: string | null };
-const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const futureDate = (days: number) =>
-  new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
-function pesewas(value: string) {
-  if (!/^\d+(\.\d{1,2})?$/.test(value))
-    throw new Error('Enter amounts in GHS, with at most two decimal places.');
-  const amount = Math.round(Number(value) * 100);
-  if (!Number.isSafeInteger(amount) || amount > 2147483647)
-    throw new Error('Amount is out of range.');
-  return { amountMinor: amount, currency: 'GHS' as const };
-}
+type PageResult = components['schemas']['StandbyApplicationPage'];
 
 export function Standby() {
-  const { session } = useAuth();
+  const { session, account } = useAuth();
+  const [routeId, setRouteId] = useState('');
+  const [state, setState] = useState<Application['state'] | ''>('submitted');
+  const [plan, setPlan] = useState<'' | 'monthly' | 'annual'>('');
+  const [day, setDay] = useState('');
+  const [search, setSearch] = useState('');
+  const [name, setName] = useState('');
+  const [cursor, setCursor] = useState<string | undefined>();
+  const [previous, setPrevious] = useState<(string | undefined)[]>([]);
+  const [checked, setChecked] = useState<Application[]>([]);
+  const [batch, setBatch] = useState<Application[] | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [notice, setNotice] = useState('');
+  const filters = JSON.stringify([account?.id, routeId, state, plan, day, name]);
+  const filterVersion = useRef(filters);
+  // Reset cursor and selection in the same render as a changed filter so no
+  // request can pair a previous filter's cursor with the new filters.
+  if (filterVersion.current !== filters) {
+    filterVersion.current = filters;
+    setCursor(undefined);
+    setPrevious([]);
+    setChecked([]);
+  }
+  useEffect(() => {
+    setChecked([]);
+    setBatch(null);
+    setBulkOpen(false);
+    setSelected(null);
+  }, [session, account?.id]);
   const [selected, setSelected] = useState<Application | null>(null);
   const [days, setDays] = useState(2);
   const [coverageStart, setCoverageStart] = useState(futureDate(3));
@@ -32,63 +52,15 @@ export function Standby() {
   const [outboundCredit, setOutboundCredit] = useState('');
   const [returnCredit, setReturnCredit] = useState('');
   const [reason, setReason] = useState('');
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [moreError, setMoreError] = useState('');
   const [offerAttempt, setOfferAttempt] = useState<{
     applicationId: string;
     key: string;
     body: components['schemas']['StandbyOfferInput'];
   } | null>(null);
-  const pricing = useQuery(
-    async (signal) => {
-      if (!selected) return null;
-      const [fares, schedules] = await Promise.all([
-        session.client.GET('/v1/ops/routes/{id}/fares', {
-          params: {
-            path: { id: selected.selection.routeId },
-            header: opsHeaders,
-            query: { limit: 200 },
-          },
-          signal,
-        }),
-        session.client.GET('/v1/ops/service-schedules', {
-          params: {
-            header: opsHeaders,
-            query: { limit: 200, routeId: selected.selection.routeId },
-          },
-          signal,
-        }),
-      ]);
-      if (fares.error) throw new Error(fares.error.error.message);
-      if (schedules.error) throw new Error(schedules.error.error.message);
-      return { applicationId: selected.id, fares: fares.data.data, schedules: schedules.data.data };
-    },
-    [session, selected?.id],
-  );
+  const pricing = useStandbyPricing(selected?.selection.routeId);
   const estimates =
-    selected && pricing.data?.applicationId === selected.id
-      ? selected.selection.legs.map((leg) => {
-          const start = new Date(`${coverageStart}T00:00:00Z`).getTime(),
-            end = new Date(`${coverageEnd}T00:00:00Z`).getTime();
-          const schedule = pricing.data!.schedules.find((s) => s.id === leg.scheduleId);
-          const fare = pricing.data!.fares.find(
-            (f) =>
-              // The API prices a leg only from a fare on that direction's pattern.
-              (!f.journey || f.journey.direction === leg.direction) &&
-              f.patternVersionId === leg.patternVersionId &&
-              f.pickupOccurrenceId === leg.pickupOccurrenceId &&
-              f.dropoffOccurrenceId === leg.dropoffOccurrenceId &&
-              new Date(f.effectiveFrom).getTime() <= start &&
-              (!f.effectiveTo || new Date(f.effectiveTo).getTime() > start),
-          );
-          let rides = 0;
-          if (Number.isFinite(start) && end > start && end - start <= 366 * 86400000)
-            for (let ms = start; ms < end; ms += 86400000) {
-              const day = new Date(ms).getUTCDay() || 7;
-              if (selected.travelDays.includes(day) && schedule?.weekdays.includes(day)) rides++;
-            }
-          return { direction: leg.direction, fare, rides };
-        })
+    selected && pricing.data?.routeId === selected.selection.routeId
+      ? estimateOffers(selected, pricing.data, coverageStart, coverageEnd)
       : [];
   // After a send with no answer, the terms stay as sent so a retry repeats them.
   const locked = offerAttempt !== null;
@@ -97,22 +69,175 @@ export function Standby() {
   const query = useQuery<PageResult>(
     async (signal) => {
       const response = await session.client.GET('/v1/ops/standby', {
-        params: { header: opsHeaders },
+        params: {
+          header: opsHeaders,
+          query: {
+            limit: 30,
+            cursor,
+            routeId: routeId || undefined,
+            state: state || undefined,
+            plan: plan || undefined,
+            day: day ? Number(day) : undefined,
+            q: name || undefined,
+          },
+        },
         signal,
       });
       if (response.error) throw new Error(response.error.error.message);
-      return { data: response.data.data, nextCursor: response.data.page.nextCursor };
+      return response.data;
     },
-    [session],
+    [session, filters, cursor],
   );
 
   return (
     <Page
+      className="standby-page"
       title="Standby"
       description="Review new subscriptions and renewals. Agree the journeys, dates, price and unused-ride credits before the rider pays."
     >
+      {notice && <p role="status">{notice}</p>}
+      <div className="filter-bar">
+        <label>
+          Status
+          <select value={state} onChange={(e) => setState(e.target.value as typeof state)}>
+            <option value="submitted">Needs offer</option>
+            <option value="offered">Offered</option>
+            <option value="checkout_open">Checkout open</option>
+            <option value="completed">Completed</option>
+            <option value="withdrawn">Withdrawn</option>
+            <option value="">All statuses</option>
+          </select>
+        </label>
+        <label>
+          Plan
+          <select value={plan} onChange={(e) => setPlan(e.target.value as typeof plan)}>
+            <option value="">All plans</option>
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </label>
+        <label>
+          Travel day
+          <select value={day} onChange={(e) => setDay(e.target.value)}>
+            <option value="">Any day</option>
+            {weekdays.map((d, i) => (
+              <option key={d} value={i + 1}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </label>
+        <form
+          className="standby-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setName(search.trim());
+          }}
+        >
+          <label>
+            Rider name
+            <input
+              type="search"
+              maxLength={100}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <Button type="submit">Search</Button>
+        </form>
+        <Button
+          onClick={() => {
+            setRouteId('');
+            setState('submitted');
+            setPlan('');
+            setDay('');
+            setName('');
+            setSearch('');
+          }}
+        >
+          Reset filters
+        </Button>
+      </div>
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
-      <Panel title="Applications" action={<Button onClick={query.retry}>Refresh</Button>}>
+      <Panel title="Demand by route">
+        <div className="panel-body">
+          <p className="muted">
+            Totals reflect your filters across all pages, not confirmed seats. Largest groups first.
+          </p>
+          <div className="standby-route-groups" aria-label="Route groups">
+            <Button aria-pressed={!routeId} onClick={() => setRouteId('')}>
+              All routes
+            </Button>
+            {query.data?.routeDemand?.map((group) => (
+              <Button
+                key={group.routeId}
+                aria-pressed={routeId === group.routeId}
+                onClick={() => setRouteId(group.routeId)}
+              >
+                {group.routeName} ({group.requests})
+              </Button>
+            ))}
+          </div>
+          {routeId && <p>One route selected. Use All routes to remove this filter.</p>}
+        </div>
+      </Panel>
+      <Panel
+        title="Applications"
+        action={
+          <Button
+            onClick={() => {
+              setChecked([]);
+              query.retry();
+            }}
+          >
+            Refresh
+          </Button>
+        }
+      >
+        <div className="filter-bar">
+          <span>{checked.length} selected (maximum 25, one route per batch)</span>
+          <Button
+            disabled={
+              !routeId ||
+              !!batch ||
+              query.loading ||
+              !!query.error ||
+              checked.length >= 25 ||
+              !query.data?.data.some((a) => a.state === 'submitted')
+            }
+            title="Select a route, then add up to 25 requests from this page"
+            onClick={() =>
+              setChecked((current) => {
+                const rows = new Map(current.map((a) => [a.id, a]));
+                for (const application of query.data?.data ?? []) {
+                  if (rows.size >= 25) break;
+                  if (
+                    application.state === 'submitted' &&
+                    application.selection.routeId === routeId
+                  )
+                    rows.set(application.id, application);
+                }
+                return [...rows.values()];
+              })
+            }
+          >
+            Select this page
+          </Button>
+          <Button
+            disabled={!checked.length || !!batch || query.loading || !!query.error}
+            onClick={() => {
+              setBatch(checked);
+              setBulkOpen(true);
+              setNotice('');
+            }}
+          >
+            Prepare bulk offers
+          </Button>
+          <Button disabled={!checked.length} onClick={() => setChecked([])}>
+            Clear selection
+          </Button>
+          {batch && <Button onClick={() => setBulkOpen(true)}>Resume bulk offers</Button>}
+        </div>
         {query.loading ? (
           <LoadingRows />
         ) : !query.data?.data.length ? (
@@ -122,9 +247,11 @@ export function Standby() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Select</th>
                   <th>Rider</th>
                   <th>Route</th>
                   <th>Travel days</th>
+                  <th>Plan</th>
                   <th>Status</th>
                   <th>Offer expiry</th>
                   <th />
@@ -133,12 +260,35 @@ export function Standby() {
               <tbody>
                 {query.data.data.map((application) => (
                   <tr key={application.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${application.riderName}`}
+                        checked={checked.some((a) => a.id === application.id)}
+                        disabled={
+                          application.state !== 'submitted' ||
+                          !!batch ||
+                          (!checked.some((a) => a.id === application.id) &&
+                            (checked.length >= 25 ||
+                              (checked.length > 0 &&
+                                checked[0]!.selection.routeId !== application.selection.routeId)))
+                        }
+                        onChange={(e) =>
+                          setChecked((old) =>
+                            e.target.checked
+                              ? [...old, application]
+                              : old.filter((a) => a.id !== application.id),
+                          )
+                        }
+                      />
+                    </td>
                     <td>{application.riderName}</td>
                     <td>{application.routeName}</td>
                     <td>
                       {application.travelDays.map((d) => weekdays[d - 1]).join(', ') ||
                         'New request needed'}
                     </td>
+                    <td>{application.selection.plan}</td>
                     <td>
                       <StatusBadge value={application.state} />
                     </td>
@@ -151,6 +301,7 @@ export function Standby() {
                       {application.state === 'submitted' && (
                         <Button
                           appearance="subtle"
+                          disabled={!!batch}
                           onClick={() => {
                             setOfferAttempt(null);
                             setPrice('');
@@ -168,55 +319,62 @@ export function Standby() {
                 ))}
               </tbody>
             </table>
-            {query.data.nextCursor && (
-              <>
-                {moreError && <ErrorState message={moreError} retry={() => setMoreError('')} />}
-                <Button
-                  disabled={loadingMore}
-                  onClick={async () => {
-                    if (!query.data?.nextCursor) return;
-                    setLoadingMore(true);
-                    setMoreError('');
-                    try {
-                      const response = await session.client.GET('/v1/ops/standby', {
-                        params: {
-                          header: opsHeaders,
-                          query: { cursor: query.data.nextCursor },
-                        },
-                      });
-                      if (response.error) throw new Error(response.error.error.message);
-                      query.setData((current) =>
-                        current
-                          ? {
-                              data: [...current.data, ...response.data.data],
-                              nextCursor: response.data.page.nextCursor,
-                            }
-                          : current,
-                      );
-                    } catch (error) {
-                      setMoreError(
-                        error instanceof Error
-                          ? error.message
-                          : 'Could not load more applications.',
-                      );
-                    } finally {
-                      setLoadingMore(false);
-                    }
-                  }}
-                >
-                  {loadingMore ? 'Loading…' : 'Load more'}
-                </Button>
-              </>
-            )}
           </div>
         )}
+        <div className="filter-bar">
+          <Button
+            disabled={!previous.length || query.loading}
+            onClick={() => {
+              setCursor(previous.at(-1));
+              setPrevious((old) => old.slice(0, -1));
+            }}
+          >
+            Previous page
+          </Button>
+          <span>Page {previous.length + 1}</span>
+          <Button
+            disabled={!query.data?.page.nextCursor || query.loading}
+            onClick={() => {
+              setPrevious((old) => [...old, cursor]);
+              setCursor(query.data!.page.nextCursor!);
+            }}
+          >
+            Next page
+          </Button>
+        </div>
       </Panel>
+      {batch && (
+        <BulkStandbyOffers
+          applications={batch}
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          onDiscard={() => {
+            setBatch(null);
+            setBulkOpen(false);
+          }}
+          onCompleted={(sentCount) => {
+            setNotice(
+              `${sentCount} of ${batch.length} offers sent. Unsent requests were left unchanged. Riders can review their terms before paying.`,
+            );
+            setBatch(null);
+            setBulkOpen(false);
+            setChecked([]);
+            query.retry();
+          }}
+        />
+      )}
       <ActionDialog
         open={selected !== null}
         title="Prepare subscription offer"
         description="Terms cannot be edited after sending. Coverage ends at the start of the end date. Payment does not guarantee a particular trip seat; normal confirmation and capacity rules still apply."
         confirmLabel="Send offer"
-        confirmDisabled={unpriced.length > 0 || pricing.loading || !reason.trim()}
+        confirmDisabled={
+          unpriced.length > 0 ||
+          pricing.loading ||
+          !!pricing.error ||
+          estimates.length !== 2 ||
+          !reason.trim()
+        }
         onClose={() => {
           setSelected(null);
           setOfferAttempt(null);
@@ -267,6 +425,7 @@ export function Standby() {
           }
           setOfferAttempt(null);
           setSelected(null);
+          setChecked((current) => current.filter((application) => application.id !== selected.id));
           query.retry();
         }}
       >

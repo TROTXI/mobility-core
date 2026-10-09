@@ -2223,7 +2223,17 @@ for (const operation of operations) {
     named(
       name,
       operation.list
-        ? obj({ data: z.array(model), page: obj({ nextCursor: id.nullable() }) })
+        ? obj({
+            data: z.array(model),
+            page: obj({ nextCursor: id.nullable() }),
+            ...(operation.response === 'StandbyApplication'
+              ? {
+                  routeDemand: z
+                    .array(obj({ routeId: id, routeName: text(200), requests: count }))
+                    .optional(),
+                }
+              : {}),
+          })
         : obj({ data: model }),
     );
   operation.responseSchema = name;

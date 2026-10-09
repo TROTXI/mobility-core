@@ -2456,7 +2456,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **listOpsStandby**
-> StandbyApplicationPage listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
+> StandbyApplicationPage listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, routeId, state, plan, day, q, xTrotxiPlatform)
 
 list Ops Standby
 
@@ -2469,10 +2469,15 @@ final String xTrotxiClient = ops; // String | Compatibility metadata only, never
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
 final int limit = 56; // int | Page size. No silent truncation.
+final String routeId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by route identity, not its display name.
+final String state = state_example; // String | Application state. Omit for all states.
+final String plan = plan_example; // String | Requested plan.
+final int day = 56; // int | Travel weekday: Monday=1, Sunday=7.
+final String q = q_example; // String | Literal partial rider name. Route demand totals respect these filters except routeId and pagination.
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    final response = api.listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform);
+    final response = api.listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, routeId, state, plan, day, q, xTrotxiPlatform);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->listOpsStandby: $e\n');
@@ -2487,6 +2492,11 @@ Name | Type | Description  | Notes
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
  **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
+ **routeId** | **String**| Filter by route identity, not its display name. | [optional]
+ **state** | **String**| Application state. Omit for all states. | [optional]
+ **plan** | **String**| Requested plan. | [optional]
+ **day** | **int**| Travel weekday: Monday=1, Sunday=7. | [optional]
+ **q** | **String**| Literal partial rider name. Route demand totals respect these filters except routeId and pagination. | [optional]
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type

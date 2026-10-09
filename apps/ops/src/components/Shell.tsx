@@ -29,6 +29,7 @@ const primaryItems = [
   ['/', 'Live operations', HomeRegular],
   ['/trips', 'Trips', CalendarRegular],
   ['/network', 'Routes & stops', DataTrendingRegular],
+  ['/standby', 'Standby', CalendarRegular],
   ['/fleet', 'Fleet', VehicleTruckRegular],
   ['/drivers', 'Drivers', PeopleRegular],
   ['/riders', 'Riders', PeopleRegular],
@@ -36,10 +37,9 @@ const primaryItems = [
 ] as const;
 
 const secondaryItems = [
-  ['/standby', 'Standby', CalendarRegular],
   ['/payments', 'Payments', MoneyRegular],
   ['/reports', 'Reports', DataTrendingRegular],
-  ['/people', 'People & messages', PeopleRegular],
+  ['/delivery', 'Delivery status', PeopleRegular],
   ['/audit', 'Audit log', BoardRegular],
   ['/platform', 'Platform', SettingsRegular],
 ] as const;
@@ -94,7 +94,7 @@ export function Shell({
             <MenuTrigger disableButtonEnhancement>
               <button
                 type="button"
-                className={`nav-link sidebar-more-trigger${secondaryItems.some(([path]) => pathname === path) ? ' active' : ''}`}
+                className={`nav-link sidebar-more-trigger${pathname === '/team' || secondaryItems.some(([path]) => pathname === path) ? ' active' : ''}`}
                 aria-label="More sections"
                 title="More sections"
               >

@@ -5300,6 +5300,11 @@ class OpsApi {
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
   /// * [limit] - Page size. No silent truncation.
+  /// * [routeId] - Filter by route identity, not its display name.
+  /// * [state] - Application state. Omit for all states.
+  /// * [plan] - Requested plan.
+  /// * [day] - Travel weekday: Monday=1, Sunday=7.
+  /// * [q] - Literal partial rider name. Route demand totals respect these filters except routeId and pagination.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5315,6 +5320,11 @@ class OpsApi {
     int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
+    String? routeId,
+    String? state,
+    String? plan,
+    int? day,
+    String? q,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -5352,6 +5362,19 @@ class OpsApi {
       if (limit != null)
         r'limit':
             encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (routeId != null)
+        r'routeId':
+            encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (state != null)
+        r'state':
+            encodeQueryParameter(_serializers, state, const FullType(String)),
+      if (plan != null)
+        r'plan':
+            encodeQueryParameter(_serializers, plan, const FullType(String)),
+      if (day != null)
+        r'day': encodeQueryParameter(_serializers, day, const FullType(int)),
+      if (q != null)
+        r'q': encodeQueryParameter(_serializers, q, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
