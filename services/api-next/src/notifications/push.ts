@@ -45,9 +45,11 @@ export class PushNotifications {
       )
     ).rows;
     const result = { considered: 0, accepted: 0, cancelled: 0, failed: 0, retried: 0 };
+    let stopped = false;
     const deliver = async (item: { id: string; user_id: string }) => {
       const c = await pool.connect();
       try {
+        if (stopped) return;
         await c.query("BEGIN; SET LOCAL lock_timeout='3s'; SET LOCAL statement_timeout='30s'");
         // Preserve erasure/device-transfer serialization without waiting behind
         // another drain's network call for this account. A later drain retries it.
@@ -113,7 +115,12 @@ export class PushNotifications {
           );
           result.cancelled++;
         } else {
+          if (stopped) {
+            await c.query('ROLLBACK');
+            return;
+          }
           const attempt = row.attempts + 1;
+          let providerId: string | undefined;
           try {
             const bytes = device.token_ciphertext as Buffer;
             const cipher = createDecipheriv(
@@ -126,17 +133,12 @@ export class PushNotifications {
               cipher.update(bytes.subarray(28)),
               cipher.final(),
             ]).toString('utf8');
-            const providerId = await this.options.sender.send(
+            providerId = await this.options.sender.send(
               token,
               row.id,
               row.reservation_id ?? row.trip_event_id,
               row.trip_event_id ? 'driver_assignment' : 'reservation_prompt',
             );
-            await c.query(
-              "UPDATE app.push_deliveries SET state='accepted',attempts=$2,provider_id=$3 WHERE id=$1",
-              [row.id, attempt, providerId],
-            );
-            result.accepted++;
           } catch (error) {
             const dead = error instanceof PushSendError && error.invalidToken;
             if (dead)
@@ -159,9 +161,19 @@ export class PushNotifications {
             if (retry) result.retried++;
             else result.failed++;
           }
+          // Persistence failures are not provider refusals. Let the outer
+          // handler stop every lane immediately, before any rollback awaits.
+          if (providerId !== undefined) {
+            await c.query(
+              "UPDATE app.push_deliveries SET state='accepted',attempts=$2,provider_id=$3 WHERE id=$1",
+              [row.id, attempt, providerId],
+            );
+            result.accepted++;
+          }
         }
         await c.query('COMMIT');
       } catch (e) {
+        stopped = true;
         await c.query('ROLLBACK');
         throw e;
       } finally {
@@ -178,7 +190,6 @@ export class PushNotifications {
     }
     const groups = [...byUser.values()];
     let next = 0;
-    let stopped = false;
     const worker = async () => {
       try {
         while (!stopped && next < groups.length) {

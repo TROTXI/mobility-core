@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateKeyPairSync } from 'node:crypto';
+import { createCipheriv, generateKeyPairSync } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import type { Pool } from 'pg';
 import { FcmSender, PushSendError } from '../src/notifications/fcm.js';
+import { PushNotifications } from '../src/notifications/push.js';
 const key = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({
   type: 'pkcs8',
   format: 'pem',
@@ -13,6 +16,118 @@ const credentials = JSON.stringify({
   private_key: key,
   token_uri: 'https://untrusted.invalid',
 });
+
+for (const failure of ['write', 'commit'] as const) {
+  test(`push stops new sends before a delayed rollback after ${failure} failure`, async () => {
+    const gate = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((done) => {
+        resolve = done;
+      });
+      return { promise, resolve };
+    };
+    const allEntered = gate(),
+      rollbackEntered = gate(),
+      finishRollback = gate();
+    const finishPeers = gate(),
+      peersReleased = gate();
+    const deviceKey = Buffer.alloc(32, 2),
+      iv = Buffer.alloc(12, 1);
+    const cipher = createCipheriv('aes-256-gcm', deviceKey, iv);
+    const encrypted = Buffer.concat([cipher.update('test-token'), cipher.final()]);
+    const ciphertext = Buffer.concat([iv, cipher.getAuthTag(), encrypted]);
+    const candidates = Array.from({ length: 5 }, (_, i) => ({
+      id: String(i + 1),
+      user_id: String(i + 1),
+    }));
+    const sent: string[] = [];
+    let connections = 0,
+      releases = 0,
+      peers = 0;
+    const pool = {
+      options: { max: 4 },
+      query: async (sql: string) => ({ rows: sql.includes('SELECT id,user_id') ? candidates : [] }),
+      connect: async () => {
+        connections++;
+        let user = '';
+        return {
+          query: async (sql: string, params?: unknown[]) => {
+            if (sql.includes('FROM app.users WHERE id=')) user = String(params![0]);
+            if (
+              user === '1' &&
+              ((failure === 'write' && sql.includes("SET state='accepted'")) ||
+                (failure === 'commit' && sql === 'COMMIT'))
+            )
+              throw new Error(`database_${failure}_failed`);
+            if (sql === 'ROLLBACK' && user === '1') {
+              rollbackEntered.resolve();
+              await finishRollback.promise;
+            }
+            if (sql.includes('SELECT * FROM app.push_deliveries'))
+              return {
+                rows: [
+                  { id: user, user_id: user, device_id: user, reservation_id: user, attempts: 0 },
+                ],
+                rowCount: 1,
+              };
+            if (sql.includes('SELECT * FROM app.push_devices'))
+              return {
+                rows: [{ id: user, user_id: user, token_ciphertext: ciphertext }],
+                rowCount: 1,
+              };
+            return { rows: [{ id: user }], rowCount: 1 };
+          },
+          release: () => {
+            releases++;
+            if (user !== '1' && ++peers === 3) peersReleased.resolve();
+          },
+        };
+      },
+    } as unknown as Pool;
+    const push = new PushNotifications({
+      pool,
+      deviceKey,
+      sender: {
+        send: async (_, id) => {
+          sent.push(id);
+          if (sent.length === 4) allEntered.resolve();
+          if (id === '1') await allEntered.promise;
+          else await finishPeers.promise;
+          return `accepted-${id}`;
+        },
+      },
+    });
+    let settled = false;
+    const rejected = assert
+      .rejects(push.drain(), new RegExp(`database_${failure}_failed`))
+      .finally(() => {
+        settled = true;
+      });
+    const deadline = new AbortController();
+    try {
+      await Promise.race([
+        (async () => {
+          await rollbackEntered.promise;
+          finishPeers.resolve();
+          await peersReleased.promise;
+          await new Promise<void>((done) => setImmediate(done));
+          assert.equal(settled, false, 'rollback must finish before drain settles');
+          assert.equal(connections, 4, 'no fifth account may be claimed during rollback');
+          assert.equal(sent.length, 4, 'no extra provider send while rollback is pending');
+        })(),
+        delay(5000, null, { signal: deadline.signal }).then(() =>
+          assert.fail('rollback test stalled'),
+        ),
+      ]);
+    } finally {
+      deadline.abort();
+      finishPeers.resolve();
+      finishRollback.resolve();
+      await rejected;
+    }
+    assert.equal(releases, 4);
+  });
+}
 test('FCM driver assignment alerts contain no trip, driver, route or rider details', async () => {
   const sender = new FcmSender(credentials, async (url, init) => {
     if (String(url).includes('oauth2'))
