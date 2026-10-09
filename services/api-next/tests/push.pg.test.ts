@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import pg from 'pg';
 import { setup } from './helpers/financial-fixture.js';
 import { FinancialFoundation } from '../src/payments/foundation.js';
 import { MembershipService } from '../src/membership/service.js';
@@ -9,6 +11,54 @@ import { AccountService } from '../src/account/service.js';
 import { PushNotifications } from '../src/notifications/push.js';
 import { PushSendError } from '../src/notifications/fcm.js';
 import type { PushSender } from '../src/notifications/fcm.js';
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+async function addDriverRecipient(f: Awaited<ReturnType<typeof driverFixture>>, token: string) {
+  const user = (await f.owner.query("INSERT INTO app.users(role) VALUES ('driver') RETURNING id"))
+    .rows[0].id;
+  const driver = (
+    await f.owner.query("INSERT INTO app.drivers(user_id,name) VALUES ($1,'Test') RETURNING id", [
+      user,
+    ])
+  ).rows[0].id;
+  await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [user]);
+  await f.owner.query(
+    "INSERT INTO app.auth_sessions(user_id,expires_at) VALUES ($1,clock_timestamp()+interval '1 hour')",
+    [user],
+  );
+  await f.account.handle(
+    { userId: user, sessionId: user },
+    'registerDevice',
+    { platform: 'android', token },
+    undefined,
+    randomUUID(),
+  );
+  return driver;
+}
+
+async function driverEvent(
+  f: Awaited<ReturnType<typeof driverFixture>>,
+  driver: string,
+  version = 1,
+) {
+  await f.owner.query(
+    `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
+    VALUES ($1,$2,'assign',$3,$4)`,
+    [
+      f.trip,
+      f.adminId,
+      { assignedDriverId: driver, version },
+      { assignedDriverId: driver, version: version + 1 },
+    ],
+  );
+}
 
 async function driverFixture(t: Parameters<typeof setup>[0], sender: PushSender) {
   const f = await setup(t);
@@ -324,4 +374,210 @@ test('PUSH-04 erasure cancels queued delivery and retries stop after five provid
   const before = calls;
   assert.equal((await f.push.drain()).cancelled, 1);
   assert.equal(calls, before);
+});
+
+test('PUSH-05 fanout overlaps at most four accounts, keeps each account serial and honors the batch limit', async (t) => {
+  const gate = deferred();
+  const firstBatch = deferred();
+  const active = new Set<string>();
+  const sent: string[] = [];
+  let peak = 0;
+  const f = await driverFixture(t, {
+    send: async (token, id) => {
+      assert.ok(!active.has(token), 'one account must not send concurrently with itself');
+      active.add(token);
+      peak = Math.max(peak, active.size);
+      if (active.size === 4) firstBatch.resolve();
+      await gate.promise;
+      sent.push(id);
+      active.delete(token);
+      return `accepted-${id}`;
+    },
+  });
+  const drivers = [f.driver];
+  for (let i = 1; i < 9; i++) {
+    drivers.push(await addDriverRecipient(f, `driver-${i}`));
+  }
+  // Two events per account exercise same-owner serialization as well as fanout.
+  for (const driver of drivers) {
+    for (const version of [1, 2]) await driverEvent(f, driver, version);
+  }
+  const draining = f.push.drain(12);
+  const deadline = new AbortController();
+  try {
+    await Promise.race([
+      firstBatch.promise,
+      delay(5000, null, { signal: deadline.signal }).then(() =>
+        assert.fail('fanout remained serial'),
+      ),
+    ]);
+    assert.equal(peak, 4);
+  } finally {
+    deadline.abort();
+    gate.resolve();
+    await draining;
+  }
+  assert.deepEqual(await draining, {
+    considered: 12,
+    accepted: 12,
+    cancelled: 0,
+    failed: 0,
+    retried: 0,
+  });
+  await Promise.all([f.push.drain(), f.push.drain()]);
+  await f.push.drain();
+  assert.equal(sent.length, 18);
+  assert.equal(new Set(sent).size, 18);
+  assert.equal(active.size, 0);
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT count(*)::integer n FROM app.push_deliveries WHERE state='accepted'",
+      )
+    ).rows[0].n,
+    18,
+  );
+});
+
+test('PUSH-06 a locked account is deferred without consuming an attempt', async (t) => {
+  let sends = 0;
+  const f = await driverFixture(t, {
+    send: async () => {
+      sends++;
+      return 'accepted';
+    },
+  });
+  const event = await f.insertEvent();
+  await f.owner.query(
+    'INSERT INTO app.push_deliveries(trip_event_id,device_id,user_id) VALUES ($1,$2,$3)',
+    [event, f.deviceId, f.user],
+  );
+  const lock = await f.owner.connect();
+  try {
+    await lock.query('BEGIN');
+    await lock.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [f.user]);
+    assert.deepEqual(await f.push.drain(), {
+      considered: 0,
+      accepted: 0,
+      cancelled: 0,
+      failed: 0,
+      retried: 0,
+    });
+    assert.equal(sends, 0);
+    assert.partialDeepStrictEqual(
+      (await f.owner.query('SELECT state,attempts FROM app.push_deliveries')).rows[0],
+      { state: 'pending', attempts: 0 },
+    );
+  } finally {
+    await lock.query('ROLLBACK');
+    lock.release();
+  }
+  assert.equal((await f.push.drain()).accepted, 1);
+  assert.equal(sends, 1);
+});
+
+test('PUSH-07 fanout respects a one-connection pool without queueing competing workers', async (t) => {
+  const entered = deferred();
+  const gate = deferred();
+  const f = await driverFixture(t, { send: async () => 'unused' });
+  await f.insertEvent();
+  await driverEvent(f, await addDriverRecipient(f, 'small-pool-driver'));
+  const pool = new pg.Pool({ ...f.runtime.options, max: 1 });
+  t.after(() => pool.end());
+  const push = new PushNotifications({
+    pool,
+    deviceKey: Buffer.alloc(32, 2),
+    sender: {
+      send: async () => {
+        entered.resolve();
+        await gate.promise;
+        return 'accepted';
+      },
+    },
+  });
+  const draining = push.drain();
+  try {
+    await entered.promise;
+    assert.equal(pool.waitingCount, 0, 'workers must not queue behind their own slow send');
+  } finally {
+    gate.resolve();
+    await draining;
+  }
+  assert.equal((await draining).accepted, 2);
+});
+
+test('PUSH-08 database failure waits for started sends and stops claiming additional accounts', async (t) => {
+  const inFlight = deferred();
+  const gate = deferred();
+  const rolledBack = deferred();
+  let slowStarted = 0;
+  const tokens: string[] = [];
+  const f = await driverFixture(t, {
+    send: async (token) => {
+      tokens.push(token);
+      if (token === 'driver-token') await inFlight.promise;
+      else {
+        if (++slowStarted === 3) inFlight.resolve();
+        await gate.promise;
+      }
+      return 'accepted';
+    },
+  });
+  await f.insertEvent();
+  for (let i = 0; i < 4; i++) await driverEvent(f, await addDriverRecipient(f, `slow-${i}`));
+  // Candidate order is normally by delivery time/UUID, not event creation.
+  // Make the failing account first so all three other lanes are held at failure.
+  await f.owner.query(`
+    INSERT INTO app.push_deliveries(trip_event_id,device_id,user_id,next_attempt_at)
+    SELECT e.id,d.id,u.id,clock_timestamp()-interval '1 hour'
+      + row_number() OVER (ORDER BY e.created_at,e.id)*interval '1 second'
+    FROM app.trip_events e JOIN app.drivers dr ON dr.id::text=e.after_state->>'assignedDriverId'
+    JOIN app.users u ON u.id=dr.user_id JOIN app.push_devices d ON d.user_id=u.id
+  `);
+  // Fail persistence, not the provider. That must escape deliver's retry path.
+  await f.owner.query(`
+    CREATE FUNCTION app.test_push_write_failure() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN RAISE EXCEPTION 'test_push_write_failure'; END $$;
+    CREATE TRIGGER test_push_write_failure BEFORE UPDATE ON app.push_deliveries
+    FOR EACH ROW WHEN (NEW.user_id='${f.user}'::uuid) EXECUTE FUNCTION app.test_push_write_failure();
+  `);
+  const onRelease = () => {
+    if (slowStarted === 3) rolledBack.resolve();
+  };
+  f.runtime.on('release', onRelease);
+  let settled = false;
+  const draining = f.push.drain();
+  const rejected = assert
+    .rejects(draining, /test_push_write_failure|current transaction is aborted/)
+    .finally(() => {
+      settled = true;
+    });
+  const deadline = new AbortController();
+  try {
+    await Promise.race([
+      rolledBack.promise,
+      delay(5000, null, { signal: deadline.signal }).then(() =>
+        assert.fail('database failure did not roll back'),
+      ),
+    ]);
+    await new Promise<void>((done) => setImmediate(done));
+    assert.equal(settled, false);
+    assert.equal(tokens.length, 4, 'the fifth account must not be claimed');
+  } finally {
+    deadline.abort();
+    gate.resolve();
+    await rejected;
+    f.runtime.off('release', onRelease);
+  }
+  assert.equal(f.runtime.waitingCount, 0);
+  assert.equal(f.runtime.idleCount, f.runtime.totalCount);
+  const rows = (
+    await f.owner.query(
+      'SELECT state, count(*)::integer n FROM app.push_deliveries GROUP BY state ORDER BY state',
+    )
+  ).rows;
+  assert.deepEqual(rows, [
+    { state: 'accepted', n: 3 },
+    { state: 'pending', n: 2 },
+  ]);
 });

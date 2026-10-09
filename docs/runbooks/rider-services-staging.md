@@ -52,10 +52,13 @@ departures outside that period.
 
 ## Deployment and operating decision
 
-The checked-in GitHub Actions workflow runs payment inbox/reconciliation and
+The checked-in GitHub Actions workflows run payment inbox/reconciliation and
 email retry every 15 minutes on main, using the protected staging environment.
-This does not schedule trip generation, asks/defaults, push, pause settlement,
-erasure or retention. Check the relevant job result before claiming it ran.
+Service maintenance also schedules nightly trip generation, pause resumes,
+route learning, GPS retention and card renewals, plus daily asks, defaults and
+no-shows. Push, erasure and other unlisted cleanup jobs still need separate
+invocation. See [the schedule](../DEPLOY.md#scheduling) and check the relevant
+job result before claiming it ran.
 
 Accepting a webhook stores evidence; inbox processing activates eligible
 purchases. Lazy pause settlement on selected request paths is not a substitute
@@ -88,7 +91,8 @@ test delivery is not permission to email unrelated recipients.
 
 Jobs emit bounded results and exit unsuccessfully on failures. An empty batch
 proves the worker can run, **not** that a notification was delivered or a pause
-actually resumed. No public cleanup endpoint or new scheduler was added.
+actually resumed. Cleanup remains restricted maintenance work, not a public
+endpoint.
 
 For payment callbacks, authenticated ops can run the existing
 `POST /v1/ops/maintenance/payment-inbox` with `{ "limit": 100 }`. This is distinct

@@ -1,8 +1,9 @@
 # Subscription offers, payments and renewal
 
-Source audit: 2026-10-05. New purchases require an Ops offer. There is no
-public fixed-price checkout or cash top-up wallet. A rider can opt in to
-renew automatically by card; see [Automatic card renewal](#automatic-card-renewal).
+Source audit: 2026-10-08. New purchases require an Ops offer. There is no
+public fixed-price checkout or cash top-up wallet. The backend supports
+consent-based card renewal; commuter controls remain frontend work.
+See [Automatic card renewal](#automatic-card-renewal).
 
 ## Request to payment
 
@@ -57,9 +58,15 @@ This applies to Ops too; resolve/refund the upcoming renewal before changing dat
 
 ## Automatic card renewal
 
-A rider turns it on in the app (`PUT /v1/me/auto-renewal`), usually from the
-offer screen before paying. Nothing is saved until a verified card payment
-arrives; mobile money cannot be charged later, so it never enables renewal.
+The API supports reading renewal state (`GET /v1/me/auto-renewal`) and explicit
+opt-in or opt-out (`PUT /v1/me/auto-renewal` with `enabled: true` or `false`).
+The generated Dart client exists, but the commuter app does not yet expose
+opt-in, turn-off or remove-card controls. Do not describe this as a completed
+mobile flow or enable it on a rider's behalf without consent.
+
+The intended app flow asks for consent before offer checkout. Consent alone
+does not save a card: a verified reusable card payment is required. Mobile
+money cannot be charged later, so it never enables renewal.
 
 1. Fulfilment of a verified card payment that Paystack marks reusable saves
    the card (code and bound email sealed under a key derived for cards only;
@@ -81,8 +88,10 @@ arrives; mobile money cannot be charged later, so it never enables renewal.
 6. A charge that never settles expires when the coverage it buys begins, so it
    cannot hold the rider's purchase slot.
 
-The rider can turn renewal off or remove the card at any time
-(`DELETE /v1/me/auto-renewal/card` destroys the code). Account erasure does
+The API lets the rider turn renewal off or remove the card
+(`DELETE /v1/me/auto-renewal/card` destroys the stored authorization code).
+Removing the local copy does not deactivate the authorization at Paystack.
+Account erasure does
 both. The database refuses a renewal purchase that differs from the purchase
 it renews in rider, route or price, or that does not start where it ends.
 
@@ -103,9 +112,14 @@ refund is not settled cash. Processed refund and dispute evidence drive the
 financial effects. Refunds of upcoming coverage affect that purchased period,
 not unrelated current rides. Partial/consumed-value cases require review.
 
-The checked-in GitHub workflow runs payment recovery and email retry every
-15 minutes on main, subject to environment configuration. It does not run
-all rider-service or retention jobs. See [deployment](../DEPLOY.md).
+The checked-in GitHub workflows schedule payment recovery and email retry every
+15 minutes and card renewal in nightly service maintenance, subject to
+environment configuration. See [deployment](../DEPLOY.md#scheduling) for the
+full schedule and its boundaries.
+
+Ops has **More > Payments > Card renewals**, showing renewal status, failure
+reason, masked card, price and next attempt. `needs_offer` entries link to
+Standby for a new offer. This review screen does not supply rider consent.
 
 ## Limits and verification
 
@@ -114,8 +128,8 @@ remain separate work. Mobile money cannot renew automatically.
 Staging uses Paystack TEST only.
 
 Sources: `membership/standby.ts`, `membership/offer-terms.ts`,
-`payments/{pricing,foundation,purchases,recovery}.ts` under
-`services/api-next/src`; migrations 041/042; `tests/pricing.pg.test.ts`.
+`payments/{pricing,foundation,purchases,recovery,auto-renewal}.ts` under
+`services/api-next/src`; migrations 041/042/044; `tests/pricing.pg.test.ts`.
 Use the [staging runbook](../runbooks/rider-services-staging.md) for acceptance.
 
 ## Who does what
