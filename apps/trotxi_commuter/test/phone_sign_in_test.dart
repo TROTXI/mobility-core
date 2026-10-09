@@ -43,11 +43,11 @@ void main() {
       await tester.tap(find.text('Send code'));
       await tester.pumpAndSettle();
       expect(sends, 1);
-      expect(find.text('Six-digit code'), findsOneWidget);
-      expect(find.text('Verify and continue'), findsOneWidget);
+      expect(find.byKey(const ValueKey('code-field')), findsOneWidget);
+      expect(find.text('Verify'), findsOneWidget);
       expect(find.textContaining('Resend in'), findsOneWidget);
       expect(find.textContaining('Google'), findsNothing);
-      await tester.tap(find.text('Verify and continue'));
+      await tester.tap(find.text('Verify'));
       await tester.pump();
       expect(find.text('Enter the six-digit code.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());

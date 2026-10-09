@@ -10,7 +10,7 @@ enum _PhoneStep { phone, code }
 
 /// One flow for sign-up and sign-in. A returning commuter goes phone → code →
 /// app. A first-time commuter (the API names them "New commuter") is then sent
-/// to CompleteProfilePage by the app root.
+/// to FullNamePage by the app root.
 ///
 /// OTP inputs are transient: never saved to preferences, analytics or logs.
 class PhoneSignInPage extends StatefulWidget {
@@ -92,7 +92,7 @@ class _PhoneSignInPageState extends State<PhoneSignInPage> {
       final account = await widget.client.verifyPhone(_challenge!, _code.text);
       if (!mounted) return;
       // The app root swaps this page out. A first-time rider (placeholder
-      // name) lands on CompleteProfilePage before reaching Home.
+      // name) lands on FullNamePage before reaching Home.
       widget.client.completeSignIn(account);
     } on TrotxiException catch (e) {
       if (mounted) setState(() => _error = e.message);
