@@ -1,6 +1,6 @@
 # Deployment
 
-Source audit: 2026-10-03. This is the current staging procedure.
+Source audit: 2026-10-08. This is the current staging procedure.
 It replaces the retired backend/owner-runtime cutover instructions.
 
 ## What the repository configures
@@ -54,12 +54,27 @@ without enabling unrelated commented services. Verify actual response headers.
 
 ## Scheduling
 
-The main-only protected GitHub workflow declares payment recovery and email
-retry every 15 minutes in separate jobs. Actual execution depends on Actions
-and configured secrets; schedule timing is not a strict delivery SLA.
+Two main-only workflows use the protected staging environment:
 
-The worker has additional jobs for generation, asks/defaults/no-shows, push,
-pauses, retention, erasure and cleanup. They are not all covered by that timer.
+| Workflow / group               | UTC (Accra)      | Work                                                                                                                 |
+| ------------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Payments and email maintenance | Every 15 minutes | Payment recovery and due email retries in separate jobs                                                              |
+| Service maintenance / nightly  | 01:30 daily      | Generate trips for the next seven days, resume personal pauses, route learning, GPS retention and card auto-renewals |
+| Service maintenance / ask      | 21:00 daily      | Tomorrow's reservation prompts, both directions                                                                      |
+| Service maintenance / defaults | 00:00 daily      | Today's unanswered reservation defaults, both directions                                                             |
+| Service maintenance / no-shows | 23:30 daily      | Today's no-show settlement, both directions                                                                          |
+
+Actual execution depends on Actions and configured secrets; schedule timing
+is not a strict delivery SLA. The service workflow also supports manual
+dispatch by group. Its runner calls authenticated maintenance endpoints with
+the restricted maintenance identity, not an owner database credential.
+
+These schedules do not invoke every available worker. Push delivery, erasure
+processing and retention/cleanup jobs other than those explicitly included
+need their own approved invocation. Creating reservation prompts does not
+itself send FCM notifications.
+Sources: `.github/workflows/{payments,service}-maintenance.yml` and
+`services/api-next/scripts/maintain-staging.ts`.
 See [manual rider operations](runbooks/rider-services-staging.md).
 Do not assume comments in Render examples enable a job or grant spending approval.
 

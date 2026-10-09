@@ -1,18 +1,18 @@
 # Current implementation status
 
-Source audit: 2026-10-03, mobility-core main at `2d5e063`.
+Source audit: 2026-10-08, mobility-core main at `e53c79e`.
 This records code support, not proof of production configuration, device
 acceptance, or a successful live-provider transaction.
 
 ## Implemented surfaces
 
-| Surface      | Current capability                                                                                                                                                                                                                                       |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API          | Fastify/TypeScript service in `services/api-next`; PostgreSQL/PostGIS migration chain through 042                                                                                                                                                        |
-| Commuter     | Google/optional Apple and phone sign-in, phone verification, subscription requests/offers, Paystack checkout/recovery, current/upcoming coverage, reservations, passes, live tracking, inbox, preferences, pauses, commute requests, profile and erasure |
-| Driver       | Code/PIN sign-in, forced temporary-PIN replacement, assigned trips, readiness checks, boarding, manifests, incidents/work requests, background GPS with bounded durable queue, profile and support                                                       |
-| Ops          | Google plus passkey access; dispatch/map, routes/stops/patterns/schedules/fares, fleet/drivers, riders, standby offers, support, payments/reviews/refunds, reports, delivery/audit and platform controls                                                 |
-| Integrations | Paystack, mNotify, Resend, FCM, private R2 avatars, public MapLibre/PMTiles basemap, OTel and Firebase instrumentation                                                                                                                                   |
+| Surface      | Current capability                                                                                                                                                                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API          | Fastify/TypeScript service in `services/api-next`; PostgreSQL/PostGIS migration chain through 046                                                                                                                                                                        |
+| Commuter     | Google/optional Apple and phone sign-in, phone verification, subscription requests/offers, Paystack checkout/recovery, current/upcoming coverage, reservations, passes, live tracking, inbox, preferences, pauses, commute requests, profile and erasure                 |
+| Driver       | Code/PIN sign-in, forced temporary-PIN replacement, assigned trips, readiness checks, boarding, manifests, incidents/work requests, background GPS with bounded durable queue, profile and support                                                                       |
+| Ops          | Invite-only Google plus passkey access; superadmin team management; dispatch/map, routes/stops/patterns/schedules/fares, fleet/drivers, riders, standby offers, support, payments/reviews/refunds and card-renewal review, reports, delivery/audit and platform controls |
+| Integrations | Paystack, mNotify, Resend, FCM, private R2 avatars, public MapLibre/PMTiles basemap, OTel and Firebase instrumentation                                                                                                                                                   |
 
 ## Product rules implemented
 
@@ -26,6 +26,14 @@ acceptance, or a successful live-provider transaction.
 - One prepaid upcoming renewal can coexist with current coverage without
   overlap. Day-ahead booking uses the period covering the departure, while the
   wallet reports upcoming coverage separately.
+- Automatic card renewal has API, generated-client, payment-worker and Ops
+  review support. It requires explicit rider consent and a verified reusable
+  Paystack card. Commuter opt-in, turn-off and remove-card controls are not yet
+  implemented. Mobile money is not automatically charged.
+- Superadmins invite administrators by email, manage superadmin capability and
+  delete administrator accounts through Team & access. Invitations require the
+  matching Google identity and a passkey. Sensitive operational and financial
+  decisions require attributed reasons.
 - Boarding/no-show settlement is transactional. Operator cancellation does not
   consume a ride. Ride Credits are renewal discounts, not withdrawable cash.
 - Account closure revokes access and scrubs identity while retaining restricted
@@ -38,19 +46,28 @@ The checked-in deployment workflow installs migrations with a protected owner
 connection, then deploys staging API and Ops. Runtime uses a restricted login.
 Production services and paid Render cron examples remain commented out.
 
-The GitHub maintenance workflow declares payments and email retries every
-15 minutes on main. This does not schedule all workers: trip generation, asks,
-defaults, no-shows, push and retention need their own approved invocation.
-Workflow definitions do not prove that environment secrets or a recent run
-are healthy.
+The protected main-only GitHub workflows declare payments/email retries every
+15 minutes and daily service maintenance. The nightly group generates seven
+days of trips, resumes personal pauses, learns segment speeds, retains GPS
+evidence according to policy and processes card renewals. Separate daily groups
+handle asks, unanswered reservation defaults and no-shows. See
+[the schedule](DEPLOY.md#scheduling) for times and jobs not covered.
+Workflow definitions do not prove that environment secrets, provider delivery
+or a recent run are healthy.
+
+Route learning uses completed traces against published geometry to update
+segment-speed estimates; it does not draw or map-match the route automatically.
+Real-trip learning quality and physical-device capture still need acceptance
+evidence. Basic tracking and manually published geometry do not depend on
+finishing that acceptance exercise.
 
 ## Not delivered or not certified by this audit
 
 - Production provisioning, store releases, provider live-mode acceptance and
   physical-device acceptance across supported phones.
 - Ghana Card/NIA verification, automatic account merging by phone number.
-- Stored payment mandates, automatic recurring charges, card-payment product
-  rollout, automated operator payouts and corporate billing.
+- Commuter card-renewal controls and end-to-end card-renewal product acceptance;
+  automated operator payouts and corporate billing.
 - One-way subscription offers, holiday calendars and mid-period offer replacement.
 - Automated released-seat standby cascade and single-journey checkout.
 - MQTT/Go/WebSocket telemetry, Redis serving infrastructure, automatic road

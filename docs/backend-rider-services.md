@@ -163,24 +163,24 @@ a second provider refund. There is no rider self-service refund policy here.
 
 ## Scheduling and rollout
 
-Migrations **023–025** are forward-only; 001–022 remain unchanged. No staging
-database, credentials, provider dashboard or Render schedule is changed by
-these source changes. Do not call this rollout complete until scheduling and
-device delivery have been verified separately.
+Migrations are forward-only. Current source includes the protected GitHub
+service-maintenance schedule as well as payment/email maintenance. Neither a
+workflow definition nor a successful empty batch proves device delivery.
 
 Use the restricted maintenance runtime and its non-human maintenance identity.
-The following are suggested cadences, not proof of enabled schedules.
-Payment recovery and email retry have a 15-minute GitHub workflow; other jobs
-need separately approved scheduling. See [deployment](DEPLOY.md).
+Payment recovery and email retry have a 15-minute GitHub workflow. Service jobs
+run at the times listed in [deployment](DEPLOY.md#scheduling). The table below
+distinguishes those definitions from workers still needing separate invocation.
 
-| Command                                      | Suggested UTC cadence / order                                                            |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `node dist/worker.js trip-generation`        | Before ask-dispatch; defaults to tomorrow. Explicit date supports today/future backfill. |
-| `node dist/worker.js personal-pause-resumes` | Every five minutes, and before period-close jobs.                                        |
-| `node dist/worker.js push`                   | Every minute, after ask-dispatch where practical.                                        |
-| `node dist/worker.js emails`                 | Existing outbox/reminder worker; schedule separately if not already running.             |
-| `node dist/worker.js erasures`               | Worker also removes deleted/replaced avatars; schedule separately.                       |
-| `node dist/worker.js admission`              | Every five minutes when scheduling is enabled; drain expired account/IP counter batches. |
+| Command                                      | Checked-in staging schedule / boundary                                                                    |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `node dist/worker.js trip-generation`        | Nightly group at 01:30 UTC calls the API for the next seven days; manual invocation defaults to tomorrow. |
+| `node dist/worker.js personal-pause-resumes` | Nightly group at 01:30 UTC; not an every-five-minute schedule.                                            |
+| `node dist/worker.js auto-renewals`          | Nightly group after pause resumes. Requires rider consent and reusable card evidence.                     |
+| `node dist/worker.js push`                   | Separate invocation required. Creating asks alone does not send push.                                     |
+| `node dist/worker.js emails`                 | Due email retry runs every 15 minutes via the email maintenance script.                                   |
+| `node dist/worker.js erasures`               | Also removes deleted/replaced avatars; separate invocation required.                                      |
+| `node dist/worker.js admission`              | Expired account/IP counter cleanup; separate invocation required.                                         |
 
 Every batch is bounded. Rerun/drain batches when backlog exceeds its limit and
 alert on failures. This does **not** authorize purchasing cron services. No new

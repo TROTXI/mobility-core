@@ -1,6 +1,6 @@
 # Ops workflows
 
-Source audit: 2026-10-03. Sign in with an approved Google account, then complete
+Source audit: 2026-10-08. Sign in with an invited or existing approved Google account, then complete
 the passkey check. Role checks are enforced by the server, not only navigation.
 
 | Navigation                 | Implemented work                                                                                                    |
@@ -12,7 +12,7 @@ the passkey check. Role checks are enforced by the server, not only navigation.
 | Riders                     | Membership, reservations, financial history, restrictions and support context                                       |
 | Support                    | Commute requests, driver requests, incidents and decisions                                                          |
 | More → Standby             | Review commuter requests and send priced subscription offers                                                        |
-| More → Payments            | Purchases, recovery/review and TEST refund initiation                                                               |
+| More → Payments            | Purchases, recovery/review, TEST refund initiation and card-renewal status/attention list                           |
 | More → People & messages   | Operators, access controls, delivery and erasure visibility                                                         |
 | More → Team & access       | Superadmin-only invitations, administrator account deletion, superadmin capability and passkey recovery             |
 | More → Audit log / Reports | Attributable events and operational summaries                                                                       |
@@ -32,6 +32,15 @@ then pays through Paystack. New direct purchases without an offer are refused.
 
 The UI accepts GHS inputs and sends integer pesewas. Do not type a pesewa amount
 into a GHS field. Sent offers are immutable; a fare edit never reprices them.
+The offer form checks for published stop-pair fares and requires a reason.
+Refused offers retain entered terms for correction rather than requiring a
+fresh form; uncertain outcomes keep the original request locked for safe retry.
+Money, security and operational decision forms collect reasons
+for the attributed audit history.
+
+In **Payments > Card renewals**, inspect failures, masked card details and the
+next attempt. A `needs_offer` entry links to Standby; Ops still creates the new
+offer there. This screen cannot opt a rider into recurring charges.
 
 ## Boundaries
 

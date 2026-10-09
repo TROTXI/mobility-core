@@ -3,6 +3,9 @@ import type { Pool } from 'pg';
 import { PushSendError } from './fcm.js';
 import type { PushSender } from './fcm.js';
 
+// Bound both provider traffic and checked-out database connections per drain.
+const SEND_CONCURRENCY = 4;
+
 /** Durable prompt fanout, bounded retries. Provider acceptance is not delivery. */
 export class PushNotifications {
   constructor(private options: { pool: Pool; deviceKey: Buffer; sender: PushSender }) {}
@@ -42,11 +45,19 @@ export class PushNotifications {
       )
     ).rows;
     const result = { considered: 0, accepted: 0, cancelled: 0, failed: 0, retried: 0 };
-    for (const item of candidates) {
+    const deliver = async (item: { id: string; user_id: string }) => {
       const c = await pool.connect();
       try {
         await c.query("BEGIN; SET LOCAL lock_timeout='3s'; SET LOCAL statement_timeout='30s'");
-        await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [item.user_id]);
+        // Preserve erasure/device-transfer serialization without waiting behind
+        // another drain's network call for this account. A later drain retries it.
+        const owner = await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE SKIP LOCKED', [
+          item.user_id,
+        ]);
+        if (!owner.rowCount) {
+          await c.query('COMMIT');
+          return;
+        }
         const row = (
           await c.query(
             `SELECT * FROM app.push_deliveries WHERE id=$1 AND state='pending'
@@ -56,7 +67,7 @@ export class PushNotifications {
         ).rows[0];
         if (!row) {
           await c.query('COMMIT');
-          continue;
+          return;
         }
         result.considered++;
         const device = (
@@ -156,7 +167,41 @@ export class PushNotifications {
       } finally {
         c.release();
       }
+    };
+    // Each account is serial within a drain: multiple devices/events must not
+    // compete for the same user lock and skip each other's work.
+    const byUser = new Map<string, { id: string; user_id: string }[]>();
+    for (const item of candidates) {
+      const group = byUser.get(item.user_id) ?? [];
+      group.push(item);
+      byUser.set(item.user_id, group);
     }
+    const groups = [...byUser.values()];
+    let next = 0;
+    let stopped = false;
+    const worker = async () => {
+      try {
+        while (!stopped && next < groups.length) {
+          const group = groups[next++]!;
+          for (const item of group) {
+            if (stopped) return;
+            await deliver(item);
+          }
+        }
+      } catch (error) {
+        stopped = true;
+        throw error;
+      }
+    };
+    // Wait for every in-flight transaction before returning or throwing. The
+    // caller can then safely close its pool or report a failed maintenance run.
+    const workers = await Promise.allSettled(
+      Array.from(
+        { length: Math.min(SEND_CONCURRENCY, pool.options.max ?? 10, groups.length) },
+        worker,
+      ),
+    );
+    for (const outcome of workers) if (outcome.status === 'rejected') throw outcome.reason;
     return result;
   }
 }

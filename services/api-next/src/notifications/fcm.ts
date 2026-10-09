@@ -20,6 +20,7 @@ export interface PushSender {
 export class FcmSender implements PushSender {
   private credentials: { project_id: string; client_email: string; private_key: string };
   private cached?: { token: string; until: number };
+  private refreshing?: Promise<string>;
   constructor(
     json: string,
     private request: typeof fetch = fetch,
@@ -66,6 +67,14 @@ export class FcmSender implements PushSender {
   }
   private async access(): Promise<string> {
     if (this.cached && this.cached.until > Date.now()) return this.cached.token;
+    if (!this.refreshing) {
+      this.refreshing = this.refreshAccess().finally(() => {
+        this.refreshing = undefined;
+      });
+    }
+    return this.refreshing;
+  }
+  private async refreshAccess(): Promise<string> {
     const c = this.credentials;
     const jwt = await new SignJWT({ scope: 'https://www.googleapis.com/auth/firebase.messaging' })
       .setProtectedHeader({ alg: 'RS256' })

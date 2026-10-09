@@ -79,3 +79,33 @@ test('FCM-02 only UNREGISTERED revokes; transient/auth errors retry, huge respon
     /^Error: Invalid FIREBASE_SERVICE_ACCOUNT$/,
   );
 });
+
+test('FCM concurrent sends share OAuth refresh and recover after a failed refresh', async () => {
+  let refreshes = 0;
+  const deliveries: string[] = [];
+  const sender = new FcmSender(credentials, async (url, init) => {
+    if (String(url).includes('oauth2')) {
+      refreshes++;
+      if (refreshes === 1) return new Response(null, { status: 503 });
+      return Response.json({ access_token: 'refreshed', expires_in: 3600 });
+    }
+    assert.equal((init?.headers as Record<string, string>).authorization, 'Bearer refreshed');
+    const message = JSON.parse(String(init?.body)).message;
+    deliveries.push(message.data.notificationId);
+    return Response.json({ name: `projects/test/messages/${message.data.notificationId}` });
+  });
+  const failed = await Promise.allSettled(
+    Array.from({ length: 4 }, (_, i) => sender.send(`token-${i}`, `failed-${i}`, `ride-${i}`)),
+  );
+  assert.equal(refreshes, 1);
+  assert.equal(deliveries.length, 0);
+  for (const result of failed) {
+    assert.equal(result.status, 'rejected');
+    if (result.status === 'rejected') assert.ok(result.reason instanceof PushSendError);
+  }
+  await Promise.all(
+    Array.from({ length: 4 }, (_, i) => sender.send(`token-${i}`, `sent-${i}`, `ride-${i}`)),
+  );
+  assert.equal(refreshes, 2);
+  assert.deepEqual(deliveries.sort(), ['sent-0', 'sent-1', 'sent-2', 'sent-3']);
+});
