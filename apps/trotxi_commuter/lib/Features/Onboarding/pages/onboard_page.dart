@@ -10,6 +10,7 @@ import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
 import 'phone_sign_in_page.dart';
+import 'email_sign_in_page.dart';
 
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
@@ -249,8 +250,20 @@ class _OnBoardPageState extends State<OnBoardPage> {
             icon: Icon(Icons.phone_outlined, color: colors.textPrimary),
           ),
           const SizedBox(height: AppSpacing.space8),
+          AppSignInButton(
+            onPressed: _isSigningIn
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => EmailSignInPage(client: widget.client),
+                    ),
+                  ),
+            text: 'Continue with email',
+            icon: Icon(Icons.email_outlined, color: colors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.space8),
           Text(
-            'Use an existing Google or Apple account to continue. By continuing, '
+            'By continuing, '
             'you agree to Trotxi\u2019s Terms and acknowledge the Privacy Policy.',
             textAlign: TextAlign.center,
             style: AppTypography.caption.copyWith(

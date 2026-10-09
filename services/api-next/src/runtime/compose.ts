@@ -217,6 +217,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         passkeys: webAuthnRelyingParty(config.opsOrigin),
         opsOrigin: config.opsOrigin,
         opsEmail: email,
+        commuterEmail: email,
         google: new GoogleIdTokenVerifier(config.google.clientId),
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),

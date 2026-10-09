@@ -9,6 +9,7 @@ All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**completeEmailAccess**](PublicApi.md#completeemailaccess) | **POST** /v1/auth/email/complete | complete Email Access
 [**getBootstrap**](PublicApi.md#getbootstrap) | **GET** /flags | get Bootstrap
 [**getBuild**](PublicApi.md#getbuild) | **GET** /version | get Build
 [**getGeometry**](PublicApi.md#getgeometry) | **GET** /v1/route-geometries/{id} | get Geometry
@@ -22,13 +23,62 @@ Method | HTTP request | Description
 [**listRoutes**](PublicApi.md#listroutes) | **GET** /v1/routes | list Routes
 [**logoutSession**](PublicApi.md#logoutsession) | **POST** /v1/auth/logout | logout Session
 [**refreshSession**](PublicApi.md#refreshsession) | **POST** /v1/auth/refresh | refresh Session
+[**requestEmailSignup**](PublicApi.md#requestemailsignup) | **POST** /v1/auth/email/signup | request Email Signup
+[**requestPasswordReset**](PublicApi.md#requestpasswordreset) | **POST** /v1/auth/email/reset | request Password Reset
 [**requestPhoneSignIn**](PublicApi.md#requestphonesignin) | **POST** /v1/auth/phone/request | request Phone Sign In
 [**signInApple**](PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [**signInDriver**](PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
+[**signInEmail**](PublicApi.md#signinemail) | **POST** /v1/auth/email/login | sign In Email
 [**signInGoogle**](PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
 [**signInOpsGoogle**](PublicApi.md#signinopsgoogle) | **POST** /v1/auth/ops/google | sign In Ops Google
 [**verifyPhoneSignIn**](PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
 
+
+# **completeEmailAccess**
+> completeEmailAccess(xTrotxiClient, xTrotxiBuild, emailAccessComplete, xTrotxiPlatform)
+
+complete Email Access
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getPublicApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final EmailAccessComplete emailAccessComplete = ; // EmailAccessComplete |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    api.completeEmailAccess(xTrotxiClient, xTrotxiBuild, emailAccessComplete, xTrotxiPlatform);
+} on DioException catch (e) {
+    print('Exception when calling PublicApi->completeEmailAccess: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **emailAccessComplete** | [**EmailAccessComplete**](EmailAccessComplete.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getBootstrap**
 > Bootstrap getBootstrap()
@@ -600,6 +650,100 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **requestEmailSignup**
+> EmailAccessMessageResponse requestEmailSignup(xTrotxiClient, xTrotxiBuild, emailSignup, xTrotxiPlatform)
+
+request Email Signup
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getPublicApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final EmailSignup emailSignup = ; // EmailSignup |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.requestEmailSignup(xTrotxiClient, xTrotxiBuild, emailSignup, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PublicApi->requestEmailSignup: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **emailSignup** | [**EmailSignup**](EmailSignup.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**EmailAccessMessageResponse**](EmailAccessMessageResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **requestPasswordReset**
+> EmailAccessMessageResponse requestPasswordReset(xTrotxiClient, xTrotxiBuild, emailAddress, xTrotxiPlatform)
+
+request Password Reset
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getPublicApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final EmailAddress emailAddress = ; // EmailAddress |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.requestPasswordReset(xTrotxiClient, xTrotxiBuild, emailAddress, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PublicApi->requestPasswordReset: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **emailAddress** | [**EmailAddress**](EmailAddress.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**EmailAccessMessageResponse**](EmailAccessMessageResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **requestPhoneSignIn**
 > PhoneChallengeResponse requestPhoneSignIn(xTrotxiClient, xTrotxiBuild, phoneSignInRequest, xTrotxiPlatform)
 
@@ -729,6 +873,53 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**DriverTokensResponse**](DriverTokensResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **signInEmail**
+> TokensResponse signInEmail(xTrotxiClient, xTrotxiBuild, emailSignIn, xTrotxiPlatform)
+
+sign In Email
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getPublicApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final EmailSignIn emailSignIn = ; // EmailSignIn |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.signInEmail(xTrotxiClient, xTrotxiBuild, emailSignIn, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PublicApi->signInEmail: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **emailSignIn** | [**EmailSignIn**](EmailSignIn.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**TokensResponse**](TokensResponse.md)
 
 ### Authorization
 
@@ -881,4 +1072,3 @@ No authorization required
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

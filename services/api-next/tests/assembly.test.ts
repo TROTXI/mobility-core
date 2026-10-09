@@ -220,7 +220,13 @@ test('maintenance exit policy detects 200 partial failures and contract drift, n
     jobFailed({
       job: 'erasures',
       status: 200,
-      body: { considered: 1, completed: 0, failed: 1, phoneChallengesPurged: 0 },
+      body: {
+        considered: 1,
+        completed: 0,
+        failed: 1,
+        phoneChallengesPurged: 0,
+        emailAccessPurged: { expired: 0, pending: 0 },
+      },
     }),
     true,
   );

@@ -74,7 +74,7 @@ export class StandbyService {
     await this.options.authorizeSession(c, actor);
     const user = (
       await c.query(
-        'SELECT role,display_name FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE',
+        'SELECT role,display_name,first_name,last_name FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE',
         [actor.userId],
       )
     ).rows[0];
@@ -84,7 +84,7 @@ export class StandbyService {
   }
   private async eligible(c: PoolClient, actor: Actor) {
     const user = await this.authorize(c, actor);
-    if (!user.display_name?.trim() || user.display_name === 'New commuter')
+    if (!user.first_name?.trim() || !user.last_name?.trim())
       fail(409, 'standby_profile_incomplete', 'Complete your rider name before joining standby.');
     const verified = (
       await c.query(

@@ -435,6 +435,9 @@ export async function createTransportApp(options: AppOptions) {
         name === 'changeDriverPin' ||
         name === 'startPhoneVerification' ||
         name === 'confirmPhoneVerification' ||
+        name === 'startEmailLink' ||
+        name === 'finishEmailLink' ||
+        name === 'changePassword' ||
         (passkeyOperations as readonly string[]).includes(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {

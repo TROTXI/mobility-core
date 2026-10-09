@@ -79,8 +79,10 @@ named(
   obj({
     id,
     displayName: text(),
-    // The address the identity provider gave us. Read-only: it is not ours to
-    // change, and erasure nulls it along with the rest of the profile.
+    firstName: text(60).nullable().optional(),
+    lastName: text(60).nullable().optional(),
+    otherNames: text(80).nullable().optional(),
+    // A contact address is not proof of an email sign-in credential.
     email: z.email().nullable(),
     phone: text().nullable(),
     avatarUrl: z.url().nullable(),
@@ -89,7 +91,15 @@ named(
     isSuperadmin: z.boolean().optional(),
   }),
 );
-named('ProfileUpdate', obj({ displayName: text(100) }));
+named(
+  'ProfileUpdate',
+  obj({
+    displayName: text(100).optional(),
+    firstName: text(60).optional(),
+    lastName: text(60).optional(),
+    otherNames: text(80).nullable().optional(),
+  }),
+);
 named(
   'PasskeyStatus',
   obj({
@@ -248,6 +258,27 @@ named(
   }),
 );
 named('PhoneSignInRequest', obj({ phone: text(32) }));
+named(
+  'EmailSignup',
+  obj({
+    email: z.email().max(320),
+    firstName: text(60),
+    lastName: text(60),
+    otherNames: text(80).nullable().optional(),
+  }),
+);
+named('EmailAddress', obj({ email: z.email().max(320) }));
+named('EmailSignIn', obj({ email: z.email().max(320), password: z.string().min(1).max(128) }));
+named(
+  'EmailAccessComplete',
+  obj({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/), password: z.string().min(15).max(128) }),
+);
+named(
+  'PasswordChange',
+  obj({ currentPassword: z.string().min(1).max(128), password: z.string().min(15).max(128) }),
+);
+named('EmailAccessMessage', obj({ message: text(500) }));
+named('EmailAccessStatus', obj({ email: z.email().nullable(), passwordEnabled: z.boolean() }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
 named('PhoneVerificationStart', obj({ phone: text(32) }));
 named(
@@ -1731,6 +1762,41 @@ for (const provider of ['google', 'apple', 'driver'])
     provider === 'driver' ? 'DriverTokens' : 'Tokens',
     { retry: 'credential', sensitive: true },
   );
+post('/v1/auth/email/signup', 'requestEmailSignup', 'EmailSignup', 'EmailAccessMessage', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/email/login', 'signInEmail', 'EmailSignIn', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/email/reset', 'requestPasswordReset', 'EmailAddress', 'EmailAccessMessage', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/email/complete', 'completeEmailAccess', 'EmailAccessComplete', null, {
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+get('/v1/me/email-access', 'getEmailAccess', 'EmailAccessStatus', { access: 'self' });
+post('/v1/me/email-access/link', 'startEmailLink', 'EmailAddress', 'EmailAccessMessage', {
+  access: 'self',
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/me/email-access/complete', 'finishEmailLink', 'EmailAccessComplete', null, {
+  access: 'self',
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/me/password', 'changePassword', 'PasswordChange', null, {
+  access: 'self',
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
 post('/v1/auth/phone/request', 'requestPhoneSignIn', 'PhoneSignInRequest', 'PhoneChallenge', {
   retry: 'credential',
   sensitive: true,

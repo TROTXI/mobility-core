@@ -27,6 +27,9 @@ function expectStatus(response: Response, code: number) {
 /** A rider, an admin and a corridor, priced from the database rather than a stub. */
 async function fixture(t: TestContext, target = true, requireOffer = false, serviceFrom?: string) {
   const f = await setup(t, {}, false, files.length, serviceFrom);
+  await f.owner.query("UPDATE app.users SET first_name='Test',last_name='Rider' WHERE id=$1", [
+    f.actor.userId,
+  ]);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
   const admin = { userId: f.adminId, sessionId: f.adminId };
   const pricing = new Pricing({

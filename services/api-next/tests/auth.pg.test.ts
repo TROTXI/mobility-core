@@ -11,6 +11,7 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { createReplacementApp } from '../src/http/replacement.js';
 import { AuthService } from '../src/auth/service.js';
 import { PhoneOtp } from '../src/auth/phone-otp.js';
+import { purgeExpiredEmailAccess } from '../src/auth/email-auth.js';
 import { StandbyService } from '../src/membership/standby.js';
 import type { Purchases } from '../src/payments/purchases.js';
 import type { SmsSender } from '../src/notifications/mnotify.js';
@@ -468,6 +469,10 @@ test('KYC-01: Google commuter upgrades the same account by OTP without creating 
     },
   );
   const rider = await sign('kyc-google-upgrade');
+  await owner.query(
+    "UPDATE app.users SET first_name='Test',last_name='Rider',display_name='Test Rider' WHERE id=$1",
+    [rider.account.id],
+  );
   const before = await request('GET', '/v1/me/verification', undefined, rider.accessToken);
   assert.equal(before.statusCode, 200, before.body);
   assert.equal(before.json().data.standbyEligible, false);
@@ -551,6 +556,10 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
     200,
   );
   const riderId = rider.account.id as string;
+  await owner.query(
+    "UPDATE app.users SET first_name='Test',last_name='Rider',display_name='Test Rider' WHERE id=$1",
+    [riderId],
+  );
   const adminId = randomUUID();
   await owner.query(
     "INSERT INTO app.users(id,role,display_name) VALUES ($1,'admin','Pilot admin')",
@@ -887,8 +896,19 @@ async function setup(
     ...providers,
     ...(sms ? { phoneOtp: new PhoneOtp(runtime, sms, encryptionKey, true) } : {}),
   };
+  const emailDeliveries: Promise<void>[] = [];
+  const commuterEmail = {
+    queueEmailAccess: identity.opsEmail.queueEmailAccess,
+    queuePasswordChanged: identity.opsEmail.queuePasswordChanged,
+    sendQueued: (id: string) => {
+      const promise = identity.opsEmail.sendQueued(id);
+      emailDeliveries.push(promise);
+      return promise;
+    },
+  };
   const service = new AuthService({
     ...identity,
+    commuterEmail,
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
   });
@@ -896,7 +916,7 @@ async function setup(
     credentialReplayKey: Buffer.alloc(32, 9),
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
-    identity,
+    identity: { ...identity, commuterEmail },
     compose: ({ authorizeSession }) => ({
       account: new AccountService({
         pool: runtime,
@@ -993,6 +1013,7 @@ async function setup(
     waitForWaiters,
     role,
     sentEmails,
+    emailDelivered: () => Promise.all(emailDeliveries),
   };
 }
 const data = (response: { statusCode: number; body: string; json(): any }, status = 200) => {
@@ -2192,3 +2213,352 @@ function withReason(url: string, payload: unknown): unknown {
     return { ...payload, reason: 'Test reason' };
   return payload;
 }
+
+const emailPassword = 'correct horse trotxi battery';
+const emailRegistration = {
+  email: 'ama@outlook.com',
+  firstName: 'Ama',
+  otherNames: 'Akua',
+  lastName: 'Mensah',
+};
+async function emailToken(f: Awaited<ReturnType<typeof setup>>) {
+  await f.emailDelivered();
+  const message = f.sentEmails.at(-1)!;
+  return (
+    message.match(/token=([A-Za-z0-9_-]{43})/)?.[1] ??
+    message.match(/Verification code: ([A-Za-z0-9_-]{43})/)?.[1] ??
+    assert.fail('No verification token in fake mail')
+  );
+}
+async function registeredEmail(f: Awaited<ReturnType<typeof setup>>) {
+  data(await f.request('POST', '/v1/auth/email/signup', emailRegistration));
+  data(
+    await f.request('POST', '/v1/auth/email/complete', {
+      token: await emailToken(f),
+      password: emailPassword,
+    }),
+    204,
+  );
+  return data(
+    await f.request('POST', '/v1/auth/email/login', {
+      email: emailRegistration.email,
+      password: emailPassword,
+    }),
+  );
+}
+test('EMAIL-01 any email domain, full names, proof before password, no automatic phone verification', async (t) => {
+  const f = await setup(t);
+  data(
+    await f.request('POST', '/v1/auth/email/signup', {
+      ...emailRegistration,
+      email: 'AMA@outlook.com',
+    }),
+  );
+  const token = await emailToken(f);
+  assert.equal(f.sentEmails.length, 1);
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/email/login', {
+        email: emailRegistration.email,
+        password: emailPassword,
+      })
+    ).statusCode,
+    401,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.auth_sessions')).rows[0].n,
+    0,
+  );
+  const stored = (await f.owner.query('SELECT * FROM app.email_auth_challenges')).rows[0];
+  assert.equal(stored.token_hash, hashToken(token));
+  data(await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }), 204);
+  assert.equal(
+    (await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }))
+      .statusCode,
+    400,
+  );
+  const session = data(
+    await f.request('POST', '/v1/auth/email/login', {
+      email: emailRegistration.email,
+      password: emailPassword,
+    }),
+  );
+  assert.equal(session.account.displayName, 'Ama Akua Mensah');
+  assert.equal(session.account.firstName, 'Ama');
+  assert.equal(session.account.lastName, 'Mensah');
+  assert.equal(session.account.otherNames, 'Akua');
+  const verification = data(
+    await f.request('GET', '/v1/me/verification', undefined, session.accessToken),
+  );
+  assert.equal(verification.standbyEligible, false);
+  assert.deepEqual(verification.missing, ['phone']);
+  const cr = (await f.owner.query('SELECT * FROM app.email_credentials')).rows[0];
+  assert.ok(cr.password_hash.startsWith('argon2id-v1$'));
+  assert.ok(!cr.password_hash.includes(emailPassword));
+});
+test('EMAIL-02 password reset is one-use, rejects old password, revokes every old session', async (t) => {
+  const f = await setup(t),
+    session = await registeredEmail(f);
+  // Contact email is not an authentication identity. An independently issued
+  // Ops invitation can produce a second contact row without owning this login.
+  await f.owner.query("INSERT INTO app.users(role,email) VALUES('admin',$1)", [
+    emailRegistration.email,
+  ]);
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=created_at-interval '2 minutes'",
+  );
+  const unknown = data(
+    await f.request('POST', '/v1/auth/email/reset', { email: 'unknown@example.com' }),
+  );
+  const known = data(
+    await f.request('POST', '/v1/auth/email/reset', { email: emailRegistration.email }),
+  );
+  assert.deepEqual(known, unknown);
+  const token = await emailToken(f),
+    password = 'another long password phrase';
+  const results = await Promise.all(
+    [1, 2].map(() => f.request('POST', '/v1/auth/email/complete', { token, password })),
+  );
+  assert.deepEqual(results.map((r) => r.statusCode).sort(), [204, 400]);
+  assert.equal((await f.request('GET', '/v1/me', undefined, session.accessToken)).statusCode, 401);
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/email/login', {
+        email: emailRegistration.email,
+        password: emailPassword,
+      })
+    ).statusCode,
+    401,
+  );
+  const fresh = data(
+    await f.request('POST', '/v1/auth/email/login', { email: emailRegistration.email, password }),
+  );
+  assert.equal(fresh.account.id, session.account.id);
+});
+test('EMAIL-03 email linking requires the initiating account and session', async (t) => {
+  const f = await setup(t),
+    first = await f.sign('email-link'),
+    other = await f.sign('email-other');
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/email-access/link',
+      { email: 'linked@yahoo.com' },
+      first.accessToken,
+    ),
+  );
+  const token = await emailToken(f);
+  assert.equal(
+    (await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }))
+      .statusCode,
+    400,
+  );
+  assert.equal(
+    (
+      await f.request(
+        'POST',
+        '/v1/me/email-access/complete',
+        { token, password: emailPassword },
+        other.accessToken,
+      )
+    ).statusCode,
+    400,
+  );
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/email-access/complete',
+      { token, password: emailPassword },
+      first.accessToken,
+    ),
+    204,
+  );
+  const email = data(
+    await f.request('POST', '/v1/auth/email/login', {
+      email: 'linked@yahoo.com',
+      password: emailPassword,
+    }),
+  );
+  assert.equal(email.account.id, first.account.id);
+  assert.equal((await f.request('GET', '/v1/me', undefined, first.accessToken)).statusCode, 401);
+});
+test('EMAIL-04 expiry and erasure invalidate email links and erase names and credentials', async (t) => {
+  const f = await setup(t);
+  data(await f.request('POST', '/v1/auth/email/signup', emailRegistration));
+  const token = await emailToken(f);
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=clock_timestamp()-interval '31 minutes',expires_at=clock_timestamp()-interval '1 minute'",
+  );
+  assert.equal(
+    (await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }))
+      .statusCode,
+    400,
+  );
+  data(await f.request('POST', '/v1/auth/email/signup', emailRegistration));
+  const newer = await emailToken(f);
+  await f.owner.query('UPDATE app.users SET deleted_at=clock_timestamp()');
+  assert.equal(
+    (await f.request('POST', '/v1/auth/email/complete', { token: newer, password: emailPassword }))
+      .statusCode,
+    400,
+  );
+  const cr = (await f.owner.query('SELECT email,password_hash FROM app.email_credentials')).rows[0];
+  assert.deepEqual(cr, { email: null, password_hash: null });
+  const user = (await f.owner.query('SELECT first_name,last_name,other_names FROM app.users'))
+    .rows[0];
+  assert.deepEqual(user, { first_name: null, last_name: null, other_names: null });
+});
+test('EMAIL-05 change password checks current proof and recent sign-in, then revokes access', async (t) => {
+  const f = await setup(t),
+    session = await registeredEmail(f);
+  assert.equal(
+    (
+      await f.request(
+        'POST',
+        '/v1/me/password',
+        { currentPassword: 'wrong', password: 'a different long password' },
+        session.accessToken,
+      )
+    ).statusCode,
+    401,
+  );
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/password',
+      { currentPassword: emailPassword, password: 'a different long password' },
+      session.accessToken,
+    ),
+    204,
+  );
+  assert.equal((await f.request('GET', '/v1/me', undefined, session.accessToken)).statusCode, 401);
+  const signed = data(
+    await f.request('POST', '/v1/auth/email/login', {
+      email: emailRegistration.email,
+      password: 'a different long password',
+    }),
+  );
+  await f.owner.query(
+    "UPDATE app.auth_sessions SET created_at=created_at-interval '20 minutes' WHERE user_id=$1",
+    [signed.account.id],
+  );
+  assert.equal(
+    (
+      await f.request(
+        'POST',
+        '/v1/me/password',
+        { currentPassword: 'a different long password', password: emailPassword },
+        signed.accessToken,
+      )
+    ).json().error.code,
+    'recent_signin_required',
+  );
+});
+
+test('EMAIL-06 tentative links cannot reserve a mailbox against its owner signing up', async (t) => {
+  const f = await setup(t),
+    attacker = await f.sign('pending-attacker');
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/email-access/link',
+      { email: emailRegistration.email },
+      attacker.accessToken,
+    ),
+  );
+  const pendingToken = await emailToken(f);
+  const owner = await registeredEmail(f);
+  assert.notEqual(owner.account.id, attacker.account.id);
+  assert.equal(
+    (
+      await f.request(
+        'POST',
+        '/v1/me/email-access/complete',
+        { token: pendingToken, password: emailPassword },
+        attacker.accessToken,
+      )
+    ).statusCode,
+    409,
+  );
+  assert.equal((await f.request('GET', '/v1/me', undefined, owner.accessToken)).statusCode, 200);
+});
+
+test('EMAIL-07 verified Google enrollment can proceed despite an unverified email claim', async (t) => {
+  const email = 'owner@gmail.com';
+  const f = await setup(t, 1000, {
+    google: {
+      verify: async (token) => ({
+        provider: 'google',
+        providerId: token,
+        email: token === 'owner' ? email : 'attacker@example.com',
+        displayName: 'Test rider',
+      }),
+    },
+  });
+  const attacker = data(await f.request('POST', '/v1/auth/google', { idToken: 'attacker' }));
+  data(await f.request('POST', '/v1/me/email-access/link', { email }, attacker.accessToken));
+  const pendingToken = await emailToken(f);
+  data(await f.request('POST', '/v1/auth/email/signup', { ...emailRegistration, email }));
+  const signupToken = await emailToken(f);
+  const owner = data(await f.request('POST', '/v1/auth/google', { idToken: 'owner' }));
+  assert.notEqual(owner.account.id, attacker.account.id);
+  assert.equal(
+    (
+      await f.request(
+        'POST',
+        '/v1/me/email-access/complete',
+        { token: pendingToken, password: emailPassword },
+        attacker.accessToken,
+      )
+    ).statusCode,
+    409,
+  );
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/email/complete', {
+        token: signupToken,
+        password: emailPassword,
+      })
+    ).statusCode,
+    409,
+  );
+});
+
+test('EMAIL-08 retention removes abandoned signup PII without deleting a linked-method owner', async (t) => {
+  const f = await setup(t),
+    rider = await f.sign('pending-cleanup');
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/email-access/link',
+      { email: 'pending-link@example.com' },
+      rider.accessToken,
+    ),
+  );
+  await f.emailDelivered();
+  data(await f.request('POST', '/v1/auth/email/signup', emailRegistration));
+  await f.emailDelivered();
+  await f.owner.query(
+    "UPDATE app.email_credentials SET created_at=clock_timestamp()-interval '2 days'",
+  );
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day'",
+  );
+  const result = await purgeExpiredEmailAccess(f.runtime);
+  assert.equal(result.pending, 2);
+  assert.equal(result.expired, 2);
+  assert.equal((await f.request('GET', '/v1/me', undefined, rider.accessToken)).statusCode, 200);
+  const signup = (await f.owner.query('SELECT * FROM app.users WHERE id<>$1', [rider.account.id]))
+    .rows[0];
+  assert.ok(signup.deleted_at);
+  assert.equal(signup.display_name, null);
+  assert.equal(signup.first_name, null);
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT count(*)::int AS n FROM app.email_credentials WHERE email IS NOT NULL',
+      )
+    ).rows[0].n,
+    0,
+  );
+});

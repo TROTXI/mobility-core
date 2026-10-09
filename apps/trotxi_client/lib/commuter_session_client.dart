@@ -74,6 +74,59 @@ class CommuterSessionClient {
             );
       });
 
+  Future<Account> signInEmail(String email, String password) =>
+      _signIn((check) async {
+        check();
+        return client.getPublicApi().signInEmail(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              emailSignIn: EmailSignIn((b) => b
+                ..email = email
+                ..password = password),
+            );
+      });
+
+  Future<String> requestEmailSignup(
+      {required String email,
+      required String firstName,
+      required String lastName,
+      String? otherNames}) async {
+    final generation = store.generation;
+    try {
+      final response = await client.getPublicApi().requestEmailSignup(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            emailSignup: EmailSignup((b) => b
+              ..email = email
+              ..firstName = firstName
+              ..lastName = lastName
+              ..otherNames = otherNames),
+          );
+      if (generation != store.generation) throw _superseded;
+      return response.data!.data.message;
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  Future<String> requestPasswordReset(String email) async {
+    final generation = store.generation;
+    try {
+      final response = await client.getPublicApi().requestPasswordReset(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            emailAddress: EmailAddress((b) => b.email = email),
+          );
+      if (generation != store.generation) throw _superseded;
+      return response.data!.data.message;
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
   Future<PhoneChallenge> requestPhoneCode(String phone) async {
     try {
       final generation = store.generation;

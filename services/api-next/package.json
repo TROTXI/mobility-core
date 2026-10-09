@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Replacement backend for the staging API.",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.7.0"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

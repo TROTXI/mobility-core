@@ -112,6 +112,37 @@ void main() {
   });
 
   test(
+      'email signup and recovery do not create a session; login stores only tokens',
+      () async {
+    reply = (_) => json(200, {
+          'data': {'message': 'Check your inbox.'}
+        });
+    await sessions.requestEmailSignup(
+        email: 'ama@outlook.com',
+        firstName: 'Ama',
+        lastName: 'Mensah',
+        otherNames: 'Akua');
+    expect(requests.last.path, '/v1/auth/email/signup');
+    expect(bodyOf(requests.last), {
+      'email': 'ama@outlook.com',
+      'firstName': 'Ama',
+      'lastName': 'Mensah',
+      'otherNames': 'Akua'
+    });
+    await sessions.requestPasswordReset('ama@outlook.com');
+    expect(requests.last.path, '/v1/auth/email/reset');
+    expect(storage.values, isEmpty);
+    reply = (_) => json(200, {'data': tokens()});
+    await sessions.signInEmail('ama@outlook.com', 'a private testing password');
+    expect(requests.last.path, '/v1/auth/email/login');
+    expect(bodyOf(requests.last),
+        {'email': 'ama@outlook.com', 'password': 'a private testing password'});
+    expect(await store.getAccessToken(), 'a-1');
+    expect(storage.values.values.single,
+        isNot(contains('a private testing password')));
+  });
+
+  test(
       'Apple forwards only the supplied proof fields and shares the session scope',
       () async {
     await sessions.signInApple(
@@ -129,6 +160,23 @@ void main() {
     });
     expect(await store.getAccessToken(), 'a-1');
     expect(storage.values.values.single, isNot(contains('apple-proof')));
+  });
+
+  test('wrong email password does not refresh or erase an existing session',
+      () async {
+    await store.saveTokens(
+        accessToken: 'old-access', refreshToken: 'old-refresh');
+    reply = (_) => json(401, {
+          'error': {
+            'code': 'invalid_credentials',
+            'message': 'Email or password is incorrect.'
+          }
+        });
+    await expectLater(
+        sessions.signInEmail('ama@example.com', 'incorrect password'),
+        throwsA(isA<InvalidCredentialsException>()));
+    expect(requests, hasLength(1));
+    expect(await store.getRefreshToken(), 'old-refresh');
   });
 
   test('wrong app or backend cannot share this store', () {

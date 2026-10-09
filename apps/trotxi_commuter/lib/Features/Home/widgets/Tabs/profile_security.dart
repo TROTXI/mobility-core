@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'email_security_page.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
@@ -29,11 +30,9 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
   final bool _biometricUnlock = false;
 
   void _onChangePasswordOrPin() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Sign-in credentials are managed by your identity provider.',
-        ),
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => EmailSecurityPage(client: widget.client),
       ),
     );
   }
@@ -177,8 +176,8 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   _buildSectionTitle(context, 'Sign-in security'),
                   const SizedBox(height: 12),
                   _SecurityTile(
-                    title: 'Change password / PIN',
-                    subtitle: 'Managed by Google or Apple',
+                    title: 'Email & password',
+                    subtitle: 'Add email sign-in or change your password',
                     onTap: _onChangePasswordOrPin,
                   ),
                   const SizedBox(height: 8),

@@ -88,6 +88,14 @@ import 'package:trotxi_api_client/src/model/driver_tokens_response.dart';
 import 'package:trotxi_api_client/src/model/driver_trip.dart';
 import 'package:trotxi_api_client/src/model/driver_trip_page.dart';
 import 'package:trotxi_api_client/src/model/driver_trip_response.dart';
+import 'package:trotxi_api_client/src/model/email_access_complete.dart';
+import 'package:trotxi_api_client/src/model/email_access_message.dart';
+import 'package:trotxi_api_client/src/model/email_access_message_response.dart';
+import 'package:trotxi_api_client/src/model/email_access_status.dart';
+import 'package:trotxi_api_client/src/model/email_access_status_response.dart';
+import 'package:trotxi_api_client/src/model/email_address.dart';
+import 'package:trotxi_api_client/src/model/email_sign_in.dart';
+import 'package:trotxi_api_client/src/model/email_signup.dart';
 import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/error_response_error.dart';
 import 'package:trotxi_api_client/src/model/error_response_error_field_errors_inner.dart';
@@ -213,6 +221,7 @@ import 'package:trotxi_api_client/src/model/passkey_registration_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_registration_response_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_status.dart';
 import 'package:trotxi_api_client/src/model/passkey_status_response.dart';
+import 'package:trotxi_api_client/src/model/password_change.dart';
 import 'package:trotxi_api_client/src/model/pattern.dart';
 import 'package:trotxi_api_client/src/model/pattern_input.dart';
 import 'package:trotxi_api_client/src/model/pattern_page.dart';
@@ -432,6 +441,14 @@ part 'serializers.g.dart';
   DriverTrip,
   DriverTripPage,
   DriverTripResponse,
+  EmailAccessComplete,
+  EmailAccessMessage,
+  EmailAccessMessageResponse,
+  EmailAccessStatus,
+  EmailAccessStatusResponse,
+  EmailAddress,
+  EmailSignIn,
+  EmailSignup,
   ErrorResponse,
   ErrorResponseError,
   ErrorResponseErrorFieldErrorsInner,
@@ -557,6 +574,7 @@ part 'serializers.g.dart';
   PasskeyRegistrationResponseResponse,
   PasskeyStatus,
   PasskeyStatusResponse,
+  PasswordChange,
   Pattern,
   PatternInput,
   PatternPage,

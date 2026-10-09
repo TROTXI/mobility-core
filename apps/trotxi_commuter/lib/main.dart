@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/Features/Onboarding/pages/full_name_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/splash_view.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
@@ -172,7 +173,14 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp> {
                     CommuterStage.signedOut => OnBoardPage(
                       client: widget.client,
                     ),
-                    CommuterStage.ready => HomePage(client: widget.client),
+                    CommuterStage.ready =>
+                      widget.client.currentAccount?.firstName == null ||
+                              widget.client.currentAccount?.lastName == null
+                          ? FullNamePage(
+                              client: widget.client,
+                              requiredForSignup: true,
+                            )
+                          : HomePage(client: widget.client),
                     CommuterStage.failed => Scaffold(
                       body: SafeArea(
                         child: Center(

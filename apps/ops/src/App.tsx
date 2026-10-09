@@ -7,6 +7,7 @@ import { SignIn } from './auth/SignIn';
 import { LoadingPage } from './components/Page';
 import { Shell } from './components/Shell';
 import { trotxiDark, trotxiLight } from './theme';
+import { CommuterEmailAccess } from './auth/CommuterEmailAccess';
 
 const Overview = lazy(() =>
   import('./screens/Overview').then((module) => ({ default: module.Overview })),
@@ -68,9 +69,13 @@ export function App() {
       data-theme={appearance}
       style={{ minHeight: '100vh' }}
     >
-      <AuthProvider>
-        <Entry appearance={appearance} toggleAppearance={toggleAppearance} />
-      </AuthProvider>
+      {window.location.pathname === '/account-access' ? (
+        <CommuterEmailAccess />
+      ) : (
+        <AuthProvider>
+          <Entry appearance={appearance} toggleAppearance={toggleAppearance} />
+        </AuthProvider>
+      )}
     </FluentProvider>
   );
 }
