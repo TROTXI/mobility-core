@@ -57,6 +57,7 @@ import 'package:trotxi_api_client/src/model/commute_slot.dart';
 import 'package:trotxi_api_client/src/model/commute_slot_input.dart';
 import 'package:trotxi_api_client/src/model/commute_slot_page.dart';
 import 'package:trotxi_api_client/src/model/commute_slot_response.dart';
+import 'package:trotxi_api_client/src/model/contact_email_verify.dart';
 import 'package:trotxi_api_client/src/model/credential_action.dart';
 import 'package:trotxi_api_client/src/model/credential_issue.dart';
 import 'package:trotxi_api_client/src/model/credential_secret.dart';
@@ -245,6 +246,8 @@ import 'package:trotxi_api_client/src/model/personal_pause_response.dart';
 import 'package:trotxi_api_client/src/model/personal_resume_input.dart';
 import 'package:trotxi_api_client/src/model/phone_challenge.dart';
 import 'package:trotxi_api_client/src/model/phone_challenge_response.dart';
+import 'package:trotxi_api_client/src/model/phone_password_sign_in.dart';
+import 'package:trotxi_api_client/src/model/phone_registration.dart';
 import 'package:trotxi_api_client/src/model/phone_sign_in_request.dart';
 import 'package:trotxi_api_client/src/model/phone_sign_in_verify.dart';
 import 'package:trotxi_api_client/src/model/phone_verification_confirm.dart';
@@ -410,6 +413,7 @@ part 'serializers.g.dart';
   CommuteSlotInput,
   CommuteSlotPage,
   CommuteSlotResponse,
+  ContactEmailVerify,
   CredentialAction,
   CredentialIssue,
   CredentialSecret,
@@ -598,6 +602,8 @@ part 'serializers.g.dart';
   PersonalResumeInput,
   PhoneChallenge,
   PhoneChallengeResponse,
+  PhonePasswordSignIn,
+  PhoneRegistration,
   PhoneSignInRequest,
   PhoneSignInVerify,
   PhoneVerificationConfirm,

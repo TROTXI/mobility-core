@@ -111,6 +111,18 @@ void main() {
     expect(storage.values.values.single, isNot(contains('123456')));
   });
 
+  test('phone/password sign-in uses the generated contract and stores only tokens', () async {
+    final result = await sessions.signInPhonePassword('0241234567', 'a unique long password');
+    expect(result.id, 'rider-1');
+    expect(requests.single.path, '/v1/auth/phone/password');
+    expect(bodyOf(requests.single), {
+      'phone': '0241234567',
+      'password': 'a unique long password',
+    });
+    expect(await store.getRefreshToken(), 'r-1');
+    expect(storage.values.values.single, isNot(contains('a unique long password')));
+  });
+
   test(
       'email signup and recovery do not create a session; login stores only tokens',
       () async {

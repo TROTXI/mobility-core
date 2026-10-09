@@ -44,6 +44,7 @@ doc/CommuteSlot.md
 doc/CommuteSlotInput.md
 doc/CommuteSlotPage.md
 doc/CommuteSlotResponse.md
+doc/ContactEmailVerify.md
 doc/CredentialAction.md
 doc/CredentialIssue.md
 doc/CredentialSecret.md
@@ -237,6 +238,8 @@ doc/PersonalPauseResponse.md
 doc/PersonalResumeInput.md
 doc/PhoneChallenge.md
 doc/PhoneChallengeResponse.md
+doc/PhonePasswordSignIn.md
+doc/PhoneRegistration.md
 doc/PhoneSignInRequest.md
 doc/PhoneSignInVerify.md
 doc/PhoneVerificationConfirm.md
@@ -421,6 +424,7 @@ lib/src/model/commute_slot.dart
 lib/src/model/commute_slot_input.dart
 lib/src/model/commute_slot_page.dart
 lib/src/model/commute_slot_response.dart
+lib/src/model/contact_email_verify.dart
 lib/src/model/credential_action.dart
 lib/src/model/credential_issue.dart
 lib/src/model/credential_secret.dart
@@ -610,6 +614,8 @@ lib/src/model/personal_pause_response.dart
 lib/src/model/personal_resume_input.dart
 lib/src/model/phone_challenge.dart
 lib/src/model/phone_challenge_response.dart
+lib/src/model/phone_password_sign_in.dart
+lib/src/model/phone_registration.dart
 lib/src/model/phone_sign_in_request.dart
 lib/src/model/phone_sign_in_verify.dart
 lib/src/model/phone_verification_confirm.dart

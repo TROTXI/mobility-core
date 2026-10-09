@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import { createHmac } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
 import { ZodError } from 'zod';
@@ -12,10 +13,14 @@ import type { AppleTokenClient } from './apple-token-types.js';
 import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
-import { phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
+import { phoneIdentity, phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
+import { fullName } from './full-name.js';
+import { checkPassword, hashPassword } from './password.js';
+import { sharedAdmission } from '../runtime/admission.js';
 import {
   EmailAuth,
   emailOperations,
+  normalizeEmail,
   publicEmailOperations,
   type CommuterEmail,
   type EmailOperation,
@@ -38,6 +43,8 @@ export const authOperations = [
   'signInOpsGoogle',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
+  'signInPhonePassword',
+  'completePhoneRegistration',
   'startPhoneVerification',
   'confirmPhoneVerification',
   'getVerification',
@@ -78,6 +85,7 @@ export const publicAuthOperations = [
   'signInOpsGoogle',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
+  'signInPhonePassword',
   'signInGoogle',
   'signInApple',
   'signInDriver',
@@ -106,6 +114,7 @@ export interface AuthOptions {
   opsOrigin?: string;
   eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
   phoneOtp?: PhoneOtp;
+  phoneIdentityKey?: Buffer;
   pool: Pool;
   access: AccessConfig;
   pinSecret: string;
@@ -133,6 +142,7 @@ type User = {
   avatar_object_key: string | null;
   created_at: Date;
   deleted_at: Date | null;
+  phone_registration_pending?: boolean;
   is_superadmin?: boolean;
   ops_invite_pending?: boolean;
 };
@@ -199,6 +209,7 @@ export class AuthService {
       avatarUrl: user.avatar_object_key ? this.options.avatarUrl!(user.avatar_object_key) : null,
       createdAt: user.created_at.toISOString(),
       isSuperadmin: user.is_superadmin === true,
+      phoneRegistrationPending: user.phone_registration_pending === true,
     };
   }
   // Global auth lock order: user, session, refresh credential, driver/credential.
@@ -248,7 +259,11 @@ export class AuthService {
   readonly authorizeSession = async (
     client: PoolClient,
     actor: Actor,
-    options: { allowUnelevated?: boolean; allowPinSetup?: boolean } = {},
+    options: {
+      allowUnelevated?: boolean;
+      allowPinSetup?: boolean;
+      allowPhoneRegistration?: boolean;
+    } = {},
   ): Promise<void> => {
     await this.authorizeActor(client, actor, options);
   };
@@ -258,7 +273,11 @@ export class AuthService {
   readonly authorizeActor = async (
     client: PoolClient,
     actor: Actor,
-    options: { allowUnelevated?: boolean; allowPinSetup?: boolean } = {},
+    options: {
+      allowUnelevated?: boolean;
+      allowPinSetup?: boolean;
+      allowPhoneRegistration?: boolean;
+    } = {},
   ): Promise<AuthorizedActor> => {
     const user = await this.user(client, actor.userId);
     const session = (
@@ -273,6 +292,8 @@ export class AuthService {
       )
     ).rows[0];
     if (!session) throw denied();
+    if (user.phone_registration_pending && !options.allowPhoneRegistration)
+      fail(403, 'registration_required', 'Complete account registration before continuing.');
     if (user.ops_invite_pending) {
       const valid = (
         await client.query(
@@ -867,6 +888,137 @@ export class AuthService {
     );
   }
 
+  private async signInPhonePassword(body: { phone: string; password: string }, sourceIp: string) {
+    if (!this.options.phoneIdentityKey || !sourceIp)
+      fail(503, 'phone_signin_unavailable', 'Phone sign-in is temporarily unavailable.');
+    const { phoneHash } = phoneIdentity(body.phone, this.options.phoneIdentityKey);
+    const subject = createHmac('sha256', this.options.cursorSecret)
+      .update(`${phoneHash}\0${sourceIp}`)
+      .digest('hex');
+    const admission = sharedAdmission(this.options.pool);
+    if (
+      (await admission.spend(`phone-password-source:${subject}`)).count > 6 ||
+      (await admission.spend(`phone-password-account:${phoneHash}`)).count > 30
+    )
+      fail(429, 'rate_limited', 'Too many attempts. Please try again shortly.');
+    const credential = (
+      await this.options.pool.query(
+        `SELECT u.id,e.password_hash,e.version FROM app.auth_identities i
+         JOIN app.users u ON u.id=i.user_id AND u.role='commuter' AND u.deleted_at IS NULL
+           AND NOT u.phone_registration_pending
+         JOIN app.commuter_phone_verifications v ON v.user_id=u.id
+           AND v.phone_hash=i.subject AND v.revoked_at IS NULL
+         JOIN app.email_credentials e ON e.user_id=u.id
+         WHERE i.provider='phone' AND i.subject=$1`,
+        [phoneHash],
+      )
+    ).rows[0];
+    if (!(await checkPassword(body.password, credential?.password_hash ?? null)))
+      fail(401, 'invalid_credentials', 'Phone number or password is incorrect.');
+    return this.transaction(async (c) => {
+      const user = await this.user(c, credential.id, true);
+      const live = (
+        await c.query(
+          `SELECT e.version,e.password_hash FROM app.email_credentials e
+           JOIN app.commuter_phone_verifications v ON v.user_id=e.user_id AND v.revoked_at IS NULL
+           JOIN app.auth_identities i ON i.user_id=e.user_id AND i.provider='phone'
+             AND i.subject=v.phone_hash WHERE e.user_id=$1 AND i.subject=$2`,
+          [user.id, phoneHash],
+        )
+      ).rows[0];
+      if (
+        user.role !== 'commuter' ||
+        user.phone_registration_pending ||
+        live?.version !== credential.version ||
+        live?.password_hash !== credential.password_hash
+      )
+        fail(401, 'invalid_credentials', 'Phone number or password is incorrect.');
+      return this.newSession(c, user, this.options.refreshTtlDays * 86400000);
+    });
+  }
+
+  private async completePhoneRegistration(actor: Actor, body: any) {
+    if (!this.options.commuterEmail || !this.options.opsOrigin)
+      fail(503, 'email_unavailable', 'Email verification is temporarily unavailable.');
+    const names = fullName(body),
+      email = normalizeEmail(body.email),
+      password = await hashPassword(body.password);
+    const emailAuth = new EmailAuth({
+      pool: this.options.pool,
+      secret: this.options.cursorSecret,
+      mail: this.options.commuterEmail,
+      origin: this.options.opsOrigin,
+      authorize: this.authorizeSession,
+      issue: async (c, id) =>
+        this.newSession(c, await this.user(c, id), this.options.refreshTtlDays * 86400000),
+    });
+    const queued = await this.transaction(async (c) => {
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended('email-auth:'||$1,0))", [email]);
+      const user = await this.user(c, actor.userId, true);
+      await this.authorizeSession(c, actor, { allowPhoneRegistration: true });
+      if (
+        user.role !== 'commuter' ||
+        !user.phone ||
+        !(
+          await c.query(
+            `SELECT 1 FROM app.auth_identities i JOIN app.commuter_phone_verifications v
+             ON v.user_id=i.user_id AND v.phone_hash=i.subject AND v.revoked_at IS NULL
+             WHERE i.user_id=$1 AND i.provider='phone'`,
+            [user.id],
+          )
+        ).rowCount
+      )
+        fail(403, 'phone_verification_required', 'Verify your phone before finishing signup.');
+      const prior = (
+        await c.query(
+          'SELECT password_hash FROM app.email_credentials WHERE user_id=$1 FOR UPDATE',
+          [user.id],
+        )
+      ).rows[0];
+      if (prior?.password_hash)
+        fail(409, 'already_registered', 'This account is already registered. Sign in instead.');
+      if (
+        (
+          await c.query(
+            `SELECT 1 FROM app.users WHERE id<>$1 AND lower(email)=$2 AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM app.email_credentials WHERE user_id<>$1 AND email=$2 AND verified_at IS NOT NULL`,
+            [user.id, email],
+          )
+        ).rowCount
+      )
+        fail(409, 'email_unavailable', 'This email address belongs to another account.');
+      await c.query(
+        `UPDATE app.users SET display_name=$2,first_name=$3,last_name=$4,other_names=$5,
+           phone_registration_pending=false WHERE id=$1`,
+        [user.id, names.displayName, names.firstName, names.lastName, names.otherNames],
+      );
+      if (prior) {
+        await c.query(
+          `UPDATE app.email_credentials SET email=$2,password_hash=$3,signup_pending=false,
+           verified_at=NULL,version=version+1,created_at=clock_timestamp() WHERE user_id=$1`,
+          [user.id, email, password],
+        );
+        await c.query(
+          `UPDATE app.email_auth_challenges SET token_hash=NULL,
+           consumed_at=COALESCE(consumed_at,clock_timestamp()) WHERE user_id=$1 AND token_hash IS NOT NULL`,
+          [user.id],
+        );
+      } else {
+        await c.query(
+          'INSERT INTO app.email_credentials(user_id,email,password_hash) VALUES($1,$2,$3)',
+          [user.id, email, password],
+        );
+      }
+      const mailId = await emailAuth.queueContactProof(c, user.id);
+      await c.query(
+        'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',
+        [user.id],
+      );
+      return mailId;
+    });
+    if (queued) void this.options.commuterEmail.sendQueued?.(queued).catch(() => {});
+  }
+
   async handle(
     name: AuthOperation,
     actor: Actor | undefined,
@@ -889,6 +1041,8 @@ export class AuthService {
       return result(data);
     }
     if (name === 'signInOpsGoogle') return result(await this.social('google', body, true));
+    if (name === 'signInPhonePassword')
+      return result(await this.signInPhonePassword(body, sourceIp ?? ''));
     if ((teamOperations as readonly string[]).includes(name)) {
       if (!actor) throw denied();
       return new OpsTeam({
@@ -908,12 +1062,21 @@ export class AuthService {
       const tokens = await this.transaction(async (client) => {
         const userId = await this.options.phoneOtp!.verify(client, body.challengeId, body.code);
         if (!userId) return null;
-        return this.newSession(
-          client,
-          await this.user(client, userId),
-          this.options.refreshTtlDays * 86400000,
-        );
+        const user = await this.user(client, userId);
+        if (
+          !user.phone_registration_pending &&
+          (
+            await client.query(
+              'SELECT 1 FROM app.email_credentials WHERE user_id=$1 AND password_hash IS NOT NULL',
+              [userId],
+            )
+          ).rowCount
+        )
+          return 'password_required';
+        return this.newSession(client, user, this.options.refreshTtlDays * 86400000);
       });
+      if (tokens === 'password_required')
+        fail(409, 'password_required', 'Sign in with your phone number and password.');
       if (!tokens)
         fail(
           401,
@@ -931,6 +1094,10 @@ export class AuthService {
       return result();
     }
     if (!actor) throw denied();
+    if (name === 'completePhoneRegistration') {
+      await this.completePhoneRegistration(actor, body);
+      return result();
+    }
     if (
       name === 'startPhoneVerification' ||
       name === 'confirmPhoneVerification' ||
@@ -991,7 +1158,10 @@ export class AuthService {
       // Reading who you are is part of setting up: the app restores a
       // temporary-PIN session through this read before sending the driver to
       // choose a PIN. Everything else here waits for the private PIN.
-      await this.authorizeSession(client, actor, { allowPinSetup: name === 'getAccount' });
+      await this.authorizeSession(client, actor, {
+        allowPinSetup: name === 'getAccount',
+        allowPhoneRegistration: name === 'getAccount',
+      });
       if (name === 'getAccount') return result(this.account(await this.user(client, actor.userId)));
       if (name === 'listSessions') {
         const limit = query.limit === undefined ? 50 : Number(query.limit);

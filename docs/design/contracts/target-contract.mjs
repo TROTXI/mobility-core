@@ -89,6 +89,7 @@ named(
     role,
     createdAt: instant,
     isSuperadmin: z.boolean().optional(),
+    phoneRegistrationPending: z.boolean().optional(),
   }),
 );
 named(
@@ -258,6 +259,17 @@ named(
   }),
 );
 named('PhoneSignInRequest', obj({ phone: text(32) }));
+named('PhonePasswordSignIn', obj({ phone: text(32), password: z.string().min(1).max(128) }));
+named(
+  'PhoneRegistration',
+  obj({
+    firstName: text(60),
+    lastName: text(60),
+    otherNames: text(80).nullable().optional(),
+    email: z.email().max(320),
+    password: z.string().min(15).max(128),
+  }),
+);
 named(
   'EmailSignup',
   obj({
@@ -278,7 +290,11 @@ named(
   obj({ currentPassword: z.string().min(1).max(128), password: z.string().min(15).max(128) }),
 );
 named('EmailAccessMessage', obj({ message: text(500) }));
-named('EmailAccessStatus', obj({ email: z.email().nullable(), passwordEnabled: z.boolean() }));
+named(
+  'EmailAccessStatus',
+  obj({ email: z.email().nullable(), passwordEnabled: z.boolean(), emailVerified: z.boolean() }),
+);
+named('ContactEmailVerify', obj({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
 named('PhoneVerificationStart', obj({ phone: text(32) }));
 named(
@@ -1779,7 +1795,17 @@ post('/v1/auth/email/complete', 'completeEmailAccess', 'EmailAccessComplete', nu
   retry: 'credential',
   sensitive: true,
 });
+post('/v1/auth/email/verify', 'confirmContactEmail', 'ContactEmailVerify', null, {
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
 get('/v1/me/email-access', 'getEmailAccess', 'EmailAccessStatus', { access: 'self' });
+post('/v1/me/email-access/verify', 'resendContactEmail', null, 'EmailAccessMessage', {
+  access: 'self',
+  retry: 'credential',
+  sensitive: true,
+});
 post('/v1/me/email-access/link', 'startEmailLink', 'EmailAddress', 'EmailAccessMessage', {
   access: 'self',
   retry: 'credential',
@@ -1802,6 +1828,16 @@ post('/v1/auth/phone/request', 'requestPhoneSignIn', 'PhoneSignInRequest', 'Phon
   sensitive: true,
 });
 post('/v1/auth/phone/verify', 'verifyPhoneSignIn', 'PhoneSignInVerify', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/phone/password', 'signInPhonePassword', 'PhonePasswordSignIn', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/me/phone-registration', 'completePhoneRegistration', 'PhoneRegistration', null, {
+  access: 'self',
+  status: 204,
   retry: 'credential',
   sensitive: true,
 });

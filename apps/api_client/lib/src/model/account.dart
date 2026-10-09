@@ -23,6 +23,7 @@ part 'account.g.dart';
 /// * [role]
 /// * [createdAt]
 /// * [isSuperadmin]
+/// * [phoneRegistrationPending]
 @BuiltValue()
 abstract class Account implements Built<Account, AccountBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -58,6 +59,9 @@ abstract class Account implements Built<Account, AccountBuilder> {
 
   @BuiltValueField(wireName: r'isSuperadmin')
   bool? get isSuperadmin;
+
+  @BuiltValueField(wireName: r'phoneRegistrationPending')
+  bool? get phoneRegistrationPending;
 
   Account._();
 
@@ -148,6 +152,13 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
       yield r'isSuperadmin';
       yield serializers.serialize(
         object.isSuperadmin,
+        specifiedType: const FullType(bool),
+      );
+    }
+    if (object.phoneRegistrationPending != null) {
+      yield r'phoneRegistrationPending';
+      yield serializers.serialize(
+        object.phoneRegistrationPending,
         specifiedType: const FullType(bool),
       );
     }
@@ -258,6 +269,13 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
             specifiedType: const FullType(bool),
           ) as bool;
           result.isSuperadmin = valueDes;
+          break;
+        case r'phoneRegistrationPending':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.phoneRegistrationPending = valueDes;
           break;
         default:
           unhandled.add(key);

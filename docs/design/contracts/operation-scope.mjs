@@ -2,6 +2,17 @@
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
   ...[
+    'signInPhonePassword',
+    'completePhoneRegistration',
+    'confirmContactEmail',
+    'resendContactEmail',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Phone and password commuter access with one-time phone proof and a verified recovery email',
+    'Phone OTP alone does not collect a password or prove ownership of the contact mailbox.',
+  ]),
+  ...[
     'requestEmailSignup',
     'signInEmail',
     'requestPasswordReset',

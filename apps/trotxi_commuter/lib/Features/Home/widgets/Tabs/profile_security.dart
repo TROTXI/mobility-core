@@ -176,7 +176,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   _buildSectionTitle(context, 'Sign-in security'),
                   const SizedBox(height: 12),
                   _SecurityTile(
-                    title: 'Email & password',
+                    title: 'Security & recovery',
                     subtitle: 'Add email sign-in or change your password',
                     onTap: _onChangePasswordOrPin,
                   ),

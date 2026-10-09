@@ -207,6 +207,151 @@ test('PHONE-01: verified phone creates a separate commuter, never adopts Google 
   );
 });
 
+test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enables recovery', async (t) => {
+  let code = '';
+  const f = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        code = message.match(/\b(\d{6})\b/)![1]!;
+        return 'test-receipt';
+      },
+    },
+  );
+  const requested = data(
+    await f.request('POST', '/v1/auth/phone/request', { phone: '0241234567' }),
+  );
+  const temporary = data(
+    await f.request('POST', '/v1/auth/phone/verify', {
+      challengeId: requested.challengeId,
+      code,
+    }),
+  );
+  assert.equal(temporary.account.phoneRegistrationPending, true);
+  assert.equal(
+    (await f.request('GET', '/v1/me', undefined, temporary.accessToken)).statusCode,
+    200,
+  );
+  const beforeRegistration = await f.request(
+    'GET',
+    '/v1/me/verification',
+    undefined,
+    temporary.accessToken,
+  );
+  assert.equal(beforeRegistration.json().error.code, 'registration_required');
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/phone-registration',
+      {
+        firstName: 'Ama',
+        otherNames: 'Akua',
+        lastName: 'Mensah',
+        email: 'ama@outlook.com',
+        password: emailPassword,
+      },
+      temporary.accessToken,
+    ),
+    204,
+  );
+  assert.equal(
+    (await f.request('GET', '/v1/me', undefined, temporary.accessToken)).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/phone/password', {
+        phone: '0241234567',
+        password: 'wrong password',
+      })
+    ).statusCode,
+    401,
+  );
+  const signed = data(
+    await f.request('POST', '/v1/auth/phone/password', {
+      phone: '0241234567',
+      password: emailPassword,
+    }),
+  );
+  assert.equal(signed.account.displayName, 'Ama Akua Mensah');
+  assert.equal(signed.account.phoneRegistrationPending, false);
+  const fixture = await f.owner.connect();
+  try {
+    await fixture.query('BEGIN');
+    await fixture.query('SET LOCAL session_replication_role=replica');
+    await fixture.query(
+      "UPDATE app.phone_otp_challenges SET created_at=created_at-interval '61 seconds',expires_at=expires_at-interval '61 seconds'",
+    );
+    await fixture.query('COMMIT');
+  } finally {
+    fixture.release();
+  }
+  const secondCode = data(
+    await f.request('POST', '/v1/auth/phone/request', {
+      phone: '0241234567',
+    }),
+  );
+  const otpSignIn = await f.request('POST', '/v1/auth/phone/verify', {
+    challengeId: secondCode.challengeId,
+    code,
+  });
+  assert.equal(otpSignIn.statusCode, 409);
+  assert.equal(otpSignIn.json().error.code, 'password_required');
+  const contact = data(
+    await f.request('GET', '/v1/me/email-access', undefined, signed.accessToken),
+  );
+  assert.equal(contact.emailVerified, false);
+  assert.equal(contact.passwordEnabled, true);
+  const token = await emailToken(f);
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/email/complete', {
+        token,
+        password: 'not a reset password',
+      })
+    ).statusCode,
+    400,
+  );
+  data(await f.request('POST', '/v1/auth/email/verify', { token }), 204);
+  assert.equal(
+    data(await f.request('GET', '/v1/me/email-access', undefined, signed.accessToken))
+      .emailVerified,
+    true,
+  );
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=created_at-interval '2 minutes'",
+  );
+  data(await f.request('POST', '/v1/auth/email/reset', { email: 'ama@outlook.com' }));
+  const resetToken = await emailToken(f);
+  data(
+    await f.request('POST', '/v1/auth/email/complete', {
+      token: resetToken,
+      password: 'new correct horse trotxi battery',
+    }),
+    204,
+  );
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/phone/password', {
+        phone: '0241234567',
+        password: emailPassword,
+      })
+    ).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/phone/password', {
+        phone: '0241234567',
+        password: 'new correct horse trotxi battery',
+      })
+    ).statusCode,
+    200,
+  );
+});
+
 test('PHONE-02: five incorrect guesses commit and exhaust the challenge', async (t) => {
   let code = '';
   const { owner, request } = await setup(
@@ -886,6 +1031,7 @@ async function setup(
     google,
     apple,
     providerEncryptionKey: encryptionKey,
+    phoneIdentityKey: encryptionKey,
     passkeys: testPasskeys,
     appleTokens: {
       exchangeCode: async (code: string) => ({

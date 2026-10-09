@@ -13,6 +13,7 @@ part 'email_access_status.g.dart';
 /// Properties:
 /// * [email]
 /// * [passwordEnabled]
+/// * [emailVerified]
 @BuiltValue()
 abstract class EmailAccessStatus
     implements Built<EmailAccessStatus, EmailAccessStatusBuilder> {
@@ -21,6 +22,9 @@ abstract class EmailAccessStatus
 
   @BuiltValueField(wireName: r'passwordEnabled')
   bool get passwordEnabled;
+
+  @BuiltValueField(wireName: r'emailVerified')
+  bool get emailVerified;
 
   EmailAccessStatus._();
 
@@ -58,6 +62,11 @@ class _$EmailAccessStatusSerializer
     yield r'passwordEnabled';
     yield serializers.serialize(
       object.passwordEnabled,
+      specifiedType: const FullType(bool),
+    );
+    yield r'emailVerified';
+    yield serializers.serialize(
+      object.emailVerified,
       specifiedType: const FullType(bool),
     );
   }
@@ -99,6 +108,13 @@ class _$EmailAccessStatusSerializer
             specifiedType: const FullType(bool),
           ) as bool;
           result.passwordEnabled = valueDes;
+          break;
+        case r'emailVerified':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.emailVerified = valueDes;
           break;
         default:
           unhandled.add(key);
