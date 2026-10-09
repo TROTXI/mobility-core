@@ -1,6 +1,6 @@
 # Ride confirmation and capacity
 
-Source audit: 2026-10-03.
+Source audit: 2026-10-08.
 
 A reservation belongs to a rider, service date, direction, trip and paid period.
 Direction is explicitly `outbound` or `return`; it is not inferred from
@@ -24,6 +24,12 @@ A prepaid renewal can fund tomorrow's departure before its coverage starts.
 The ride is attributed to the renewal, not the currently active period.
 Generation/ask-dispatch must run in the right order; a preferred notification
 hour alone does not schedule these jobs.
+
+Staging's service workflow generates the next seven days of trips at 01:30 UTC,
+creates tomorrow's prompts at 21:00, runs defaults at midnight and settles
+no-shows at 23:30. Both directions are included. Push delivery remains a
+separate worker invocation, not an implied effect of the ask schedule.
+See [scheduling](../DEPLOY.md#scheduling).
 
 Boarding/no-show consumption is atomic and idempotent. There is no offline
 boarding promise or automatic released-seat offer cascade.

@@ -140,6 +140,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           encryptionKey: config.keys.device,
           sender: new ResendSender(config.email.apiKey),
           staging: config.email.staging,
+          assetOrigin: config.opsOrigin,
         })
       : undefined;
     const smsSender = config.sms
@@ -216,6 +217,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         passkeys: webAuthnRelyingParty(config.opsOrigin),
         opsOrigin: config.opsOrigin,
         opsEmail: email,
+        commuterEmail: email,
         google: new GoogleIdTokenVerifier(config.google.clientId),
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),

@@ -435,6 +435,9 @@ export async function createTransportApp(options: AppOptions) {
         name === 'changeDriverPin' ||
         name === 'startPhoneVerification' ||
         name === 'confirmPhoneVerification' ||
+        name === 'startEmailLink' ||
+        name === 'finishEmailLink' ||
+        name === 'changePassword' ||
         (passkeyOperations as readonly string[]).includes(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
@@ -846,7 +849,11 @@ export async function createTransportApp(options: AppOptions) {
               Object.entries(query).some(
                 ([k, v]) =>
                   !listing ||
-                  !['cursor', 'limit'].includes(k) ||
+                  !(
+                    name === 'listOpsStandby'
+                      ? ['cursor', 'limit', 'routeId', 'state', 'plan', 'day', 'q']
+                      : ['cursor', 'limit']
+                  ).includes(k) ||
                   typeof v !== 'string' ||
                   v.length > 128,
               )

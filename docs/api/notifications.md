@@ -50,13 +50,42 @@ seat asks, seat results, boarding/credit receipts and trip changes remain
 service notifications. `optionalUpdatesEnabled` defaults off; no optional
 campaigns currently exist.
 
-The pilot's ask/default workers are still **manually run**. The preferred
-`dailyAskTime` is recorded for the future scheduled dispatcher, but it does
-not schedule a worker or guarantee delivery at that hour today. The app says
-this explicitly. Proximity alerts are deferred until product approval and a
+Staging schedules tomorrow's asks at 21:00 UTC and defaults at midnight through
+the service-maintenance workflow. The preferred `dailyAskTime` is recorded but
+does not change that shared schedule or guarantee delivery at that hour.
+Push delivery requires a separate worker invocation; the ask job only records
+the prompts. Proximity alerts are deferred until product approval and a
 bounded once-per-trip design. Missing Firebase credentials do not block API
 startup, the inbox, or tests; only the push worker requires them. No new push
 delivery path was added by this inbox work.
+
+## Bounded push delivery
+
+`PushNotifications.drain(limit)` considers at most 100 queued deliveries per
+run. Up to four accounts send concurrently (fewer if the database pool is
+smaller), with each account's devices/events
+processed serially. This is bounded concurrency, not a single multicast request:
+each recipient retains its own notification and reservation identity.
+
+The worker locks the account, delivery and device and rechecks eligibility before
+sending. Accounts locked by another worker or account operation are deferred
+without consuming a provider attempt. Device transfer, erasure, decided rides
+and revoked driver sessions still prevent ineligible sends. FCM token refresh
+is shared across concurrent sends rather than repeated for each recipient.
+
+Each delivery keeps its own accepted, cancelled, failed or retry state. Only
+explicitly unregistered tokens are revoked; transient failures use the existing
+bounded retry policy. On a database error the run stops claiming new work and
+waits for started transactions before failing. A provider acceptance followed
+by a database/process failure can still lead to a repeated send on retry; this
+is not an exactly-once delivery guarantee. Stable notification IDs are retained.
+
+Measure pending age, run duration and provider errors before increasing worker
+concurrency or adding infrastructure. The historical estimates in issue #160
+refer to the retired backend and are not current capacity measurements.
+See [schedules](../DEPLOY.md#scheduling),
+[worker](../../services/api-next/src/notifications/push.ts) and
+[delivery tests](../../services/api-next/tests/push.pg.test.ts).
 
 ## Event to inbox, and settings concurrency
 

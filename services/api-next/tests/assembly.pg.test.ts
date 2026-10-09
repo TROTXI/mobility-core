@@ -210,8 +210,8 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.equal(expected.length, 176);
-  assert.equal(new Set(expected).size, 176);
+  assert.equal(expected.length, 184);
+  assert.equal(new Set(expected).size, 184);
   for (const operation of [
     'getOpsRiderDetail',
     'listOpsOperators',
@@ -468,6 +468,7 @@ test('ASM-15 outstanding erasure work is retried and never reported as finished'
     completed: 0,
     failed: 2,
     phoneChallengesPurged: 1,
+    emailAccessPurged: { expired: 0, pending: 0 },
   });
   const rows = (
     await f.owner.query(
@@ -489,6 +490,7 @@ test('ASM-15 outstanding erasure work is retried and never reported as finished'
     completed: 0,
     failed: 2,
     phoneChallengesPurged: 0,
+    emailAccessPurged: { expired: 0, pending: 0 },
   });
   assert.equal(
     (
@@ -961,7 +963,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, 175);
+  assert.equal(routed, 183);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);

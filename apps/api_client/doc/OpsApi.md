@@ -143,7 +143,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **cancelOperatorInvitation**
-> OperatorCommandResultResponse cancelOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+> OperatorCommandResultResponse cancelOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform)
 
 cancel Operator Invitation
 
@@ -156,10 +156,11 @@ final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final ReasonInput reasonInput = ; // ReasonInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    final response = api.cancelOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    final response = api.cancelOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->cancelOperatorInvitation: $e\n');
@@ -174,6 +175,7 @@ Name | Type | Description  | Notes
  **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **reasonInput** | [**ReasonInput**](ReasonInput.md)|  |
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
@@ -186,7 +188,7 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -2454,7 +2456,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **listOpsStandby**
-> StandbyApplicationPage listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
+> StandbyApplicationPage listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, routeId, state, plan, day, q, xTrotxiPlatform)
 
 list Ops Standby
 
@@ -2467,10 +2469,15 @@ final String xTrotxiClient = ops; // String | Compatibility metadata only, never
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
 final int limit = 56; // int | Page size. No silent truncation.
+final String routeId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by route identity, not its display name.
+final String state = state_example; // String | Application state. Omit for all states.
+final String plan = plan_example; // String | Requested plan.
+final int day = 56; // int | Travel weekday: Monday=1, Sunday=7.
+final String q = q_example; // String | Literal partial rider name. Route demand totals respect these filters except routeId and pagination.
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    final response = api.listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform);
+    final response = api.listOpsStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, routeId, state, plan, day, q, xTrotxiPlatform);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->listOpsStandby: $e\n');
@@ -2485,6 +2492,11 @@ Name | Type | Description  | Notes
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
  **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
+ **routeId** | **String**| Filter by route identity, not its display name. | [optional]
+ **state** | **String**| Application state. Omit for all states. | [optional]
+ **plan** | **String**| Requested plan. | [optional]
+ **day** | **int**| Travel weekday: Monday=1, Sunday=7. | [optional]
+ **q** | **String**| Literal partial rider name. Route demand totals respect these filters except routeId and pagination. | [optional]
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
@@ -3319,7 +3331,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **resendOperatorInvitation**
-> OperatorCommandResultResponse resendOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+> OperatorCommandResultResponse resendOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform)
 
 resend Operator Invitation
 
@@ -3332,10 +3344,11 @@ final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final ReasonInput reasonInput = ; // ReasonInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    final response = api.resendOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    final response = api.resendOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->resendOperatorInvitation: $e\n');
@@ -3350,6 +3363,7 @@ Name | Type | Description  | Notes
  **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **reasonInput** | [**ReasonInput**](ReasonInput.md)|  |
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
@@ -3362,7 +3376,7 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -3419,7 +3433,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **resetOperatorPasskeys**
-> resetOperatorPasskeys(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+> resetOperatorPasskeys(id, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform)
 
 reset Operator Passkeys
 
@@ -3431,10 +3445,11 @@ final api = TrotxiApiClient().getOpsApi();
 final String id = id_example; // String |
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final ReasonInput reasonInput = ; // ReasonInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    api.resetOperatorPasskeys(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    api.resetOperatorPasskeys(id, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->resetOperatorPasskeys: $e\n');
 }
@@ -3447,6 +3462,7 @@ Name | Type | Description  | Notes
  **id** | **String**|  |
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **reasonInput** | [**ReasonInput**](ReasonInput.md)|  |
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
@@ -3459,7 +3475,7 @@ void (empty response body)
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -4040,3 +4056,4 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+

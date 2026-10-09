@@ -230,7 +230,9 @@ class AuthInterceptor extends Interceptor {
     // session expired. Refreshing makes no sense (there is no session yet), and
     // clearing tokens on the way past would sign out a driver who mistyped a
     // PIN while already signed in on the same handset.
-    if (_isSignInPath(requestPath) || isWrongCurrentPin(err)) {
+    if (_isSignInPath(requestPath) ||
+        isWrongCurrentPin(err) ||
+        isWrongCurrentPassword(err)) {
       return handler.next(err);
     }
 
@@ -305,11 +307,17 @@ class AuthInterceptor extends Interceptor {
       ErrorInterceptor._fieldOf(err.response!, 'code') ==
           'invalid_driver_credentials';
 
+  static bool isWrongCurrentPassword(DioException err) =>
+      err.response?.statusCode == 401 &&
+      Uri.parse(err.requestOptions.path).path == '/v1/me/password' &&
+      ErrorInterceptor._fieldOf(err.response!, 'code') == 'invalid_credentials';
+
   static bool _isSignInPath(String path) {
     return const {
       '/v1/auth/driver',
       '/v1/auth/google',
       '/v1/auth/apple',
+      '/v1/auth/email/login',
     }.contains(Uri.parse(path).path);
   }
 
@@ -463,18 +471,21 @@ class ErrorInterceptor extends Interceptor {
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
-            error: AuthInterceptor.isWrongCurrentPin(err)
-                ? InvalidCredentialsException(
-                    _messageOf(response) ?? 'Current PIN is incorrect.')
+            error: AuthInterceptor.isWrongCurrentPin(err) ||
+                    AuthInterceptor.isWrongCurrentPassword(err)
+                ? InvalidCredentialsException(_messageOf(response) ??
+                    (AuthInterceptor.isWrongCurrentPin(err)
+                        ? 'Current PIN is incorrect.'
+                        : 'Current password is incorrect.'))
                 : isSignIn
-                ? InvalidCredentialsException(
-                    _messageOf(response) ??
-                        (Uri.parse(err.requestOptions.path).path ==
-                                '/v1/auth/driver'
-                            ? 'Invalid driver code or PIN.'
-                            : 'Unable to sign in. Please try again.'),
-                  )
-                : const UnauthorizedException(),
+                    ? InvalidCredentialsException(
+                        _messageOf(response) ??
+                            (Uri.parse(err.requestOptions.path).path ==
+                                    '/v1/auth/driver'
+                                ? 'Invalid driver code or PIN.'
+                                : 'Unable to sign in. Please try again.'),
+                      )
+                    : const UnauthorizedException(),
           ),
         );
       case 403:

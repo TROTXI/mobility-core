@@ -1,5 +1,5 @@
 import { Button, FluentProvider } from '@fluentui/react-components';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { lazy, Suspense, useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { PasskeyGate, AuthFrame } from './auth/PasskeyGate';
@@ -7,6 +7,7 @@ import { SignIn } from './auth/SignIn';
 import { LoadingPage } from './components/Page';
 import { Shell } from './components/Shell';
 import { trotxiDark, trotxiLight } from './theme';
+import { CommuterEmailAccess } from './auth/CommuterEmailAccess';
 
 const Overview = lazy(() =>
   import('./screens/Overview').then((module) => ({ default: module.Overview })),
@@ -32,8 +33,8 @@ const Platform = lazy(() =>
 const Reports = lazy(() =>
   import('./screens/Reports').then((module) => ({ default: module.Reports })),
 );
-const People = lazy(() =>
-  import('./screens/People').then((module) => ({ default: module.People })),
+const Delivery = lazy(() =>
+  import('./screens/Delivery').then((module) => ({ default: module.Delivery })),
 );
 const Audit = lazy(() => import('./screens/Audit').then((module) => ({ default: module.Audit })));
 const Profile = lazy(() =>
@@ -68,9 +69,13 @@ export function App() {
       data-theme={appearance}
       style={{ minHeight: '100vh' }}
     >
-      <AuthProvider>
-        <Entry appearance={appearance} toggleAppearance={toggleAppearance} />
-      </AuthProvider>
+      {window.location.pathname === '/account-access' ? (
+        <CommuterEmailAccess />
+      ) : (
+        <AuthProvider>
+          <Entry appearance={appearance} toggleAppearance={toggleAppearance} />
+        </AuthProvider>
+      )}
     </FluentProvider>
   );
 }
@@ -112,7 +117,8 @@ function Entry({
               <Route path="support" element={<Support />} />
               <Route path="payments" element={<Payments />} />
               <Route path="reports" element={<Reports />} />
-              <Route path="people" element={<People />} />
+              <Route path="people" element={<Navigate to="/delivery" replace />} />
+              <Route path="delivery" element={<Delivery />} />
               <Route path="team" element={<Team />} />
               <Route path="audit" element={<Audit />} />
               <Route path="platform" element={<Platform />} />

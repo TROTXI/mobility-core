@@ -5,7 +5,7 @@ import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/data/device_readiness.dart';
-import 'package:trotxi_driver/core/widgets/trotxi_wordmark.dart';
+import 'package:trotxi_driver/Presentations/Auth/widgets/auth_layout.dart';
 
 /// Location access and services are required to start. Camera is optional:
 /// refusing it must not remove code boarding. Returning true follows a fresh
@@ -144,192 +144,171 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
         : ready
         ? colors.success
         : colors.danger;
-    return Scaffold(
-      appBar: AppBar(
-        title: const TrotxiWordmark(height: 37),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.space20),
-            child: Text(
-              state == null
-                  ? (_busy ? 'CHECKING' : 'CHECK')
-                  : ready
-                  ? 'READY'
-                  : 'REQUIRED',
-              style: AppTypography.chipLabel.copyWith(color: tone),
-            ),
-          ),
-        ],
+    final canPop = widget.beforeTrip && Navigator.of(context).canPop();
+    final blockedLocation =
+        state?.location == PermissionStatus.permanentlyDenied;
+    return AuthLayout(
+      onBack: canPop ? () => Navigator.of(context).maybePop() : null,
+      trailing: AuthChip(
+        state == null
+            ? (_busy ? 'CHECKING' : 'CHECK')
+            : ready
+            ? 'READY'
+            : 'REQUIRED',
+        color: tone,
       ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.space20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: tone.withValues(alpha: 0.1),
-                      ),
-                      alignment: Alignment.center,
-                      child: ExcludeSemantics(
-                        child: ready
-                            ? Icon(Icons.check_rounded, color: tone, size: 42)
-                            : Text(
-                                state == null ? '…' : '!',
-                                style: AppTypography.heading1.copyWith(
-                                  color: tone,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space20),
-                  Text(
-                    state == null
-                        ? 'Check this device'
-                        : ready
-                        ? 'Location enabled'
-                        : 'Location is required',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.screenTitle,
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
-                  Text(
-                    ready
-                        ? 'Location access is enabled for this trip. Check camera access before riders arrive.'
-                        : 'Trips cannot start until location access is allowed and device location is on.',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.screenContext.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space20),
-                  if (_busy) ...[
-                    const LinearProgressIndicator(
-                      semanticsLabel: 'Checking device permissions',
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                  ],
-                  if (_error != null) ...[
-                    Text(
-                      _error!,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colors.danger,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                  ],
-                  _permissionCard(
-                    'Location access',
-                    state?.location,
-                    state?.location == PermissionStatus.permanentlyDenied
-                        ? 'In app settings, choose Location and allow access while using the app. Return here to check again.'
-                        : 'Trotxi collects your precise location during an active trip, including when the app is in the background or the screen is locked, to show the bus approaching to eligible riders and operations. Collection stops when the trip ends or you sign out. Allow location only if you agree. While-in-use permission is requested; Android shows an active tracking notification.',
-                    DevicePermission.location,
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                  _card(
-                    title: 'Location services',
-                    status: state == null
-                        ? 'Not checked'
-                        : state.locationServices
-                        ? 'On'
-                        : 'Off',
-                    detail:
-                        'Device location must also be on for riders to see the bus approaching.',
-                    ready: state?.locationServices ?? false,
-                    action: state != null && !state.locationServices
-                        ? OutlinedButton(
-                            onPressed: _busy
-                                ? null
-                                : () => _settings(location: true),
-                            child: const Text('Turn on location services'),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                  _permissionCard(
-                    'Camera (optional)',
-                    state?.camera,
-                    'Scan rider boarding passes. Without camera access, use Board by code.',
-                    DevicePermission.camera,
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  Text(
-                    'These checks work offline. Permission access does not confirm camera hardware, GPS signal or connectivity. '
-                    'No tracking starts on this screen.',
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _busy ? null : _refresh,
-                    child: const Text('Check again'),
-                  ),
-                  if (widget.beforeTrip) ...[
-                    if (!ready)
-                      Text(
-                        'Trips stay locked until location is enabled. Camera access is optional.',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    const SizedBox(height: AppSpacing.space12),
-                    ElevatedButton(
-                      onPressed: _busy || !ready ? null : _continue,
-                      child: Text(
-                        state?.camera.isGranted == true || !ready
-                            ? 'Start trip'
-                            : 'Start with code boarding',
-                      ),
-                    ),
-                  ] else if (widget.onContinue != null) ...[
-                    const SizedBox(height: AppSpacing.space12),
-                    FilledButton(
-                      onPressed: _busy ? null : _continue,
-                      child: const Text('Continue to today'),
-                    ),
-                  ],
-                ],
+      hero: state == null
+          ? null
+          : AuthStatusMark(
+              color: tone,
+              icon: ready ? Icons.check_rounded : null,
+            ),
+      title: state == null
+          ? 'Check this device'
+          : ready
+          ? 'Device ready'
+          : 'Location is required',
+      subtitle: ready
+          ? 'Location is on for trips. Camera access makes boarding faster.'
+          : 'Trips cannot start until location access is allowed and device location is on.',
+      footer: [
+        if (widget.beforeTrip) ...[
+          if (!ready)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+              child: Text(
+                'Trips stay locked until location is enabled. Camera access is optional.',
+                textAlign: TextAlign.center,
+                style: AppTypography.authRowDetail.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ),
+          ElevatedButton(
+            style: authPrimaryButton(colors),
+            onPressed: _busy || !ready ? null : _continue,
+            child: AuthButtonLabel(
+              state?.camera.isGranted == true || !ready
+                  ? 'Start trip'
+                  : 'Start with code boarding',
+            ),
+          ),
+        ] else if (widget.onContinue != null)
+          FilledButton(
+            style: authPrimaryButton(colors),
+            onPressed: _busy ? null : _continue,
+            child: const AuthButtonLabel('Continue to today'),
+          ),
+        const AuthCaption(
+          'Location is collected only during an active trip, including in the background, '
+          'and stops when the trip ends or you sign out. No tracking starts on this screen.',
+        ),
+      ],
+      children: [
+        if (_busy) ...[
+          ClipRRect(
+            borderRadius: AppRadii.circular(AppRadii.full),
+            child: const LinearProgressIndicator(
+              minHeight: 3,
+              semanticsLabel: 'Checking device permissions',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space16),
+        ],
+        if (_error != null) ...[
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: AppTypography.authRowDetail.copyWith(color: colors.danger),
+          ),
+          const SizedBox(height: AppSpacing.space16),
+        ],
+        AuthCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space16,
+            vertical: AppSpacing.space4,
+          ),
+          child: Column(
+            children: [
+              _permissionRow(
+                Icons.location_on_outlined,
+                'Location access',
+                state?.location,
+                blockedLocation
+                    ? 'In settings, allow location while using the app, then come back.'
+                    : 'Shows riders and operations the bus approaching during a trip.',
+                DevicePermission.location,
+              ),
+              Divider(color: colors.border, height: 1),
+              _row(
+                icon: Icons.gps_fixed_rounded,
+                title: 'Location services',
+                status: state == null
+                    ? 'Not checked'
+                    : state.locationServices
+                    ? 'On'
+                    : 'Off',
+                detail: 'Device location must also be on.',
+                ready: state?.locationServices ?? false,
+                action: state != null && !state.locationServices
+                    ? OutlinedButton(
+                        style: authRowButton(colors),
+                        onPressed: _busy
+                            ? null
+                            : () => _settings(location: true),
+                        child: const Text('Turn on location services'),
+                      )
+                    : null,
+              ),
+              Divider(color: colors.border, height: 1),
+              _permissionRow(
+                Icons.qr_code_scanner_rounded,
+                'Camera (optional)',
+                state?.camera,
+                'Scan boarding passes. Without camera access, use Board by code.',
+                DevicePermission.camera,
+              ),
+            ],
           ),
         ),
-      ),
+        Center(
+          child: TextButton(
+            onPressed: _busy ? null : _refresh,
+            child: const Text('Check again'),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _permissionCard(
+  Widget _permissionRow(
+    IconData icon,
     String title,
     PermissionStatus? status,
     String detail,
     DevicePermission permission,
   ) {
+    final colors = context.driverColors;
     final blocked = status == PermissionStatus.permanentlyDenied;
-    return _card(
+    return _row(
+      icon: icon,
       title: title,
       detail: detail,
       ready: status == PermissionStatus.granted,
       status: switch (status) {
         PermissionStatus.granted => 'Allowed',
         PermissionStatus.denied => 'Not allowed',
-        PermissionStatus.permanentlyDenied => 'Denied — change in settings',
+        PermissionStatus.permanentlyDenied =>
+          'Denied \u2014 change in settings',
         PermissionStatus.restricted =>
-          'Restricted by device policy — contact your administrator',
+          'Restricted by device policy \u2014 contact your administrator',
         null => 'Not checked',
-        _ => 'Limited access — check device settings',
+        _ => 'Limited access \u2014 check device settings',
       },
       action: status == null || status.isGranted || status.isRestricted
           ? null
           : OutlinedButton(
+              style: authRowButton(colors),
               onPressed: _busy
                   ? null
                   : () => blocked || !status.isDenied
@@ -344,7 +323,10 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
     );
   }
 
-  Widget _card({
+  /// One line of the readiness card: what it is, where it stands, why it
+  /// matters, and the one action that fixes it.
+  Widget _row({
+    required IconData icon,
     required String title,
     required String status,
     required String detail,
@@ -352,59 +334,59 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
     Widget? action,
   }) {
     final colors = context.driverColors;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: colors.field,
-        border: Border.all(color: colors.border),
-        borderRadius: AppRadii.circular(AppRadii.xl),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final tone = ready ? colors.success : colors.textSecondary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: (ready ? colors.success : colors.textSecondary)
-                      .withValues(alpha: 0.1),
-                ),
-                child: ExcludeSemantics(
-                  child: ready
-                      ? Icon(
-                          Icons.check_rounded,
-                          color: colors.success,
-                          size: 20,
-                        )
-                      : Text(
-                          '!',
-                          style: AppTypography.keyLabel.copyWith(
-                            color: ready
-                                ? colors.success
-                                : colors.textSecondary,
-                          ),
-                        ),
-                ),
+          ExcludeSemantics(
+            child: Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: tone.withValues(alpha: 0.12),
               ),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(child: Text(title, style: AppTypography.fieldLabel)),
-            ],
+              child: Icon(
+                ready ? Icons.check_rounded : icon,
+                size: 20,
+                color: ready ? colors.success : colors.textPrimary,
+              ),
+            ),
           ),
-          const SizedBox(height: AppSpacing.space8),
-          Text(status, style: AppTypography.bodySmall),
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            detail,
-            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          const SizedBox(width: AppSpacing.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.authRowTitle.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+                Text(
+                  status,
+                  style: AppTypography.authRowValue.copyWith(
+                    color: ready ? colors.success : colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                Text(
+                  detail,
+                  style: AppTypography.authRowDetail.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                if (action != null) ...[
+                  const SizedBox(height: AppSpacing.space12),
+                  Align(alignment: Alignment.centerLeft, child: action),
+                ],
+              ],
+            ),
           ),
-          if (action != null) ...[
-            const SizedBox(height: AppSpacing.space12),
-            action,
-          ],
         ],
       ),
     );

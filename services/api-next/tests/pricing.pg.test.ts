@@ -27,6 +27,9 @@ function expectStatus(response: Response, code: number) {
 /** A rider, an admin and a corridor, priced from the database rather than a stub. */
 async function fixture(t: TestContext, target = true, requireOffer = false, serviceFrom?: string) {
   const f = await setup(t, {}, false, files.length, serviceFrom);
+  await f.owner.query("UPDATE app.users SET first_name='Test',last_name='Rider' WHERE id=$1", [
+    f.actor.userId,
+  ]);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
   const admin = { userId: f.adminId, sessionId: f.adminId };
   const pricing = new Pricing({
@@ -113,7 +116,10 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
         ...(method === 'GET' ? {} : { 'idempotency-key': options.key ?? randomUUID() }),
         ...(options.match ? { 'if-match': options.match } : {}),
       },
-      ...(options.payload === undefined ? {} : { payload: options.payload as never }),
+      ...(() => {
+        const payload = method !== 'GET' ? withReason(url, options.payload) : options.payload;
+        return payload === undefined ? {} : { payload: payload as never };
+      })(),
     }) as Promise<Response>;
   /** Publish a fare, because a corridor with no fare cannot be bought. */
   const publishFare = (amount: number, effectiveFrom = new Date(Date.now() - 86400000)) =>
@@ -122,6 +128,7 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
       payload: {
         amount: { amountMinor: amount, currency: 'GHS' },
         effectiveFrom: effectiveFrom.toISOString(),
+        note: 'Test fare',
       },
     });
   return {
@@ -161,6 +168,7 @@ async function offeredFixture(t: TestContext, futureService = false) {
           dropoffOccurrenceId: leg.dropoffOccurrenceId,
           amount: { amountMinor: leg.direction === 'outbound' ? 500 : 800, currency: 'GHS' },
           effectiveFrom: '2026-01-01T00:00:00Z',
+          note: 'Test fare',
         },
       }),
       201,
@@ -217,6 +225,7 @@ test('OFFER-01 phone verification and Ops offer are required; checkout freezes e
         dropoffOccurrenceId: firstLeg.dropoffOccurrenceId,
         amount: { amountMinor: 900, currency: 'GHS' },
         effectiveFrom: new Date().toISOString(),
+        note: 'Test fare',
       },
     }),
     201,
@@ -319,6 +328,12 @@ test('OFFER-03 invalid credits, dates, changed replays and late payment cannot s
   await f.verify();
   const app = await f.join();
   const url = `/v1/ops/standby/${app.id}/offers`;
+  const unexplained = await f.call('POST', url, {
+    who: 'ops',
+    payload: { ...f.offerInput, reason: '' },
+  });
+  assert.equal(unexplained.statusCode, 400, unexplained.body);
+  assert.equal(unexplained.json().error.code, 'reason_required');
   assert.equal(
     (
       await f.call('POST', url, {
@@ -1036,6 +1051,7 @@ async function fareCorridor(f: Awaited<ReturnType<typeof fixture>>) {
     dropoffOccurrenceId: occurrences[b],
     amount: { amountMinor: amount, currency: 'GHS' },
     effectiveFrom: from,
+    note: 'Test fare',
   });
   const publish = (body: unknown, key?: string) =>
     f.call('POST', `/v1/ops/routes/${route}/fares`, { who: 'ops', payload: body, key });
@@ -1060,6 +1076,7 @@ test('PAIR-01 exact stop-pair fares differ, long journeys are explicit, legacy p
     await p.publish({
       amount: { amountMinor: 999, currency: 'GHS' },
       effectiveFrom: '2026-01-01T00:00:00Z',
+      note: 'Legacy corridor price',
     }),
     201,
   );
@@ -1439,6 +1456,7 @@ test('PRC-07 a pricing command replays instead of applying twice', async (t) => 
   const payload = {
     amount: { amountMinor: 700, currency: 'GHS' },
     effectiveFrom: new Date(Date.now() - 3600_000).toISOString(),
+    note: 'Test fare',
   };
   const send = () =>
     f.call('POST', `/v1/ops/routes/${f.input.routeId}/fares`, { who: 'ops', payload, key });
@@ -1795,6 +1813,7 @@ test('AR-04 a changed fare stops the renewal for a new Ops offer without chargin
         dropoffOccurrenceId: leg.dropoffOccurrenceId,
         amount: { amountMinor: 650, currency: 'GHS' },
         effectiveFrom: new Date().toISOString(),
+        note: 'Test fare',
       },
     }),
     201,
@@ -2143,3 +2162,28 @@ test('AR-13 Ops sees the renewals that need a person, soonest first, and riders 
   assert.equal(paged.data.length, 1);
   assert.equal(paged.page.nextCursor, null);
 });
+
+test('PAIR-05 every fare needs a reason; blank text is refused and the reason is kept', async (t) => {
+  const f = await fixture(t);
+  const p = await fareCorridor(f);
+  const { note: _omitted, ...withoutReason } = p.payload(1, 2, 500);
+  const missing = await p.publish(withoutReason);
+  assert.equal(missing.statusCode, 400, missing.body);
+  const blank = await p.publish({ ...p.payload(1, 2, 500), note: '   ' });
+  assert.equal(blank.statusCode, 400, blank.body);
+  assert.equal(blank.json().error.code, 'reason_required');
+  const fare = expectStatus(
+    await p.publish({ ...p.payload(1, 2, 500), note: '  Pilot price  ' }),
+    201,
+  );
+  assert.equal(fare.note, 'Pilot price');
+});
+
+/** Ops actions that must say why; tests that do not test the reason supply one. */
+function withReason(url: string, payload: unknown): unknown {
+  if (!/^\/v1\/ops\/(standby\/[^/]+\/offers|plan-pricing\/)/.test(url)) return payload;
+  if (payload === undefined) return { reason: 'Test reason' };
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('reason' in payload))
+    return { ...payload, reason: 'Test reason' };
+  return payload;
+}

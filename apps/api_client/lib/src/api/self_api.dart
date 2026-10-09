@@ -13,12 +13,17 @@ import 'package:trotxi_api_client/src/model/account_response.dart';
 import 'package:trotxi_api_client/src/model/avatar_response.dart';
 import 'package:trotxi_api_client/src/model/device_input.dart';
 import 'package:trotxi_api_client/src/model/device_response.dart';
+import 'package:trotxi_api_client/src/model/email_access_complete.dart';
+import 'package:trotxi_api_client/src/model/email_access_message_response.dart';
+import 'package:trotxi_api_client/src/model/email_access_status_response.dart';
+import 'package:trotxi_api_client/src/model/email_address.dart';
 import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_authentication_options_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_authentication_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_registration_options_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_registration_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_status_response.dart';
+import 'package:trotxi_api_client/src/model/password_change.dart';
 import 'package:trotxi_api_client/src/model/profile_update.dart';
 import 'package:trotxi_api_client/src/model/session_page.dart';
 
@@ -28,6 +33,87 @@ class SelfApi {
   final Serializers _serializers;
 
   const SelfApi(this._dio, this._serializers);
+
+  /// change Password
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [passwordChange]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future]
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<void>> changePassword({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required PasswordChange passwordChange,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/password';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(PasswordChange);
+      _bodyData = _serializers.serialize(passwordChange, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    return _response;
+  }
 
   /// delete Avatar
   ///
@@ -146,6 +232,88 @@ class SelfApi {
 
     final _response = await _dio.request<Object>(
       _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    return _response;
+  }
+
+  /// finish Email Link
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [emailAccessComplete]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future]
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<void>> finishEmailLink({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required EmailAccessComplete emailAccessComplete,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/email-access/complete';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(EmailAccessComplete);
+      _bodyData =
+          _serializers.serialize(emailAccessComplete, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
       options: _options,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
@@ -486,6 +654,95 @@ class SelfApi {
     }
 
     return Response<AvatarResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// get Email Access
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [EmailAccessStatusResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<EmailAccessStatusResponse>> getEmailAccess({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/email-access';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    EmailAccessStatusResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(EmailAccessStatusResponse),
+            ) as EmailAccessStatusResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<EmailAccessStatusResponse>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -868,6 +1125,116 @@ class SelfApi {
     );
 
     return _response;
+  }
+
+  /// start Email Link
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [emailAddress]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [EmailAccessMessageResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<EmailAccessMessageResponse>> startEmailLink({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required EmailAddress emailAddress,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/email-access/link';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(EmailAddress);
+      _bodyData = _serializers.serialize(emailAddress, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    EmailAccessMessageResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(EmailAccessMessageResponse),
+            ) as EmailAccessMessageResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<EmailAccessMessageResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
   }
 
   /// start Passkey Authentication

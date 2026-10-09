@@ -2,6 +2,21 @@
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
   ...[
+    'requestEmailSignup',
+    'signInEmail',
+    'requestPasswordReset',
+    'completeEmailAccess',
+    'getEmailAccess',
+    'startEmailLink',
+    'finishEmailLink',
+    'changePassword',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Commuter email/password registration, verification, recovery and explicit email linking',
+    'Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery.',
+  ]),
+  ...[
     'getAutoRenewal',
     'setAutoRenewal',
     'removeAutoRenewalCard',

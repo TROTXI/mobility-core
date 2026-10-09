@@ -14,6 +14,7 @@ part 'flag_edit.g.dart';
 /// * [enabled]
 /// * [rolloutPercentage]
 /// * [description]
+/// * [reason]
 @BuiltValue()
 abstract class FlagEdit implements Built<FlagEdit, FlagEditBuilder> {
   @BuiltValueField(wireName: r'enabled')
@@ -24,6 +25,9 @@ abstract class FlagEdit implements Built<FlagEdit, FlagEditBuilder> {
 
   @BuiltValueField(wireName: r'description')
   String get description;
+
+  @BuiltValueField(wireName: r'reason')
+  String get reason;
 
   FlagEdit._();
 
@@ -61,6 +65,11 @@ class _$FlagEditSerializer implements PrimitiveSerializer<FlagEdit> {
     yield r'description';
     yield serializers.serialize(
       object.description,
+      specifiedType: const FullType(String),
+    );
+    yield r'reason';
+    yield serializers.serialize(
+      object.reason,
       specifiedType: const FullType(String),
     );
   }
@@ -108,6 +117,13 @@ class _$FlagEditSerializer implements PrimitiveSerializer<FlagEdit> {
             specifiedType: const FullType(String),
           ) as String;
           result.description = valueDes;
+          break;
+        case r'reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.reason = valueDes;
           break;
         default:
           unhandled.add(key);

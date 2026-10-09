@@ -10,6 +10,9 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  |
 **displayName** | **String** |  |
+**firstName** | **String** |  | [optional]
+**lastName** | **String** |  | [optional]
+**otherNames** | **String** |  | [optional]
 **email** | **String** |  |
 **phone** | **String** |  |
 **avatarUrl** | **String** |  |
@@ -18,5 +21,3 @@ Name | Type | Description | Notes
 **isSuperadmin** | **bool** |  | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
-

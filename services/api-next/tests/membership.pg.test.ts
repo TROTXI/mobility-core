@@ -550,7 +550,17 @@ test('COM-14: stale edit tokens fail; page cursors bind owner and resource scope
     ),
     code('precondition_failed'),
   );
-  await f.decide(r.id, { action: 'reject' });
+  await assert.rejects(f.decide(r.id, { action: 'reject', note: ' ' }), code('reason_required'));
+  await f.decide(r.id, { action: 'reject', note: 'Corridor is full until March' });
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT reason FROM app.membership_events WHERE resource_id=$1 AND action='reject'",
+        [r.id],
+      )
+    ).rows[0].reason,
+    'Corridor is full until March',
+  );
   await f.request();
   const page = (await f.membership.read(f.actor, 'listCommuteRequests', { limit: '1' }))
     .body as any;

@@ -692,6 +692,16 @@
             "description": "Required for commuter/driver, absent for ops/worker."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -804,6 +814,16 @@
             "description": "Required for commuter/driver, absent for ops/worker."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -1246,6 +1266,747 @@
         "x-authorization": "public",
         "x-retry": "credential",
         "x-sensitive": true
+      }
+    },
+    "/v1/auth/email/signup": {
+      "post": {
+        "operationId": "requestEmailSignup",
+        "summary": "request Email Signup",
+        "tags": ["public"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSignup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailAccessMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "public",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/auth/email/login": {
+      "post": {
+        "operationId": "signInEmail",
+        "summary": "sign In Email",
+        "tags": ["public"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSignIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokensResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "public",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/auth/email/reset": {
+      "post": {
+        "operationId": "requestPasswordReset",
+        "summary": "request Password Reset",
+        "tags": ["public"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAddress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailAccessMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "public",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/auth/email/complete": {
+      "post": {
+        "operationId": "completeEmailAccess",
+        "summary": "complete Email Access",
+        "tags": ["public"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAccessComplete"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "public",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/me/email-access": {
+      "get": {
+        "operationId": "getEmailAccess",
+        "summary": "get Email Access",
+        "tags": ["self"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailAccessStatusResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "self",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/me/email-access/link": {
+      "post": {
+        "operationId": "startEmailLink",
+        "summary": "start Email Link",
+        "tags": ["self"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAddress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailAccessMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "self",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/me/email-access/complete": {
+      "post": {
+        "operationId": "finishEmailLink",
+        "summary": "finish Email Link",
+        "tags": ["self"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAccessComplete"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "self",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
+      }
+    },
+    "/v1/me/password": {
+      "post": {
+        "operationId": "changePassword",
+        "summary": "change Password",
+        "tags": ["self"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "self",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-requirement": "Commuter email/password registration, verification, recovery and explicit email linking",
+        "x-existing-endpoint-assessment": "Social identities, phone OTP and driver PINs do not implement commuter email credentials or password recovery."
       }
     },
     "/v1/auth/phone/request": {
@@ -2131,6 +2892,16 @@
             "description": "Required for commuter/driver, absent for ops/worker."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "Success"
@@ -3483,6 +4254,58 @@
               "default": 50
             },
             "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "routeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Filter by route identity, not its display name."
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["submitted", "offered", "checkout_open", "completed", "withdrawn"]
+            },
+            "description": "Application state. Omit for all states."
+          },
+          {
+            "name": "plan",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["monthly", "annual"]
+            },
+            "description": "Requested plan."
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "description": "Travel weekday: Monday=1, Sunday=7."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Literal partial rider name. Route demand totals respect these filters except routeId and pagination."
           },
           {
             "name": "X-Trotxi-Client",
@@ -21145,6 +21968,24 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "firstName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "lastName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "otherNames": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
           "email": {
             "nullable": true,
             "type": "string",
@@ -22955,6 +23796,130 @@
         "required": ["data"],
         "additionalProperties": false
       },
+      "EmailAccessComplete": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 15,
+            "maxLength": 128
+          }
+        },
+        "required": ["token", "password"],
+        "additionalProperties": false
+      },
+      "EmailAccessMessage": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": ["message"],
+        "additionalProperties": false
+      },
+      "EmailAccessMessageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EmailAccessMessage"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "EmailAccessStatus": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "nullable": true,
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "passwordEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": ["email", "passwordEnabled"],
+        "additionalProperties": false
+      },
+      "EmailAccessStatusResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EmailAccessStatus"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "EmailAddress": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        },
+        "required": ["email"],
+        "additionalProperties": false
+      },
+      "EmailSignIn": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": ["email", "password"],
+        "additionalProperties": false
+      },
+      "EmailSignup": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "otherNames": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": ["email", "firstName", "lastName"],
+        "additionalProperties": false
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -23106,7 +24071,7 @@
             "maxLength": 128
           }
         },
-        "required": ["amount", "effectiveFrom"],
+        "required": ["amount", "effectiveFrom", "note"],
         "additionalProperties": false
       },
       "FarePage": {
@@ -23193,9 +24158,13 @@
           "description": {
             "type": "string",
             "maxLength": 2000
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["enabled", "rolloutPercentage", "description"],
+        "required": ["enabled", "rolloutPercentage", "description", "reason"],
         "additionalProperties": false
       },
       "FlagPage": {
@@ -23994,9 +24963,13 @@
           "storeUrl": {
             "type": "string",
             "format": "uri"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["minSupportedBuild", "apiMajor", "storeUrl"],
+        "required": ["minSupportedBuild", "apiMajor", "storeUrl", "reason"],
         "additionalProperties": false
       },
       "MinimumVersionPage": {
@@ -24127,9 +25100,13 @@
           "action": {
             "type": "string",
             "enum": ["delete", "make_superadmin", "make_admin"]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["action"],
+        "required": ["action", "reason"],
         "additionalProperties": false
       },
       "OperatorCommandResult": {
@@ -24167,9 +25144,13 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["email", "name"],
+        "required": ["email", "name", "reason"],
         "additionalProperties": false
       },
       "OpsAccountErasure": {
@@ -24543,6 +25524,18 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "riderName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "routeName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "slotId": {
             "nullable": true,
             "type": "string",
@@ -24572,6 +25565,8 @@
           "updatedAt",
           "version",
           "riderId",
+          "riderName",
+          "routeName",
           "slotId",
           "decidedBy",
           "editToken"
@@ -24792,6 +25787,12 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "driverName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "handledBy": {
             "nullable": true,
             "type": "string",
@@ -24827,6 +25828,7 @@
           "redactedAt",
           "createdAt",
           "driverId",
+          "driverName",
           "handledBy",
           "handledAt",
           "version",
@@ -25327,6 +26329,12 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "riderName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "attempts": {
             "type": "array",
             "items": {
@@ -25399,6 +26407,7 @@
           "failureCode",
           "createdAt",
           "riderId",
+          "riderName",
           "attempts"
         ],
         "additionalProperties": false
@@ -26178,6 +27187,12 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "driverName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "decidedBy": {
             "nullable": true,
             "type": "string",
@@ -26199,6 +27214,7 @@
           "updatedAt",
           "version",
           "driverId",
+          "driverName",
           "decidedBy",
           "editToken"
         ],
@@ -26745,6 +27761,23 @@
           }
         },
         "required": ["data"],
+        "additionalProperties": false
+      },
+      "PasswordChange": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "password": {
+            "type": "string",
+            "minLength": 15,
+            "maxLength": 128
+          }
+        },
+        "required": ["currentPassword", "password"],
         "additionalProperties": false
       },
       "Pattern": {
@@ -27612,8 +28645,13 @@
                 "$ref": "#/components/schemas/Money"
               }
             ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
+        "required": ["reason"],
         "additionalProperties": false
       },
       "ProfileUpdate": {
@@ -27623,9 +28661,24 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "otherNames": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
           }
         },
-        "required": ["displayName"],
         "additionalProperties": false
       },
       "PublishVersionInput": {
@@ -29193,6 +30246,31 @@
             },
             "required": ["nextCursor"],
             "additionalProperties": false
+          },
+          "routeDemand": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "routeId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "routeName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "requests": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": ["routeId", "routeName", "requests"],
+              "additionalProperties": false
+            }
           }
         },
         "required": ["data", "page"],
@@ -29267,9 +30345,13 @@
               "required": ["direction", "creditPerUnusedRide"],
               "additionalProperties": false
             }
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["expiresAt", "coverageStart", "coverageEnd", "price", "credits"],
+        "required": ["expiresAt", "coverageStart", "coverageEnd", "price", "credits", "reason"],
         "additionalProperties": false
       },
       "Stop": {

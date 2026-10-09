@@ -11,6 +11,7 @@ import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
 import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
 import { FareJourneyFields, type FareJourney } from './FareJourneyFields';
+import { ReasonField } from '../components/ReasonField';
 
 type Route = components['schemas']['Route'];
 type Stop = components['schemas']['Stop'];
@@ -458,7 +459,7 @@ export function Network() {
                   <tr>
                     <th>Route</th>
                     <th>Direction</th>
-                    <th>Published</th>
+                    <th>Status</th>
                     <th />
                   </tr>
                 </thead>
@@ -472,11 +473,7 @@ export function Network() {
                       <td>
                         <StatusBadge value={pattern.direction} />
                       </td>
-                      <td>
-                        {pattern.publishedVersionId
-                          ? pattern.publishedVersionId.slice(0, 8)
-                          : 'Draft only'}
-                      </td>
+                      <td>{pattern.publishedVersionId ? 'Live' : 'Draft only'}</td>
                       <td>
                         <Button
                           appearance="subtle"
@@ -571,10 +568,7 @@ export function Network() {
                       <strong>{schedule.localDeparture}</strong>
                       <div className="muted">Africa/Accra</div>
                     </td>
-                    <td>
-                      {patternById.get(schedule.patternId)?.direction ??
-                        schedule.patternId.slice(0, 8)}
-                    </td>
+                    <td>{patternById.get(schedule.patternId)?.direction ?? 'Unknown pattern'}</td>
                     <td>
                       {schedule.weekdays
                         .map((day) => weekdays.find(([id]) => id === day)?.[1])
@@ -723,7 +717,13 @@ export function Network() {
                     <td>{slot.availableFrom}</td>
                     <td>
                       {slot.legs
-                        .map((leg) => `${leg.direction} ${leg.scheduleId.slice(0, 8)}`)
+                        .map(
+                          (leg) =>
+                            `${leg.direction} ${
+                              query.data?.schedules.find((s) => s.id === leg.scheduleId)
+                                ?.localDeparture ?? ''
+                            }`,
+                        )
                         .join(' · ')}
                     </td>
                     <td>
@@ -1146,6 +1146,10 @@ export function Network() {
         )}
         {dialog === 'fare-create' && (
           <>
+            <p className="dialog-note">
+              All fields are required. The reason is kept with the fare so every price change can be
+              traced.
+            </p>
             <label>
               Route
               <select
@@ -1193,8 +1197,14 @@ export function Network() {
               />
             </label>
             <label>
-              Note
-              <textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
+              Reason
+              <textarea
+                rows={3}
+                required
+                placeholder="Why this fare, for the record"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
             </label>
           </>
         )}
@@ -1246,6 +1256,7 @@ export function Network() {
                 onChange={(event) => setCreditPerRideGhs(event.target.value)}
               />
             </label>
+            <ReasonField value={reason} onChange={setReason} />
           </>
         )}
         {dialog === 'slot-create' && (
@@ -1407,17 +1418,21 @@ export function Network() {
         !fareJourney.dropoffOccurrenceId
       )
         throw new Error('Choose the route version, pickup and drop-off.');
+      if (!(Number(amountGhs) > 0)) throw new Error('Enter the fare in GHS.');
+      if (!effectiveFrom) throw new Error('Choose when the fare takes effect.');
+      if (!note.trim()) throw new Error('Give a reason for this fare.');
       const response = await session.client.POST('/v1/ops/routes/{id}/fares', {
         params: { path: { id: routeId }, header: mutation },
         body: {
           ...fareJourney,
           amount: { amountMinor: Math.round(Number(amountGhs) * 100), currency: 'GHS' },
           effectiveFrom: toIso(effectiveFrom),
-          note,
+          note: note.trim(),
         },
       });
       if (response.error) throw new Error(response.error.error.message);
     } else if (dialog === 'pricing-edit' && selectedPricing) {
+      if (!reason.trim()) throw new Error('Give a reason for this change.');
       const response = await session.client.PATCH('/v1/ops/plan-pricing/{plan}', {
         params: {
           path: { plan: selectedPricing.plan },
@@ -1434,6 +1449,7 @@ export function Network() {
             amountMinor: Math.round(Number(creditPerRideGhs) * 100),
             currency: 'GHS',
           },
+          reason: reason.trim(),
         },
       });
       if (response.error) throw new Error(response.error.error.message);
@@ -1535,7 +1551,7 @@ function LegFields({
           <option value="">Choose schedule</option>
           {schedules.map((schedule) => (
             <option key={schedule.id} value={schedule.id}>
-              {schedule.localDeparture} · {schedule.id.slice(0, 8)}
+              {schedule.serviceWindow} · {schedule.localDeparture}
             </option>
           ))}
         </select>

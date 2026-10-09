@@ -115,6 +115,22 @@ class CommuterApi extends CommuterDataClient {
 
   Future<bool> signOut() => auth.signOut();
 
+  Future<void> signInEmail(String email, String password) async {
+    _loadAttempt++;
+    final account = await auth.signInEmail(email, password);
+    if (_closed) return;
+    currentAccount = account;
+    identityRevision.value++;
+    stage.value = CommuterStage.ready;
+  }
+
+  Future<void> saveFullName(String first, String last, String? other) async {
+    final account = await updateFullName(first, last, other);
+    if (_closed) return;
+    currentAccount = account;
+    identityRevision.value++;
+  }
+
   Future<wire.PhoneChallenge> requestPhoneCode(String phone) =>
       auth.requestPhoneCode(phone);
 

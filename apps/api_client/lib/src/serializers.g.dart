@@ -121,6 +121,14 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DriverTripResponse.serializer)
       ..add(DriverTripRunNumberEnum.serializer)
       ..add(DriverTripStatusEnum.serializer)
+      ..add(EmailAccessComplete.serializer)
+      ..add(EmailAccessMessage.serializer)
+      ..add(EmailAccessMessageResponse.serializer)
+      ..add(EmailAccessStatus.serializer)
+      ..add(EmailAccessStatusResponse.serializer)
+      ..add(EmailAddress.serializer)
+      ..add(EmailSignIn.serializer)
+      ..add(EmailSignup.serializer)
       ..add(ErrorResponse.serializer)
       ..add(ErrorResponseError.serializer)
       ..add(ErrorResponseErrorFieldErrorsInner.serializer)
@@ -310,6 +318,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PasskeyRegistrationResponseTypeEnum.serializer)
       ..add(PasskeyStatus.serializer)
       ..add(PasskeyStatusResponse.serializer)
+      ..add(PasswordChange.serializer)
       ..add(Pattern.serializer)
       ..add(PatternDirectionEnum.serializer)
       ..add(PatternInput.serializer)
@@ -441,6 +450,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(StandbyApplicationOffer.serializer)
       ..add(StandbyApplicationOfferStateEnum.serializer)
       ..add(StandbyApplicationPage.serializer)
+      ..add(StandbyApplicationPageRouteDemandInner.serializer)
       ..add(StandbyApplicationResponse.serializer)
       ..add(StandbyApplicationStateEnum.serializer)
       ..add(StandbyJoinInput.serializer)
@@ -716,6 +726,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(StandbyApplication)]),
           () => ListBuilder<StandbyApplication>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(StandbyApplicationPageRouteDemandInner)]),
+          () => ListBuilder<StandbyApplicationPageRouteDemandInner>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType(StandbyOfferInputCreditsInner)]),

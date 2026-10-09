@@ -18,6 +18,7 @@ export function ActionDialog({
   confirmLabel = 'Save',
   danger = false,
   wide = false,
+  confirmDisabled = false,
   onClose,
   onConfirm,
   children,
@@ -28,6 +29,8 @@ export function ActionDialog({
   confirmLabel?: string;
   danger?: boolean;
   wide?: boolean;
+  /** The form cannot be sent yet; the dialog's content says why. */
+  confirmDisabled?: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void>;
   children: ReactNode;
@@ -71,7 +74,7 @@ export function ActionDialog({
             </Button>
             <Button
               appearance="primary"
-              disabled={working}
+              disabled={working || confirmDisabled}
               style={danger ? { background: '#a12a2a' } : undefined}
               onClick={() => void confirm()}
             >

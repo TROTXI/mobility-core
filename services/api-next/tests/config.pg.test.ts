@@ -71,6 +71,7 @@ async function fixture(t: TestContext) {
   ) => {
     const who = options.who ?? 'ops';
     const client = options.client ?? (who === 'ops' ? 'ops' : 'commuter');
+    const payload = method !== 'GET' ? withReason(url, options.payload) : options.payload;
     return app.inject({
       method,
       url,
@@ -84,7 +85,7 @@ async function fixture(t: TestContext) {
         ...(method === 'GET' ? {} : { 'idempotency-key': options.key ?? randomUUID() }),
         ...(options.match ? { 'if-match': options.match } : {}),
       },
-      ...(options.payload === undefined ? {} : { payload: options.payload as never }),
+      ...(payload === undefined ? {} : { payload: payload as never }),
     }) as Promise<Response>;
   };
   const bare = (url: string) => app.inject({ method: 'GET', url }) as Promise<Response>;
@@ -355,7 +356,11 @@ test('CFG-05 configuration is ops work, attributable and replayable', async (t) 
     )
   ).rows;
   assert.equal(events.length, 1);
-  assert.partialDeepStrictEqual(events[0], { action: 'setFlag', target: 'x.y', reason: null });
+  assert.partialDeepStrictEqual(events[0], {
+    action: 'setFlag',
+    target: 'x.y',
+    reason: 'Test reason',
+  });
   assert.deepEqual(events[0].before_state, {});
   assert.equal(events[0].after_state.rolloutPercentage, 25);
 });
@@ -555,6 +560,28 @@ test('CFG-11 the ops lists honour what they declare', async (t) => {
   );
 });
 
+test('CFG-15 a flag change says why, and the reason is kept', async (t) => {
+  const f = await fixture(t);
+  const blank = await f.call('PUT', '/v1/ops/flags/map.live', {
+    payload: { enabled: true, rolloutPercentage: 10, description: 'Pilot', reason: ' ' },
+    match: '*',
+  });
+  assert.equal(blank.statusCode, 400, blank.body);
+  assert.equal(blank.json().error.code, 'reason_required');
+  expectStatus(
+    await f.call('PUT', '/v1/ops/flags/map.live', {
+      payload: { enabled: true, rolloutPercentage: 10, description: 'Pilot', reason: 'Field test' },
+      match: '*',
+    }),
+    200,
+  );
+  assert.equal(
+    (await f.owner.query("SELECT reason FROM app.config_events WHERE target='map.live'")).rows[0]
+      .reason,
+    'Field test',
+  );
+});
+
 test('CFG-12 a rider is told they are not an administrator, whatever else they got wrong', async (t) => {
   const f = await fixture(t);
   const refused = await f.call('PUT', '/v1/ops/flags/x.y', {
@@ -630,3 +657,12 @@ test('CFG-14 concurrent legacy demotions cannot bypass team account deletion', a
   ).rows[0].n;
   assert.equal(admins, 2, 'neither account is downgraded');
 });
+
+/** Ops actions that must say why; tests that do not test the reason supply one. */
+function withReason(url: string, payload: unknown): unknown {
+  if (!/^\/v1\/ops\/(flags|min-versions)\//.test(url)) return payload;
+  if (payload === undefined) return { reason: 'Test reason' };
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('reason' in payload))
+    return { ...payload, reason: 'Test reason' };
+  return payload;
+}

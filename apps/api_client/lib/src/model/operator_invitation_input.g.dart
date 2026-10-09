@@ -11,12 +11,15 @@ class _$OperatorInvitationInput extends OperatorInvitationInput {
   final String email;
   @override
   final String name;
+  @override
+  final String reason;
 
   factory _$OperatorInvitationInput(
           [void Function(OperatorInvitationInputBuilder)? updates]) =>
       (OperatorInvitationInputBuilder()..update(updates))._build();
 
-  _$OperatorInvitationInput._({required this.email, required this.name})
+  _$OperatorInvitationInput._(
+      {required this.email, required this.name, required this.reason})
       : super._();
   @override
   OperatorInvitationInput rebuild(
@@ -32,7 +35,8 @@ class _$OperatorInvitationInput extends OperatorInvitationInput {
     if (identical(other, this)) return true;
     return other is OperatorInvitationInput &&
         email == other.email &&
-        name == other.name;
+        name == other.name &&
+        reason == other.reason;
   }
 
   @override
@@ -40,6 +44,7 @@ class _$OperatorInvitationInput extends OperatorInvitationInput {
     var _$hash = 0;
     _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jc(_$hash, name.hashCode);
+    _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -48,7 +53,8 @@ class _$OperatorInvitationInput extends OperatorInvitationInput {
   String toString() {
     return (newBuiltValueToStringHelper(r'OperatorInvitationInput')
           ..add('email', email)
-          ..add('name', name))
+          ..add('name', name)
+          ..add('reason', reason))
         .toString();
   }
 }
@@ -66,6 +72,10 @@ class OperatorInvitationInputBuilder
   String? get name => _$this._name;
   set name(String? name) => _$this._name = name;
 
+  String? _reason;
+  String? get reason => _$this._reason;
+  set reason(String? reason) => _$this._reason = reason;
+
   OperatorInvitationInputBuilder() {
     OperatorInvitationInput._defaults(this);
   }
@@ -75,6 +85,7 @@ class OperatorInvitationInputBuilder
     if ($v != null) {
       _email = $v.email;
       _name = $v.name;
+      _reason = $v.reason;
       _$v = null;
     }
     return this;
@@ -100,6 +111,8 @@ class OperatorInvitationInputBuilder
               email, r'OperatorInvitationInput', 'email'),
           name: BuiltValueNullFieldError.checkNotNull(
               name, r'OperatorInvitationInput', 'name'),
+          reason: BuiltValueNullFieldError.checkNotNull(
+              reason, r'OperatorInvitationInput', 'reason'),
         );
     replace(_$result);
     return _$result;

@@ -11,12 +11,15 @@ class _$StandbyApplicationPage extends StandbyApplicationPage {
   final BuiltList<StandbyApplication> data;
   @override
   final CommuteRequestPagePage page;
+  @override
+  final BuiltList<StandbyApplicationPageRouteDemandInner>? routeDemand;
 
   factory _$StandbyApplicationPage(
           [void Function(StandbyApplicationPageBuilder)? updates]) =>
       (StandbyApplicationPageBuilder()..update(updates))._build();
 
-  _$StandbyApplicationPage._({required this.data, required this.page})
+  _$StandbyApplicationPage._(
+      {required this.data, required this.page, this.routeDemand})
       : super._();
   @override
   StandbyApplicationPage rebuild(
@@ -32,7 +35,8 @@ class _$StandbyApplicationPage extends StandbyApplicationPage {
     if (identical(other, this)) return true;
     return other is StandbyApplicationPage &&
         data == other.data &&
-        page == other.page;
+        page == other.page &&
+        routeDemand == other.routeDemand;
   }
 
   @override
@@ -40,6 +44,7 @@ class _$StandbyApplicationPage extends StandbyApplicationPage {
     var _$hash = 0;
     _$hash = $jc(_$hash, data.hashCode);
     _$hash = $jc(_$hash, page.hashCode);
+    _$hash = $jc(_$hash, routeDemand.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -48,7 +53,8 @@ class _$StandbyApplicationPage extends StandbyApplicationPage {
   String toString() {
     return (newBuiltValueToStringHelper(r'StandbyApplicationPage')
           ..add('data', data)
-          ..add('page', page))
+          ..add('page', page)
+          ..add('routeDemand', routeDemand))
         .toString();
   }
 }
@@ -67,6 +73,14 @@ class StandbyApplicationPageBuilder
       _$this._page ??= CommuteRequestPagePageBuilder();
   set page(CommuteRequestPagePageBuilder? page) => _$this._page = page;
 
+  ListBuilder<StandbyApplicationPageRouteDemandInner>? _routeDemand;
+  ListBuilder<StandbyApplicationPageRouteDemandInner> get routeDemand =>
+      _$this._routeDemand ??=
+          ListBuilder<StandbyApplicationPageRouteDemandInner>();
+  set routeDemand(
+          ListBuilder<StandbyApplicationPageRouteDemandInner>? routeDemand) =>
+      _$this._routeDemand = routeDemand;
+
   StandbyApplicationPageBuilder() {
     StandbyApplicationPage._defaults(this);
   }
@@ -76,6 +90,7 @@ class StandbyApplicationPageBuilder
     if ($v != null) {
       _data = $v.data.toBuilder();
       _page = $v.page.toBuilder();
+      _routeDemand = $v.routeDemand?.toBuilder();
       _$v = null;
     }
     return this;
@@ -101,6 +116,7 @@ class StandbyApplicationPageBuilder
           _$StandbyApplicationPage._(
             data: data.build(),
             page: page.build(),
+            routeDemand: _routeDemand?.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -109,6 +125,8 @@ class StandbyApplicationPageBuilder
         data.build();
         _$failedField = 'page';
         page.build();
+        _$failedField = 'routeDemand';
+        _routeDemand?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'StandbyApplicationPage', _$failedField, e.toString());

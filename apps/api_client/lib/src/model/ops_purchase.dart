@@ -29,6 +29,7 @@ part 'ops_purchase.g.dart';
 /// * [failureCode]
 /// * [createdAt]
 /// * [riderId]
+/// * [riderName]
 /// * [attempts]
 @BuiltValue()
 abstract class OpsPurchase implements Built<OpsPurchase, OpsPurchaseBuilder> {
@@ -73,6 +74,9 @@ abstract class OpsPurchase implements Built<OpsPurchase, OpsPurchaseBuilder> {
 
   @BuiltValueField(wireName: r'riderId')
   String get riderId;
+
+  @BuiltValueField(wireName: r'riderName')
+  String? get riderName;
 
   @BuiltValueField(wireName: r'attempts')
   BuiltList<OpsPurchaseAttemptsInner> get attempts;
@@ -173,6 +177,13 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
       object.riderId,
       specifiedType: const FullType(String),
     );
+    yield r'riderName';
+    yield object.riderName == null
+        ? null
+        : serializers.serialize(
+            object.riderName,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'attempts';
     yield serializers.serialize(
       object.attempts,
@@ -298,6 +309,14 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
             specifiedType: const FullType(String),
           ) as String;
           result.riderId = valueDes;
+          break;
+        case r'riderName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.riderName = valueDes;
           break;
         case r'attempts':
           final valueDes = serializers.deserialize(

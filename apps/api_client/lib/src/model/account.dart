@@ -14,6 +14,9 @@ part 'account.g.dart';
 /// Properties:
 /// * [id]
 /// * [displayName]
+/// * [firstName]
+/// * [lastName]
+/// * [otherNames]
 /// * [email]
 /// * [phone]
 /// * [avatarUrl]
@@ -27,6 +30,15 @@ abstract class Account implements Built<Account, AccountBuilder> {
 
   @BuiltValueField(wireName: r'displayName')
   String get displayName;
+
+  @BuiltValueField(wireName: r'firstName')
+  String? get firstName;
+
+  @BuiltValueField(wireName: r'lastName')
+  String? get lastName;
+
+  @BuiltValueField(wireName: r'otherNames')
+  String? get otherNames;
 
   @BuiltValueField(wireName: r'email')
   String? get email;
@@ -80,6 +92,27 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
       object.displayName,
       specifiedType: const FullType(String),
     );
+    if (object.firstName != null) {
+      yield r'firstName';
+      yield serializers.serialize(
+        object.firstName,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.lastName != null) {
+      yield r'lastName';
+      yield serializers.serialize(
+        object.lastName,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.otherNames != null) {
+      yield r'otherNames';
+      yield serializers.serialize(
+        object.otherNames,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
     yield r'email';
     yield object.email == null
         ? null
@@ -156,6 +189,30 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
             specifiedType: const FullType(String),
           ) as String;
           result.displayName = valueDes;
+          break;
+        case r'firstName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.firstName = valueDes;
+          break;
+        case r'lastName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.lastName = valueDes;
+          break;
+        case r'otherNames':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.otherNames = valueDes;
           break;
         case r'email':
           final valueDes = serializers.deserialize(

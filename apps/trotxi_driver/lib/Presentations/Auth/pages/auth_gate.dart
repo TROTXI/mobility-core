@@ -41,6 +41,34 @@ class _AuthGateState extends State<AuthGate> {
   _FirstLaunchStage _firstLaunch = _FirstLaunchStage.loading;
   bool _finishingWelcome = false;
 
+  /// Whether this device can already start a trip, checked once per link.
+  Future<bool>? _deviceReady;
+
+  /// Local permission reads only. A failed read shows the readiness screen,
+  /// which is where a driver can see and fix what is wrong.
+  Future<bool> _checkDevice() async {
+    try {
+      return (await widget.readinessService.check()).canStartTrip;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// A driver whose location is already allowed has nothing to set up, so the
+  /// readiness screen would only ask them to tap Continue past it after every
+  /// sign-in. Checked again at the tap: access can change while this screen
+  /// is open, and trip start enforces it regardless.
+  Future<void> _finishLinking(SessionController session) async {
+    final ready = await _checkDevice();
+    if (!mounted) return;
+    _deviceReady = null;
+    if (ready) {
+      session.completeReadiness();
+    } else {
+      session.completeLinking();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -157,9 +185,13 @@ class _AuthGateState extends State<AuthGate> {
         onConfirmed: session.confirm,
         onRejected: session.signOut,
       ),
-      SessionStage.linked => AccountLinkedPage(
-        session: session.session!,
-        onContinue: session.completeLinking,
+      SessionStage.linked => FutureBuilder<bool>(
+        future: _deviceReady ??= _checkDevice(),
+        builder: (context, snapshot) => AccountLinkedPage(
+          session: session.session!,
+          showDeviceSetup: snapshot.data != true,
+          onContinue: () => _finishLinking(session),
+        ),
       ),
       SessionStage.readiness => DeviceReadinessPage(
         onContinue: session.completeReadiness,

@@ -118,7 +118,7 @@ describe('Payments lists', () => {
     );
     expect(within(table).getByText('visa •••• 4081')).toBeInTheDocument();
     // A rider with no name is identified, and a missing card is said plainly.
-    expect(within(table).getByText('rider-2')).toBeInTheDocument();
+    expect(within(table).getByText('Erased rider')).toBeInTheDocument();
     expect(within(table).getByText('None')).toBeInTheDocument();
     expect(within(table).getByText('Card declined. Retrying daily.')).toBeInTheDocument();
 
