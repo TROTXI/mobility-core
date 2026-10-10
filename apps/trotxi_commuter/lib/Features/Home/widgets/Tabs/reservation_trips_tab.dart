@@ -211,6 +211,14 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (Navigator.of(context).canPop()) ...[
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+            label: const Text('Back to available trips'),
+          ),
+          const SizedBox(height: 12),
+        ],
         Text(
           'Trips',
           style: AppTypography.heading2.copyWith(color: colors.textPrimary),
