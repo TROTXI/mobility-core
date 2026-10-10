@@ -4,8 +4,14 @@ import { fail } from '../transport/errors.js';
 // Bound memory and worker-pool pressure. Never queue unbounded expensive hashes.
 let active = 0;
 export function validatePassword(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || [...value].length < 15 || value.length > 128)
-    fail(400, 'invalid_password', 'Use a password of 15 to 128 characters.');
+  if (typeof value !== 'string' || [...value].length < 12 || value.length > 128)
+    fail(400, 'invalid_password', 'Use a password of 12 to 128 characters.');
+  if (
+    !/[A-Z]/.test(value) ||
+    !/[0-9]/.test(value) ||
+    !/[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/.test(value)
+  )
+    fail(400, 'invalid_password', 'Include a capital letter, a number, and a symbol.');
   if (
     /^(.{1,8})\1+$/u.test(value) ||
     [

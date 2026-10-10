@@ -59,6 +59,7 @@ select {
   background: var(--colorNeutralBackground2);
   padding: 32px 20px;
   align-items: center;
+  overflow-y: auto;
 }
 .team-invite-form {
   display: flex;
@@ -129,6 +130,45 @@ select {
   margin-top: 24px;
   text-align: center;
   color: var(--colorNeutralForeground2);
+}
+.email-access-page .auth-card {
+  text-align: center;
+}
+.email-access-form {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+.email-access-form p {
+  margin: 0 0 8px;
+}
+.email-access-form input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 8px;
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+}
+.email-access-form button {
+  margin-top: 8px;
+  width: 100%;
+}
+.email-access-form [role='alert'] {
+  color: var(--colorPaletteRedForeground1);
+}
+.email-access-check {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 8px 0 20px;
+  border-radius: 50%;
+  background: #e8f7ed;
+  color: #08752e;
+  font-size: 30px;
+  font-weight: 700;
 }
 .auth-page {
   min-height: 100vh;

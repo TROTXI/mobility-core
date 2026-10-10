@@ -24180,8 +24180,9 @@
           },
           "password": {
             "type": "string",
-            "minLength": 15,
-            "maxLength": 128
+            "minLength": 12,
+            "maxLength": 128,
+            "pattern": "(?=.*[A-Z])(?=.*[0-9])(?=.*[\\x21-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\x7e])"
           }
         },
         "required": ["token", "password"],
@@ -28151,8 +28152,9 @@
           },
           "password": {
             "type": "string",
-            "minLength": 15,
-            "maxLength": 128
+            "minLength": 12,
+            "maxLength": 128,
+            "pattern": "(?=.*[A-Z])(?=.*[0-9])(?=.*[\\x21-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\x7e])"
           }
         },
         "required": ["currentPassword", "password"],
@@ -28749,8 +28751,9 @@
           },
           "password": {
             "type": "string",
-            "minLength": 15,
-            "maxLength": 128
+            "minLength": 12,
+            "maxLength": 128,
+            "pattern": "(?=.*[A-Z])(?=.*[0-9])(?=.*[\\x21-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\x7e])"
           }
         },
         "required": ["firstName", "lastName", "email", "password"],

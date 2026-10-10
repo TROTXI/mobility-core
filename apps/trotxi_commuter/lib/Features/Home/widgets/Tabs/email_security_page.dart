@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/auth/password_policy.dart';
 
 class EmailSecurityPage extends StatefulWidget {
   const EmailSecurityPage({super.key, required this.client});
@@ -8,7 +9,8 @@ class EmailSecurityPage extends StatefulWidget {
   State<EmailSecurityPage> createState() => _EmailSecurityPageState();
 }
 
-class _EmailSecurityPageState extends State<EmailSecurityPage> {
+class _EmailSecurityPageState extends State<EmailSecurityPage>
+    with WidgetsBindingObserver {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController(),
       _code = TextEditingController(),
@@ -19,19 +21,35 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
       _enabled = false,
       _verified = false,
       _sent = false,
+      _checking = false,
       _busy = false;
   String? _error;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_loading && !_verified) {
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    if (_checking) return;
+    if (_loading) {
+      _checking = true;
+    } else {
+      setState(() => _checking = true);
+    }
     try {
       final status = await widget.client.emailAccess();
       if (mounted) {
         setState(() {
+          _error = null;
           _enabled = status.passwordEnabled;
           _verified = status.emailVerified;
           _email.text =
@@ -43,7 +61,12 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not load account security.');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _checking = false;
+        });
+      }
     }
   }
 
@@ -69,6 +92,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     for (final c in [_email, _code, _old, _password, _confirm]) {
       c.dispose();
     }
@@ -125,8 +149,22 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
                       'Your email is not verified yet. Verify it to use password recovery and receive important updates.',
                     ),
                     TextButton(
-                      onPressed: _busy ? null : _verifyEmail,
+                      onPressed: _busy || _checking ? null : _verifyEmail,
                       child: const Text('Send email verification link'),
+                    ),
+                    TextButton(
+                      onPressed: _busy || _checking ? null : _load,
+                      child: Text(
+                        _checking
+                            ? 'Checking email status...'
+                            : "I've verified my email",
+                      ),
+                    ),
+                  ],
+                  if (_enabled && _verified) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Contact email verified. You can use it for account recovery.',
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -193,11 +231,9 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
                       maxLength: 128,
                       decoration: const InputDecoration(
                         labelText: 'New password',
-                        helperText: 'Use at least 15 characters',
+                        helperText: newPasswordGuidance,
                       ),
-                      validator: (v) => v == null || v.runes.length < 15
-                          ? 'Use at least 15 characters'
-                          : null,
+                      validator: validateNewPassword,
                     ),
                     TextFormField(
                       controller: _confirm,
