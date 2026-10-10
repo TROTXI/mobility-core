@@ -177,7 +177,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
           if (_error != null) Text(_error!),
           if (snapshot != null) ...[
             Text(
-              'Service ${snapshot.trip.serviceDate} · Departure ${DateFormat('d MMM HH:mm').format(snapshot.trip.scheduledAt.toUtc())} Ghana time',
+              'Departs ${DateFormat('EEE, d MMM · h:mm a').format(snapshot.trip.scheduledAt.toUtc())}',
             ),
             Text(
               snapshot.trip.direction == wire.TripDirectionEnum.outbound

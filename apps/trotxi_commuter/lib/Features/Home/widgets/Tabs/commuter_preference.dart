@@ -188,8 +188,10 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
 
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
+      appBar: AppBar(title: const Text('Commute preferences')),
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxContentWidth),
             child: SingleChildScrollView(
@@ -202,7 +204,13 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeader(context),
+                  Text(
+                    'Need a different route or time? Send us a request. Your current commute stays the same until the change is approved.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: _busy || _loading ? null : _refresh,
                     child: const Text('Refresh requests'),
@@ -380,9 +388,9 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
     );
   }
 
-  String _day(wire.Date date) => DateFormat('d MMM yyyy').format(
-    DateTime(date.year, date.month, date.day),
-  );
+  String _day(wire.Date date) => DateFormat(
+    'd MMM yyyy',
+  ).format(DateTime(date.year, date.month, date.day));
 
   Widget _buildCurrentCommuteCard(BuildContext context) {
     final colors = context.appColors;
@@ -443,47 +451,6 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                 ),
               ],
             ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Semantics(
-              button: true,
-              label: 'Back',
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 20,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Commute preferences',
-                style: AppTypography.title.copyWith(color: colors.textPrimary),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Moving or changing your commute? Request a new route and times. Operations checks availability before changing your subscription.',
-          style: AppTypography.caption.copyWith(color: colors.textSecondary),
-        ),
-      ],
     );
   }
 

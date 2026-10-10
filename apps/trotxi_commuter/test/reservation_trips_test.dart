@@ -73,6 +73,7 @@ void main() {
     });
     expect(find.text('Circle to Madina'), findsOneWidget);
     expect(find.text('12:15 AM'), findsOneWidget);
+    expect(find.textContaining('Trip ID'), findsNothing);
     expect(fixture.requests.single.path, '/v1/me/reservations/seat-1');
     await tester.pumpWidget(const SizedBox.shrink());
     fixture.api.dispose();

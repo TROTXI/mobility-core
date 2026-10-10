@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:trotxi_client/commuter_checkout.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
 import 'standby_page.dart';
 
 Future<bool> openPaystackCheckout(Uri uri) =>
@@ -153,6 +155,9 @@ class _CheckoutPageState extends State<CheckoutPage>
   });
   String _money(wire.Money m) =>
       '${m.currency.name} ${(m.amountMinor / 100).toStringAsFixed(2)}';
+  String _coverage(wire.Date start, wire.Date end) =>
+      '${DateFormat('d MMM y').format(start.toDateTime(utc: true))} to '
+      '${DateFormat('d MMM y').format(end.toDateTime(utc: true).subtract(const Duration(days: 1)))}';
   @override
   Widget build(BuildContext context) {
     final checkout = _checkout;
@@ -164,7 +169,7 @@ class _CheckoutPageState extends State<CheckoutPage>
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Payment is completed on Paystack. Returning here does not prove payment; only server-confirmed fulfilment grants rides.',
+            'Pay securely with Paystack. After paying, return here to check your payment status. Your rides appear once payment is confirmed.',
           ),
           if (_busy) const LinearProgressIndicator(),
           if (_error != null)
@@ -183,9 +188,9 @@ class _CheckoutPageState extends State<CheckoutPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Saved ${saved.input.plan.name} checkout'),
+                    const Text('Your checkout is saved'),
                     const Text(
-                      'Retry resumes the same purchase. It does not create a new payment. If the retry key has expired, contact operations rather than starting again.',
+                      'Continue where you left off. This resumes the same purchase. If it is no longer available, contact support before trying to pay again.',
                     ),
                     TextButton(
                       onPressed: _busy
@@ -200,7 +205,7 @@ class _CheckoutPageState extends State<CheckoutPage>
               ),
             ),
           if (checkout != null) ...[
-            const Text('Purchase history · all dates'),
+            const Text('Payment history'),
             for (final p in checkout.purchases)
               Card(
                 child: Padding(
@@ -209,11 +214,11 @@ class _CheckoutPageState extends State<CheckoutPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${p.offerTerms == null ? p.plan.name : 'Subscription offer'} · ${_money(p.price)}',
+                        '${p.offerTerms == null ? purchasePlanLabel(p.plan) : 'Subscription offer'} · ${_money(p.price)}',
                       ),
                       if (p.offerTerms != null) ...[
                         Text(
-                          '${p.offerTerms!.coverageStart} until ${p.offerTerms!.coverageEnd} (end date excluded)',
+                          'Coverage: ${_coverage(p.offerTerms!.coverageStart, p.offerTerms!.coverageEnd)}',
                         ),
                         for (final leg in p.offerTerms!.legs)
                           Text(
@@ -222,24 +227,22 @@ class _CheckoutPageState extends State<CheckoutPage>
                       ],
                       Text('Ride Credit applied: ${_money(p.appliedCredit)}'),
                       Text('Cash due: ${_money(p.cashDue)}'),
-                      SelectableText('Purchase ID: ${p.id}'),
-                      Text(
-                        'Purchase: ${p.state.name} · Collection: ${p.collectionState.name}',
-                      ),
+                      SelectableText('Payment reference: ${p.id}'),
+                      Text(purchaseStateLabel(p.state)),
                       if (p.state == wire.PurchaseStateEnum.fulfilled)
                         const Text(
-                          'Server-confirmed fulfilment. Refresh your wallet to see current access.',
+                          'Payment confirmed. Refresh Wallet to see your rides.',
                         ),
                       if (p.state == wire.PurchaseStateEnum.processing ||
                           p.collectionState ==
                                   wire.PurchaseCollectionStateEnum.successful &&
                               p.state != wire.PurchaseStateEnum.fulfilled)
                         const Text(
-                          'Payment confirmation is being processed. Do not pay again.',
+                          'We are confirming your payment. Please do not pay again.',
                         ),
                       if (p.state == wire.PurchaseStateEnum.reviewRequired)
                         const Text(
-                          'Operations review required. Do not pay again.',
+                          'Your payment needs a review. Please do not pay again.',
                         ),
                       if (paystackCheckoutUri(p, DateTime.now()) != null)
                         FilledButton(
@@ -251,7 +254,7 @@ class _CheckoutPageState extends State<CheckoutPage>
                       else if (p.state ==
                           wire.PurchaseStateEnum.awaitingPayment)
                         const Text(
-                          'No usable checkout link is available. Resume the saved checkout if present, or contact operations with this purchase ID.',
+                          'The payment link is unavailable. Resume your saved checkout or contact support with this payment reference.',
                         ),
                     ],
                   ),
@@ -260,7 +263,7 @@ class _CheckoutPageState extends State<CheckoutPage>
             if (saved == null && !unresolved && _error == null) ...[
               const Divider(),
               const Text(
-                'New subscriptions and renewals require an Ops offer. Request your journeys and travel days, then review the agreed terms before paying.',
+                'To start or renew a plan, tell us which journeys and travel days you need. We will send you an offer to review before you pay.',
               ),
               FilledButton(
                 onPressed: _busy
@@ -270,7 +273,7 @@ class _CheckoutPageState extends State<CheckoutPage>
                           builder: (_) => StandbyPage(client: widget.client),
                         ),
                       ),
-                child: const Text('Waitlist and offers'),
+                child: const Text('View waitlist'),
               ),
             ],
           ],

@@ -269,7 +269,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Waitlist'), findsOneWidget);
       expect(
-        find.textContaining('Joining is free and does not guarantee a seat'),
+        find.textContaining('Joining is free and does not reserve a seat'),
         findsOneWidget,
       );
       if (plan == 'annual') {
@@ -284,7 +284,10 @@ void main() {
       expect(submitted?['selection']['plan'], plan);
       expect(submitted?['travelDays'], [1, 2, 3, 4, 5]);
       expect(submitted?['selection']['legs'], hasLength(2));
-      expect(find.text('Requested plan: $plan'), findsOneWidget);
+      expect(
+        find.text('${plan == 'annual' ? 'Annual' : 'Monthly'} plan'),
+        findsOneWidget,
+      );
       await tester.pumpWidget(const SizedBox());
       f.api.dispose();
     });
