@@ -83,18 +83,20 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
     final generation = widget.client.sessionGeneration;
     final enabling = !current.enabled;
     final agreed = await _confirm(
-      title: enabling ? 'Turn on card auto-renewal?' : 'Turn off auto-renewal?',
+      title: enabling ? 'Allow card auto-renewal?' : 'Turn off auto-renewal?',
       explanation: enabling
-          ? 'If you make an eligible card payment, Trotxi can save that card '
-                'and charge it for the same journeys and travel days from '
-                'three days before coverage ends. The current package price '
-                'applies unless the fare or service changes. You can turn this '
-                'off or remove the card before the charge. Mobile money is '
-                'never charged automatically.'
+          ? 'This does not save a card or charge you now. If you later pay an '
+                'offer with a supported card, Trotxi may save it for renewal. '
+                'A renewal can be charged from three days before your '
+                'coverage ends, for the same journeys, travel days and '
+                'package price. If those terms change, we will ask you to '
+                'review a new offer instead. You can turn this off or remove '
+                'the card before a renewal charge. Mobile money is never '
+                'charged automatically.'
           : 'No further renewal charges will be scheduled. Your paid '
                 'coverage remains unchanged, and any saved card stays on this '
                 'account until you remove it.',
-      action: enabling ? 'Turn on' : 'Turn off',
+      action: enabling ? 'Allow auto-renewal' : 'Turn off',
     );
     if (!agreed || !mounted || generation != widget.client.sessionGeneration) {
       return;
@@ -182,6 +184,14 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
     final renewal = _renewal;
     final card = renewal?.card;
     final upcoming = renewal?.upcoming;
+    final waitingForCard = renewal?.enabled == true && card == null;
+    final status = renewal == null
+        ? ''
+        : waitingForCard
+        ? 'Waiting for a card'
+        : renewal.enabled
+        ? 'On'
+        : 'Off';
     return Scaffold(
       appBar: AppBar(title: const Text('Card auto-renewal')),
       body: Center(
@@ -191,22 +201,22 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
             onRefresh: _load,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
               children: [
                 Text(
-                  'Renew on your terms',
+                  'Choose how you renew',
                   style: AppTypography.heading2.copyWith(
                     color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Decide whether an eligible card payment can renew your commute. Mobile money is never charged automatically.',
+                  'Automatic renewal is optional and only works with a saved card. You stay in control.',
                   style: AppTypography.body.copyWith(
                     color: colors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 if (_loading) ...[
                   const LinearProgressIndicator(),
                   const SizedBox(height: 16),
@@ -248,7 +258,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Card auto-renewal',
+                                'Automatic renewal',
                                 style: AppTypography.title.copyWith(
                                   color: colors.textPrimary,
                                 ),
@@ -260,7 +270,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: renewal.enabled
+                                color: renewal.enabled && card != null
                                     ? colors.actionPrimaryDefault.withValues(
                                         alpha: 0.1,
                                       )
@@ -268,9 +278,9 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                renewal.enabled ? 'On' : 'Off',
+                                status,
                                 style: AppTypography.caption.copyWith(
-                                  color: renewal.enabled
+                                  color: renewal.enabled && card != null
                                       ? colors.actionPrimaryDefault
                                       : colors.textSecondary,
                                   fontWeight: FontWeight.w700,
@@ -283,8 +293,8 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                         Text(
                           card == null
                               ? renewal.enabled
-                                    ? 'No card is saved yet. Pay an eligible offer by card to make auto-renewal available.'
-                                    : 'No reusable card is saved.'
+                                    ? 'You have allowed auto-renewal, but it is not ready yet. Pay your next offer by card to complete setup.'
+                                    : 'No card is saved. Turning this on will not charge you or save a card today.'
                               : '${card.brand} ending ${card.last4} · expires ${card.expMonth.toString().padLeft(2, '0')}/${card.expYear}',
                           style: AppTypography.bodySmall.copyWith(
                             color: colors.textSecondary,
@@ -293,14 +303,19 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                         const SizedBox(height: 18),
                         SizedBox(
                           height: 50,
-                          child: FilledButton(
-                            onPressed: _busy ? null : _toggle,
-                            child: Text(
-                              renewal.enabled
-                                  ? 'Turn off auto-renewal'
-                                  : 'Turn on auto-renewal',
-                            ),
-                          ),
+                          child: renewal.enabled
+                              ? OutlinedButton(
+                                  onPressed: _busy ? null : _toggle,
+                                  child: const Text('Turn off auto-renewal'),
+                                )
+                              : FilledButton(
+                                  onPressed: _busy ? null : _toggle,
+                                  child: Text(
+                                    card == null
+                                        ? 'Allow future card renewals'
+                                        : 'Turn on auto-renewal',
+                                  ),
+                                ),
                         ),
                         if (card != null) ...[
                           const SizedBox(height: 4),
@@ -311,6 +326,32 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                         ],
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'How it works',
+                    style: AppTypography.title.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _step(
+                    context,
+                    Icons.credit_card_outlined,
+                    'Pay an offer by card',
+                    'We can save a supported card only after you make a card payment.',
+                  ),
+                  _step(
+                    context,
+                    Icons.notifications_outlined,
+                    'Get a reminder first',
+                    'We email you the amount and card five days before coverage ends.',
+                  ),
+                  _step(
+                    context,
+                    Icons.event_repeat_outlined,
+                    'Renew on matching terms',
+                    'Charging can start three days before coverage ends. If the fare or route changes, you review a new offer instead.',
                   ),
                   if (upcoming != null) ...[
                     const SizedBox(height: 24),
@@ -372,10 +413,10 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
                   Text(
-                    'If your route or price changes, we will ask you to review a new offer. Turning auto-renewal off does not affect coverage you already paid for.',
-                    style: AppTypography.bodySmall.copyWith(
+                    'Mobile money is never charged automatically. Turning this off does not affect coverage you have already paid for.',
+                    style: AppTypography.caption.copyWith(
                       color: colors.textSecondary,
                     ),
                   ),
@@ -406,6 +447,54 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
           style: AppTypography.label.copyWith(color: colors.textPrimary),
         ),
       ],
+    );
+  }
+
+  Widget _step(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String description,
+  ) {
+    final colors = context.appColors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colors.actionPrimaryDefault.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 19, color: colors.actionPrimaryDefault),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
