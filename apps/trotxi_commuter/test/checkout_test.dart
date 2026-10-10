@@ -170,6 +170,29 @@ void main() {
     expect(find.textContaining('Continue to Paystack'), findsNothing);
     await finish(tester);
   });
+  testWidgets('closing fresh details refreshes a changed collection state', (
+    tester,
+  ) async {
+    await pump(tester);
+    final previousReply = f.reply;
+    f.reply = (request) => request.path == '/v1/me/purchases/old-purchase'
+        ? jsonResponse({'data': purchase()})
+        : previousReply(request);
+    collection = 'successful';
+    await tester.ensureVisible(find.text('View payment details'));
+    await drain(
+      tester,
+      () => tester.tap(find.text('View payment details')),
+      until: find.text('Copy reference for support'),
+    );
+    expect(find.text('Payment processing'), findsWidgets);
+    await tester.ensureVisible(find.text('Close'));
+    await drain(tester, () => tester.tap(find.text('Close')));
+    expect(find.text('Payment processing'), findsOneWidget);
+    expect(find.text('Collected via Paystack'), findsOneWidget);
+    expect(find.textContaining('Continue to Paystack'), findsNothing);
+    await finish(tester);
+  });
   testWidgets(
     'changed server amount requires new consent instead of opening an old quote',
     (tester) async {

@@ -89,6 +89,26 @@ void main() {
             ),
           );
         }
+        if (request.path == '/v1/me/standby/application/accept') {
+          return jsonResponse({
+            'data': {
+              'id': 'purchase',
+              'plan': 'monthly',
+              'state': 'awaiting_payment',
+              'collectionState': 'pending',
+              'price': {'amountMinor': 7000, 'currency': 'GHS'},
+              'appliedCredit': {'amountMinor': 0, 'currency': 'GHS'},
+              'cashDue': {'amountMinor': 7000, 'currency': 'GHS'},
+              'checkout': {
+                'url': 'https://checkout.paystack.com/test-only',
+                'expiresAt': null,
+              },
+              'billingPeriodId': null,
+              'failureCode': null,
+              'createdAt': timestamp,
+            },
+          });
+        }
         return jsonResponse({'data': account()});
       };
       await tester.binding.setSurfaceSize(const Size(360, 640));
@@ -137,6 +157,33 @@ void main() {
       );
       await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Review your offer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accept and review payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(() async {
+        for (
+          var i = 0;
+          i < 20 && find.text('Ready for payment').evaluate().isEmpty;
+          i++
+        ) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+        }
+      });
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Ready for payment'), findsOneWidget);
+      await tester.binding.setSurfaceSize(const Size(320, 568));
+      tester.binding.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(
+        tester.binding.platformDispatcher.clearTextScaleFactorTestValue,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Continue to Paystack'));
+      await tester.ensureVisible(find.text('Later'));
+      expect(tester.takeException(), isNull);
+      await drain(() => tester.tap(find.text('Later')));
       await tester.pumpWidget(const SizedBox());
       f.api.dispose();
     },

@@ -168,7 +168,10 @@ class _CheckoutPageState extends State<CheckoutPage>
       client: widget.client,
       purchaseId: purchase.id,
     );
-    if (mounted && latest != null && latest.state != purchase.state) {
+    if (mounted &&
+        latest != null &&
+        (latest.state != purchase.state ||
+            latest.collectionState != purchase.collectionState)) {
       await _recover();
     }
   }

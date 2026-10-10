@@ -160,6 +160,7 @@ class _StandbyPageState extends State<StandbyPage> {
       await showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
+        isScrollControlled: true,
         backgroundColor: context.appColors.surfaceElevated,
         builder: (sheetContext) => _checkoutPrompt(sheetContext, purchase, uri),
       );
@@ -345,51 +346,60 @@ class _StandbyPageState extends State<StandbyPage> {
   ) {
     final colors = sheetContext.appColors;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Ready for payment',
-              style: AppTypography.heading3.copyWith(color: colors.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Amount due',
-              style: AppTypography.bodySmall.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            Text(
-              '${purchase.cashDue.currency.name} ${(purchase.cashDue.amountMinor / 100).toStringAsFixed(2)}',
-              style: AppTypography.heading2.copyWith(color: colors.textPrimary),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'You are not charged until you confirm on Paystack. You can come back to this payment later.',
-              style: AppTypography.bodySmall.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (uri != null)
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(sheetContext);
-                    await openPaystackCheckout(uri);
-                  },
-                  child: const Text('Continue to Paystack'),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.82,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Ready for payment',
+                style: AppTypography.heading3.copyWith(
+                  color: colors.textPrimary,
                 ),
               ),
-            TextButton(
-              onPressed: () => Navigator.pop(sheetContext),
-              child: const Text('Later'),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Amount due',
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              Text(
+                '${purchase.cashDue.currency.name} ${(purchase.cashDue.amountMinor / 100).toStringAsFixed(2)}',
+                style: AppTypography.heading2.copyWith(
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'You are not charged until you confirm on Paystack. You can come back to this payment later.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (uri != null)
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetContext);
+                      await openPaystackCheckout(uri);
+                    },
+                    child: const Text('Continue to Paystack'),
+                  ),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text('Later'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -778,14 +788,17 @@ class _StandbyPageState extends State<StandbyPage> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                application.state == wire.StandbyApplicationStateEnum.offered &&
-                        !offerCurrent
-                    ? 'Offer expired'
-                    : _status(application.state),
-                style: AppTypography.label.copyWith(
-                  color: colors.actionPrimaryDefault,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  application.state ==
+                              wire.StandbyApplicationStateEnum.offered &&
+                          !offerCurrent
+                      ? 'Offer expired'
+                      : _status(application.state),
+                  style: AppTypography.label.copyWith(
+                    color: colors.actionPrimaryDefault,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -900,9 +913,13 @@ class _StandbyPageState extends State<StandbyPage> {
         children: [
           Icon(icon, size: 14, color: colors.textSecondary),
           const SizedBox(width: 6),
-          Text(
-            text,
-            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          Flexible(
+            child: Text(
+              text,
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
           ),
         ],
       ),
