@@ -25,8 +25,10 @@ export function Riders() {
   const { session } = useAuth();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Rider | null>(null);
-  const [mode, setMode] = useState<'restrict' | 'role' | null>(null);
+  const [mode, setMode] = useState<'restrict' | 'role' | 'erase' | null>(null);
   const [reason, setReason] = useState('');
+  const [confirmAccountId, setConfirmAccountId] = useState('');
+  const [eraseKey, setEraseKey] = useState('');
   const [reviewAt, setReviewAt] = useState('');
   const [role, setRole] = useState<'commuter' | 'driver' | 'admin'>('commuter');
   const query = useQuery<{ riders: Rider[]; summary: Summary }>(
@@ -129,6 +131,12 @@ export function Riders() {
             setRole(selected.role);
             setMode('role');
           }}
+          onErase={() => {
+            setConfirmAccountId('');
+            setReason('');
+            setEraseKey(crypto.randomUUID());
+            setMode('erase');
+          }}
           onChanged={() => {
             query.retry();
             setSelected(null);
@@ -137,14 +145,32 @@ export function Riders() {
       )}
       <ActionDialog
         open={mode !== null}
-        title={mode === 'restrict' ? 'Restrict rider account' : 'Change account role'}
-        description={
-          mode === 'role'
-            ? 'Change between commuter and driver access. Administrator accounts are managed through Team & access.'
-            : 'A restriction blocks access account-wide until an attributed release decision.'
+        title={
+          mode === 'erase'
+            ? 'Delete commuter account'
+            : mode === 'restrict'
+              ? 'Restrict rider account'
+              : 'Change account role'
         }
-        confirmLabel={mode === 'restrict' ? 'Create restriction' : 'Change role'}
-        danger={mode === 'restrict'}
+        description={
+          mode === 'erase'
+            ? 'Only after verifying the deletion request. This closes access and removes personal data; required payment records remain restricted.'
+            : mode === 'role'
+              ? 'Change between commuter and driver access. Administrator accounts are managed through Team & access.'
+              : 'A restriction blocks access account-wide until an attributed release decision.'
+        }
+        confirmLabel={
+          mode === 'erase'
+            ? 'Delete account'
+            : mode === 'restrict'
+              ? 'Create restriction'
+              : 'Change role'
+        }
+        danger={mode === 'restrict' || mode === 'erase'}
+        confirmDisabled={
+          mode === 'erase' &&
+          (confirmAccountId.trim().toLowerCase() !== selected?.id || !reason.trim())
+        }
         onClose={() => setMode(null)}
         onConfirm={async () => {
           if (!selected) return;
@@ -156,6 +182,15 @@ export function Riders() {
                 header: { ...opsHeaders, 'Idempotency-Key': key },
               },
               body: { reason, reviewAt: accraLocalToIso(reviewAt) },
+            });
+            if (response.error) throw new Error(response.error.error.message);
+          } else if (mode === 'erase') {
+            const response = await session.client.POST('/v1/ops/riders/{id}/erase', {
+              params: {
+                path: { id: selected.id },
+                header: { ...opsHeaders, 'Idempotency-Key': eraseKey },
+              },
+              body: { reason, confirmAccountId: confirmAccountId.trim() },
             });
             if (response.error) throw new Error(response.error.error.message);
           } else {
@@ -170,6 +205,7 @@ export function Riders() {
           }
           setSelected(null);
           setReason('');
+          setConfirmAccountId('');
           query.retry();
         }}
       >
@@ -193,8 +229,18 @@ export function Riders() {
             </select>
           </label>
         )}
+        {mode === 'erase' && selected && (
+          <label>
+            Type this account ID to confirm: <code>{selected.id}</code>
+            <input
+              value={confirmAccountId}
+              onChange={(event) => setConfirmAccountId(event.target.value)}
+              autoComplete="off"
+            />
+          </label>
+        )}
         <label>
-          Reason
+          {mode === 'erase' ? 'Verified request reference and reason' : 'Reason'}
           <textarea
             rows={4}
             required
@@ -212,12 +258,14 @@ function RiderDetail({
   onClose,
   onRestrict,
   onRole,
+  onErase,
   onChanged,
 }: {
   rider: Rider;
   onClose: () => void;
   onRestrict: () => void;
   onRole: () => void;
+  onErase: () => void;
   onChanged: () => void;
 }) {
   const { session } = useAuth();
@@ -324,6 +372,9 @@ function RiderDetail({
               <div className="drawer-actions">
                 <Button onClick={onRestrict}>Restrict account</Button>
                 {session.account?.isSuperadmin && <Button onClick={onRole}>Change role</Button>}
+                {session.account?.isSuperadmin && rider.role === 'commuter' && (
+                  <Button onClick={onErase}>Delete account</Button>
+                )}
               </div>
             </>
           )

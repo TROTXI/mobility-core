@@ -2,25 +2,25 @@
 
 `GET /v1/ops/audit-events` is a read over existing evidence, not a second command log. It returns actor ID, action, target, reason when retained, and UTC time. It never returns request bodies, provider payloads, keys, PINs, or receipt response snapshots. Access requires an authenticated Ops session. The UI pages 50 rows at a time and can filter by area, exact actor/action/target, and inclusive UTC dates. A cursor is bound to every filter.
 
-| Ops mutations                                                               | Durable evidence shown in Audit                                   |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Routes, stops, patterns and publication                                     | `catalog_events`                                                  |
-| Service schedules                                                           | `schedule_events`                                                 |
-| Trips, assignments, reschedules, cancellations and generated trips          | `trip_events`                                                     |
-| Vehicles, incidents and driver requests/decisions                           | `fleet_events`                                                    |
-| Incident-detail redaction                                                   | `incident_redactions` and `maintenance_run_*`                     |
-| Driver records and credential issuance, reset and state changes             | `driver_events`                                                   |
-| Commute slots/requests and rider restrictions                               | `membership_events`                                               |
-| New-rider standby offers and rider transitions                              | `standby_events`                                                  |
-| No-show decisions that change a reservation                                 | `boarding_events`                                                 |
-| Fare publication and plan pricing                                           | `pricing_events`                                                  |
-| Feature flags, minimum app versions and administrator role changes          | `config_events`                                                   |
-| Operator passkey reset                                                      | `admin_passkey_events`                                            |
-| Operator invitations, activation, access changes and first-superadmin setup | `ops_team_events`                                                 |
-| Manual payment-review decisions                                             | `payment_review_commands` (decision and reason only)              |
-| TEST refund initiation                                                      | `refund_initiations` (intent and reason, not provider settlement) |
-| GPS evidence-hold creation and release                                      | `gps_events`                                                      |
-| Manual and scheduled maintenance, including no-work and failures            | `maintenance_run_starts` and `maintenance_run_outcomes`           |
+| Ops mutations                                                                                  | Durable evidence shown in Audit                                   |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Routes, stops, patterns and publication                                                        | `catalog_events`                                                  |
+| Service schedules                                                                              | `schedule_events`                                                 |
+| Trips, assignments, reschedules, cancellations and generated trips                             | `trip_events`                                                     |
+| Vehicles, incidents and driver requests/decisions                                              | `fleet_events`                                                    |
+| Incident-detail redaction                                                                      | `incident_redactions` and `maintenance_run_*`                     |
+| Driver records and credential issuance, reset and state changes                                | `driver_events`                                                   |
+| Commute slots/requests and rider restrictions                                                  | `membership_events`                                               |
+| New-rider standby offers and rider transitions                                                 | `standby_events`                                                  |
+| No-show decisions that change a reservation                                                    | `boarding_events`                                                 |
+| Fare publication and plan pricing                                                              | `pricing_events`                                                  |
+| Feature flags, minimum app versions and administrator role changes                             | `config_events`                                                   |
+| Operator passkey reset                                                                         | `admin_passkey_events`                                            |
+| Operator invitations, activation, access changes, commuter deletion and first-superadmin setup | `ops_team_events`                                                 |
+| Manual payment-review decisions                                                                | `payment_review_commands` (decision and reason only)              |
+| TEST refund initiation                                                                         | `refund_initiations` (intent and reason, not provider settlement) |
+| GPS evidence-hold creation and release                                                         | `gps_events`                                                      |
+| Manual and scheduled maintenance, including no-work and failures                               | `maintenance_run_starts` and `maintenance_run_outcomes`           |
 
 The read does not imply that every event is an administrator action: driver and rider operations also appear in some of these tables. “Actor” means the user whose ID the durable source recorded. The current user row supplies a display name for convenience; it is not a historical role assertion.
 

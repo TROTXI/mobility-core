@@ -292,6 +292,7 @@ doc/RestrictionResponse.md
 doc/ReviewDecision.md
 doc/RideEntry.md
 doc/RideEntryPage.md
+doc/RiderErasureInput.md
 doc/RiderNotification.md
 doc/RiderNotificationPage.md
 doc/RiderNotificationResponse.md
@@ -666,6 +667,7 @@ lib/src/model/restriction_response.dart
 lib/src/model/review_decision.dart
 lib/src/model/ride_entry.dart
 lib/src/model/ride_entry_page.dart
+lib/src/model/rider_erasure_input.dart
 lib/src/model/rider_notification.dart
 lib/src/model/rider_notification_page.dart
 lib/src/model/rider_notification_response.dart

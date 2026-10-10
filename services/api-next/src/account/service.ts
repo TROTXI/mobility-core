@@ -542,12 +542,24 @@ export class AccountService {
     // External cleanup remains in the durable erasure queue for maintenance.
   }
 
+  /** Superadmin-assisted closure for a verified commuter deletion request. */
+  async eraseCommuter(c: PoolClient, actor: Actor, target: string): Promise<void> {
+    if (this.options.recoveryOnly) throw new Error('interactive_service_required');
+    await teamLock(c);
+    await this.options.authorizeSession(c, actor);
+    await requireSuperadmin(c, actor);
+    await requireRecentPasskey(c, actor);
+    await this.eraseInTransaction(c, actor, '', false, id(target), 'commuter');
+    // The same durable queue and retention rules as self-service deletion apply.
+  }
+
   private async eraseInTransaction(
     c: PoolClient,
     actor: Actor,
     key: string,
     recovery = false,
     operatorId?: string,
+    targetRole: 'admin' | 'commuter' = 'admin',
   ): Promise<boolean> {
     const subjectId = operatorId ?? id(actor.userId);
     // Team changes and all erasures take this before user locks. Otherwise
@@ -617,7 +629,7 @@ export class AccountService {
       )
     ).rows[0];
     if (erased) {
-      if (operatorId) fail(404, 'not_found', 'Operator not found.');
+      if (operatorId) fail(404, 'not_found', 'Account not found.');
       if (erased.session_id !== id(actor.sessionId))
         fail(401, 'unauthenticated', 'Sign in to continue.');
       const prior = await this.receipt(c, actor, 'eraseAccount', key, actor.userId);
@@ -641,15 +653,15 @@ export class AccountService {
     }
     const user = operatorId
       ? (
-          await c.query(
-            "SELECT * FROM app.users WHERE id=$1 AND role='admin' AND deleted_at IS NULL",
-            [subjectId],
-          )
+          await c.query('SELECT * FROM app.users WHERE id=$1 AND role=$2 AND deleted_at IS NULL', [
+            subjectId,
+            targetRole,
+          ])
         ).rows[0]
       : recovery
         ? restoredUser
         : await this.owner(c, actor);
-    if (!user) fail(404, 'not_found', 'Operator not found.');
+    if (!user) fail(404, 'not_found', 'Account not found.');
     // Reject before recording irreversible write-ahead intent, not only in
     // the database trigger that runs later during the profile scrub.
     if (

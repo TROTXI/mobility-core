@@ -969,6 +969,7 @@ named(
 named('TripEdit', obj({ scheduledAt: instant }));
 named('TripAssignment', obj({ driverId: id.nullable(), vehicleId: id.nullable() }));
 named('ReasonInput', obj({ reason: note }));
+named('RiderErasureInput', obj({ reason: text(2000), confirmAccountId: id }));
 named('ArrivalInput', obj({ stopOccurrenceId: id, correction: z.boolean().default(false) }));
 named(
   'PositionInput',
@@ -2151,6 +2152,10 @@ get('/v1/ops/overview', 'getOpsOverview', 'OpsOverview');
 list('/v1/ops/riders', 'listOpsRiders', 'OpsRider');
 get('/v1/ops/riders/summary', 'getOpsRiderSummary', 'OpsRiderSummary');
 get('/v1/ops/riders/{id}', 'getOpsRiderDetail', 'OpsRiderDetail');
+post('/v1/ops/riders/{id}/erase', 'eraseCommuter', 'RiderErasureInput', 'OperatorCommandResult', {
+  status: 200,
+  sensitive: true,
+});
 list('/v1/ops/operators', 'listOpsOperators', 'OpsOperator');
 list('/v1/ops/deliveries', 'listOpsDeliveries', 'OpsDelivery');
 list('/v1/ops/account-erasures', 'listOpsAccountErasures', 'OpsAccountErasure');

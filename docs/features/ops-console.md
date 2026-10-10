@@ -86,6 +86,22 @@ An offer is not a guaranteed vehicle seat. Ops must review real recurring supply
 Work-request approval is not trip reassignment. Refund acceptance is not settled
 cash. Erasure visibility is not certification of provider/back-up deletion.
 
+### Account deletion requested through Support
+
+When a commuter cannot complete self-service deletion, Support must verify the
+requester's control of the account through the approved procedure and record a
+request reference. A superadmin then opens **Riders**, checks the exact account,
+selects **Delete account**, enters that account ID and the verified request
+reference/reason, and confirms with a recent passkey check. Another operator
+must not delete an account based solely on an email or unverified support message.
+The command is idempotent and leaves an attributed Ops event. It invokes the
+same account closure, session revocation, identity scrub, erasure journal,
+external-cleanup queue and financial-record retention as self-service deletion.
+**Support → Account deletions** shows local cleanup status, not proof that
+providers or backups have completed deletion. Follow the
+[account-deletion checklist](../design/account-erasure-operations-checklist.md)
+for external evidence and exceptions.
+
 Use the API's current conflict message and resource edit token after stale
 edits. Do not bypass guards using direct database updates.
 

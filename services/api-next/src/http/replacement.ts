@@ -59,6 +59,11 @@ export function createReplacementApp(
         fail(503, 'account_erasure_unavailable', 'Account deletion is temporarily unavailable.');
       await account.eraseOperator(c, actor, target);
     },
+    eraseCommuter: async (c, actor, target) => {
+      if (!account)
+        fail(503, 'account_erasure_unavailable', 'Account deletion is temporarily unavailable.');
+      await account.eraseCommuter(c, actor, target);
+    },
   });
   if (
     options.credentialReplayKey?.equals(Buffer.from(options.identity.access.secret)) ||

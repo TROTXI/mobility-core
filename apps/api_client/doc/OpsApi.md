@@ -29,6 +29,7 @@ Method | HTTP request | Description
 [**decideCommuteRequest**](OpsApi.md#decidecommuterequest) | **POST** /v1/ops/commute-requests/{id}/decisions | decide Commute Request
 [**decideDriverRequest**](OpsApi.md#decidedriverrequest) | **POST** /v1/ops/driver-requests/{id}/decisions | decide Driver Request
 [**decideIncident**](OpsApi.md#decideincident) | **POST** /v1/ops/incidents/{id}/decisions | decide Incident
+[**eraseCommuter**](OpsApi.md#erasecommuter) | **POST** /v1/ops/riders/{id}/erase | erase Commuter
 [**getOpsManifest**](OpsApi.md#getopsmanifest) | **GET** /v1/ops/trips/{id}/manifest | get Ops Manifest
 [**getOpsOverview**](OpsApi.md#getopsoverview) | **GET** /v1/ops/overview | get Ops Overview
 [**getOpsPatternVersion**](OpsApi.md#getopspatternversion) | **GET** /v1/ops/route-patterns/{id}/versions/{versionId} | get Ops Pattern Version
@@ -87,6 +88,19 @@ Method | HTTP request | Description
 [**updateRoute**](OpsApi.md#updateroute) | **PATCH** /v1/ops/routes/{id} | update Route
 [**updateStop**](OpsApi.md#updatestop) | **PATCH** /v1/ops/stops/{id} | update Stop
 [**updateVehicle**](OpsApi.md#updatevehicle) | **PATCH** /v1/ops/vehicles/{id} | update Vehicle
+
+
+# **eraseCommuter**
+> OperatorCommandResultResponse eraseCommuter(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, riderErasureInput, xTrotxiPlatform)
+
+Closes a commuter account after a verified deletion request. Superadmin access
+and a recent passkey check are required. The request body contains a reason
+and a `confirmAccountId` matching the path ID. The command is idempotent and
+records an attributed Ops event. See [RiderErasureInput](RiderErasureInput.md).
+
+**POST** `/v1/ops/riders/{id}/erase`
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 
 
 # **assignTrip**
@@ -4056,4 +4070,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

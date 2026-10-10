@@ -12,6 +12,7 @@ const evidence = {
     'resendOperatorInvitation',
     'cancelOperatorInvitation',
     'updateOperatorAccess',
+    'eraseCommuter',
   ],
   admin_passkey_events: ['resetOperatorPasskeys'],
   refund_initiations: ['initiateRefund'],

@@ -305,6 +305,7 @@ export 'package:trotxi_api_client/src/model/restriction_response.dart';
 export 'package:trotxi_api_client/src/model/review_decision.dart';
 export 'package:trotxi_api_client/src/model/ride_entry.dart';
 export 'package:trotxi_api_client/src/model/ride_entry_page.dart';
+export 'package:trotxi_api_client/src/model/rider_erasure_input.dart';
 export 'package:trotxi_api_client/src/model/rider_notification.dart';
 export 'package:trotxi_api_client/src/model/rider_notification_page.dart';
 export 'package:trotxi_api_client/src/model/rider_notification_response.dart';

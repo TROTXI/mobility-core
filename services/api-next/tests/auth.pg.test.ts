@@ -1994,6 +1994,77 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
   );
 });
 
+test('OPS-RIDER-ERASURE: verified support closure uses the journal, passkey and attributed audit', async (t) => {
+  const journal = new ErasureJournal(new MemoryErasureStore(), randomUUID(), randomBytes(32));
+  const f = await setup(t, 1000, {}, undefined, journal);
+  await new ErasureRecovery(f.owner, journal, Buffer.alloc(32, 25)).initialize();
+  const owner = await operator(f, 'rider-erasure-owner');
+  await register(f, owner.token);
+  const database = (await f.owner.query('SELECT current_database() AS name')).rows[0].name;
+  await bootstrapSuperadmin(f.owner, owner.id, database);
+  const other = await operator(f, 'rider-erasure-other');
+  await register(f, other.token);
+  const rider = await f.sign('rider-erasure-subject');
+  await f.owner.query('UPDATE app.users SET email=$2 WHERE id=$1', [
+    rider.account.id,
+    'closure@example.invalid',
+  ]);
+  const path = `/v1/ops/riders/${rider.account.id}/erase`;
+  const body = {
+    reason: 'Verified deletion request CASE-42',
+    confirmAccountId: rider.account.id,
+  };
+  assert.equal((await ops(f, 'POST', path, other.token, body)).statusCode, 403);
+  const mismatch = await ops(f, 'POST', path, owner.token, {
+    ...body,
+    confirmAccountId: owner.id,
+  });
+  assert.equal(mismatch.json().error.code, 'confirmation_required');
+  await f.owner.query(
+    "UPDATE app.auth_sessions SET admin_verified_at=clock_timestamp()-interval '10 minutes' WHERE user_id=$1",
+    [owner.id],
+  );
+  assert.equal(
+    (await ops(f, 'POST', path, owner.token, body)).json().error.code,
+    'passkey_required',
+  );
+  await f.owner.query(
+    'UPDATE app.auth_sessions SET admin_verified_at=clock_timestamp() WHERE user_id=$1',
+    [owner.id],
+  );
+  const key = randomUUID();
+  assert.equal(data(await ops(f, 'POST', path, owner.token, body, key)).id, rider.account.id);
+  assert.equal(data(await ops(f, 'POST', path, owner.token, body, key)).id, rider.account.id);
+  assert.equal((await ops(f, 'POST', path, owner.token, body)).statusCode, 404);
+  const closed = (
+    await f.owner.query('SELECT role,deleted_at,email FROM app.users WHERE id=$1', [
+      rider.account.id,
+    ])
+  ).rows[0];
+  assert.equal(closed.role, 'commuter');
+  assert.ok(closed.deleted_at);
+  assert.equal(closed.email, null);
+  assert.equal((await f.request('GET', '/v1/me', undefined, rider.accessToken)).statusCode, 401);
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT reason FROM app.ops_team_events WHERE target_id=$1 AND action='eraseCommuter'",
+        [rider.account.id],
+      )
+    ).rows[0].reason,
+    body.reason,
+  );
+  assert.equal((await journal.require()).value.entries[0]?.userId, rider.account.id);
+  assert.equal(
+    (
+      await f.owner.query('SELECT count(*)::int AS n FROM app.account_erasures WHERE user_id=$1', [
+        rider.account.id,
+      ])
+    ).rows[0].n,
+    1,
+  );
+});
+
 test('OPS-TEAM: expired or cancelled setup cannot activate, and invitation secret is hashed', async (t) => {
   const f = await setup(t),
     owner = await operator(f, 'team-expiry-owner');

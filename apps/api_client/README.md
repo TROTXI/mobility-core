@@ -108,6 +108,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**decideCommuteRequest**](doc/OpsApi.md#decidecommuterequest) | **POST** /v1/ops/commute-requests/{id}/decisions | decide Commute Request
 [*OpsApi*](doc/OpsApi.md) | [**decideDriverRequest**](doc/OpsApi.md#decidedriverrequest) | **POST** /v1/ops/driver-requests/{id}/decisions | decide Driver Request
 [*OpsApi*](doc/OpsApi.md) | [**decideIncident**](doc/OpsApi.md#decideincident) | **POST** /v1/ops/incidents/{id}/decisions | decide Incident
+[*OpsApi*](doc/OpsApi.md) | [**eraseCommuter**](doc/OpsApi.md#erasecommuter) | **POST** /v1/ops/riders/{id}/erase | erase Commuter
 [*OpsApi*](doc/OpsApi.md) | [**getOpsManifest**](doc/OpsApi.md#getopsmanifest) | **GET** /v1/ops/trips/{id}/manifest | get Ops Manifest
 [*OpsApi*](doc/OpsApi.md) | [**getOpsOverview**](doc/OpsApi.md#getopsoverview) | **GET** /v1/ops/overview | get Ops Overview
 [*OpsApi*](doc/OpsApi.md) | [**getOpsPatternVersion**](doc/OpsApi.md#getopspatternversion) | **GET** /v1/ops/route-patterns/{id}/versions/{versionId} | get Ops Pattern Version
@@ -539,6 +540,7 @@ Class | Method | HTTP request | Description
  - [ReviewDecision](doc/ReviewDecision.md)
  - [RideEntry](doc/RideEntry.md)
  - [RideEntryPage](doc/RideEntryPage.md)
+ - [RiderErasureInput](doc/RiderErasureInput.md)
  - [RiderNotification](doc/RiderNotification.md)
  - [RiderNotificationPage](doc/RiderNotificationPage.md)
  - [RiderNotificationResponse](doc/RiderNotificationResponse.md)

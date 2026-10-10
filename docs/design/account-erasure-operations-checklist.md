@@ -31,9 +31,13 @@ UTC observation time and reviewer. A reason is required for NOT APPLICABLE.
    avatar object, membership/reservations, outstanding OTP challenges, queued
    messages, payment evidence and holds. Record counts and restricted IDs,
    not sensitive payloads. An absent fixture is a coverage gap, not a pass.
-3. **Closure.** Have the account owner complete the app's deletion confirmation.
-   Record the response status, request ID and time without tokens or bodies.
-   A `204` establishes only that local closure committed.
+3. **Closure.** Prefer the account owner's in-app deletion confirmation. If
+   they cannot sign in, verify account ownership through the approved Support
+   procedure, record the request reference and have a superadmin use **Riders
+   → Delete account** with the exact account ID and a recent passkey check.
+   Record the response status, request ID, actor and time without tokens or
+   bodies. A self-service `204` or an Ops command `200` establishes only that
+   local closure committed; neither certifies external or backup cleanup.
 4. **Access revocation.** On approved test devices, check that an old session
    cannot read the profile or refresh. Check applicable queued deliveries and
    pre-deletion phone challenges are no longer usable. Do not use new sign-in

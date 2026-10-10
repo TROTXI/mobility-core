@@ -113,6 +113,7 @@ export interface AuthOptions {
   opsEmail?: OpsInvitationEmail;
   opsOrigin?: string;
   eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
+  eraseCommuter?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
   phoneOtp?: PhoneOtp;
   phoneIdentityKey?: Buffer;
   pool: Pool;
@@ -1052,6 +1053,7 @@ export class AuthService {
         email: this.options.opsEmail,
         origin: this.options.opsOrigin,
         eraseOperator: this.options.eraseOperator,
+        eraseCommuter: this.options.eraseCommuter,
       }).handle(name as TeamOperation, actor, body, query, target, key);
     }
     if (name === 'requestPhoneSignIn' || name === 'verifyPhoneSignIn') {
