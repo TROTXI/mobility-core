@@ -198,7 +198,12 @@ void main() {
         reads[0].queryParameters['fromDate'],
         reads[0].queryParameters['toDate'],
       );
-      expect(find.textContaining('does not confirm a seat'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'A seat is only yours after your ride is confirmed',
+        ),
+        findsOneWidget,
+      );
       await finish(tester);
     },
   );
@@ -237,7 +242,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BackButton), findsOneWidget);
     expect(find.text('Available trips'), findsOneWidget);
-    expect(find.textContaining('does not confirm a seat'), findsOneWidget);
+    expect(
+      find.textContaining('A seat is only yours after your ride is confirmed'),
+      findsOneWidget,
+    );
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.text('Open routes'), findsOneWidget);
