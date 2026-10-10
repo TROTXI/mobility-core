@@ -132,7 +132,7 @@ class _RoutesTabState extends State<RoutesTab> {
       Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(
-          'Times are shown in Ghana time. A listed trip does not confirm a seat or enable live tracking.',
+          'Browse upcoming departures. A seat is only yours after your ride is confirmed.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ),

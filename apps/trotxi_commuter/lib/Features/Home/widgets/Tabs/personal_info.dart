@@ -248,8 +248,10 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
+      appBar: AppBar(title: const Text('Personal information')),
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxContentWidth),
             child: SingleChildScrollView(
@@ -262,8 +264,6 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 24),
                   _buildAvatarSection(context),
                   const SizedBox(height: 28),
                   for (final field in [
@@ -274,16 +274,16 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                       AutofillHints.givenName,
                     ),
                     (
-                      'Other names (optional)',
-                      _otherController,
-                      80,
-                      AutofillHints.middleName,
-                    ),
-                    (
                       'Last name',
                       _lastController,
                       60,
                       AutofillHints.familyName,
+                    ),
+                    (
+                      'Other names (optional)',
+                      _otherController,
+                      80,
+                      AutofillHints.middleName,
                     ),
                   ]) ...[
                     _FieldShell(
@@ -293,6 +293,13 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                         controller: field.$2,
                         enabled: !_saving,
                         maxLength: field.$3,
+                        buildCounter:
+                            (
+                              context, {
+                              required currentLength,
+                              required isFocused,
+                              maxLength,
+                            }) => null,
                         autofillHints: [field.$4],
                         textCapitalization: TextCapitalization.words,
                         style: AppTypography.bodySmall.copyWith(
@@ -305,74 +312,46 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  SizedBox(
-                    width: double.infinity,
-                    child: Material(
-                      color: colors.actionPrimaryDefault,
-                      borderRadius: BorderRadius.circular(30),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(30),
-                        onTap: _saving ? null : _onSave,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: _saving
-                                ? SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: colors.actionOnPrimary,
-                                    ),
-                                  )
-                                : Text(
-                                    'Save changes',
-                                    style: AppTypography.buttonAction.copyWith(
-                                      color: colors.actionOnPrimary,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Row(
-      children: [
-        Semantics(
-          button: true,
-          label: 'Back',
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 20,
-                color: colors.textPrimary,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            8,
+            horizontalPadding,
+            16,
+          ),
+          child: Align(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxContentWidth),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  onPressed: _saving ? null : _onSave,
+                  child: _saving
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: colors.actionOnPrimary,
+                          ),
+                        )
+                      : const Text('Save changes'),
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Personal information',
-            style: AppTypography.title.copyWith(color: colors.textPrimary),
-          ),
-        ),
-      ],
+      ),
     );
   }
 

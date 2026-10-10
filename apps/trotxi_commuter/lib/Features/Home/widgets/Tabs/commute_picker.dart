@@ -270,7 +270,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                               version: c.version,
                               routeName: c.route.name,
                               departureLabel:
-                                  '${_returning ? 'Return' : 'Outbound'} · ${c.schedule.localDeparture} Ghana time',
+                                  '${_returning ? 'Return' : 'Outbound'} · ${c.schedule.localDeparture}',
                             ),
                           ),
                         ),
