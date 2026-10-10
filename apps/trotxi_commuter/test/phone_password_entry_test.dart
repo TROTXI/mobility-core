@@ -54,6 +54,30 @@ void main() {
     expect(fixture.requests, isEmpty);
   });
 
+  testWidgets('entry actions remain visible on a short phone', (tester) async {
+    final fixture = Fixture();
+    addTearDown(fixture.api.dispose);
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: OnBoardPage(client: fixture.api),
+      ),
+    );
+
+    expect(
+      tester
+          .getBottomRight(find.widgetWithText(FilledButton, 'Create account'))
+          .dy,
+      lessThan(640),
+    );
+    expect(
+      tester.getBottomRight(find.widgetWithText(OutlinedButton, 'Sign in')).dy,
+      lessThan(640),
+    );
+  });
+
   testWidgets('signup keeps the action visible and preserves details on back', (
     tester,
   ) async {
@@ -86,9 +110,11 @@ void main() {
     expect(find.text('Create a password'), findsOneWidget);
     expect(find.text('Confirm password'), findsOneWidget);
     expect(
-      tester.getBottomRight(
-        find.widgetWithText(FilledButton, 'Send verification code'),
-      ).dy,
+      tester
+          .getBottomRight(
+            find.widgetWithText(FilledButton, 'Send verification code'),
+          )
+          .dy,
       lessThan(640),
     );
 
@@ -96,9 +122,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Your details'), findsAtLeastNWidgets(1));
     expect(
-      tester.widget<TextFormField>(
-        find.widgetWithText(TextFormField, 'First name'),
-      ).controller?.text,
+      tester
+          .widget<TextFormField>(
+            find.widgetWithText(TextFormField, 'First name'),
+          )
+          .controller
+          ?.text,
       'Ama',
     );
     expect(fixture.requests, isEmpty);

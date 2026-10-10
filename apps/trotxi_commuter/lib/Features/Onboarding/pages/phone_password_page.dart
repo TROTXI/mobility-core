@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/auth/password_policy.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
-import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
 
@@ -308,8 +307,29 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
     bool secret = false,
     int? maxLength,
   }) {
+    final colors = context.appColors;
+    final hint = switch (label) {
+      'First name' => 'As on your ID',
+      'Last name' => 'Family name',
+      'Other names (optional)' => 'Middle name, if any',
+      'Phone number' => '024 123 4567',
+      'Email' => 'name@example.com',
+      'Six-digit code' => '000000',
+      _ => null,
+    };
+    final icon = switch (label) {
+      'Phone number' => Icons.phone_outlined,
+      'Email' => Icons.mail_outline_rounded,
+      'Password' || 'Confirm password' => Icons.lock_outline_rounded,
+      'Six-digit code' => Icons.sms_outlined,
+      _ => null,
+    };
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: colors.borderSubtle),
+    );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         enabled: !_busy,
@@ -350,10 +370,32 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
         },
         decoration: InputDecoration(
           labelText: label,
+          hintText: hint,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
           counterText: '',
           filled: true,
-          fillColor: context.appColors.surfaceElevated,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          fillColor: colors.surfaceElevated,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 18,
+          ),
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border.copyWith(
+            borderSide: BorderSide(
+              color: colors.actionPrimaryDefault,
+              width: 2,
+            ),
+          ),
+          errorBorder: border.copyWith(
+            borderSide: BorderSide(color: colors.error),
+          ),
+          focusedErrorBorder: border.copyWith(
+            borderSide: BorderSide(color: colors.error, width: 2),
+          ),
+          prefixIcon: icon == null
+              ? null
+              : Icon(icon, size: 20, color: colors.iconSubtle),
           suffixIcon: secret
               ? IconButton(
                   tooltip: _showPassword ? 'Hide password' : 'Show password',
@@ -364,6 +406,19 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                   ),
                 )
               : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 8, 0, 16),
+      child: Text(
+        label,
+        style: AppTypography.label.copyWith(
+          color: context.appColors.textPrimary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -407,6 +462,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
   }
 
   Widget _signupProgress(BuildContext context) {
+    final colors = context.appColors;
     final current = switch (_step) {
       _Step.signUp => 0,
       _Step.credentials || _Step.finish => 1,
@@ -415,9 +471,29 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
     };
     const labels = ['Your details', 'Password', 'Phone verification'];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 28),
       child: Column(
         children: [
+          Row(
+            children: [
+              Text(
+                'STEP ${current + 1} OF 3',
+                style: AppTypography.caption.copyWith(
+                  color: colors.actionPrimaryDefault,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                labels[current],
+                style: AppTypography.caption.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               for (var i = 0; i < labels.length; i++) ...[
@@ -425,22 +501,14 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                 Expanded(
                   child: LinearProgressIndicator(
                     value: i <= current ? 1 : 0,
-                    minHeight: 5,
+                    color: colors.actionPrimaryDefault,
+                    backgroundColor: colors.borderSubtle,
+                    minHeight: 4,
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
               ],
             ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Step ${current + 1} of 3 · ${labels[current]}',
-              style: AppTypography.caption.copyWith(
-                color: context.appColors.textSecondary,
-              ),
-            ),
           ),
         ],
       ),
@@ -458,10 +526,10 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       _Step.reset => 'Reset password',
     };
     final heading = switch (_step) {
-      _Step.signIn => 'Welcome back',
+      _Step.signIn => 'Good to see you again.',
       _Step.signUp => 'Your details',
       _Step.credentials => 'Create a password',
-      _Step.code => 'Check your messages',
+      _Step.code => 'One last check',
       _Step.finish => 'Finish your account',
       _Step.reset => 'Reset your password',
     };
@@ -484,6 +552,8 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       child: Scaffold(
         backgroundColor: AppPrimitiveColors.authPage(brightness),
         appBar: AppBar(
+          backgroundColor: AppPrimitiveColors.authPage(brightness),
+          scrolledUnderElevation: 0,
           title: Text(title),
           leading: IconButton(
             tooltip: 'Back',
@@ -502,7 +572,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
-                        vertical: 16,
+                        vertical: 20,
                       ),
                       children: [
                         Center(
@@ -520,31 +590,34 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                   heading,
                                   style: AppTypography.heading1.copyWith(
                                     color: colors.textPrimary,
+                                    letterSpacing: -0.9,
                                   ),
                                 ),
-                                const SizedBox(height: AppSpacing.space12),
+                                const SizedBox(height: 10),
                                 Text(
                                   switch (_step) {
                                     _Step.signIn =>
-                                      'Use your verified phone number and password.',
+                                      'Sign in to see your trips, offers and ride updates.',
                                     _Step.signUp =>
-                                      'Tell us who will be travelling with Trotxi.',
+                                      'Let us know who is joining the journey.',
                                     _Step.credentials =>
-                                      'Secure your account before we verify your phone.',
+                                      'Keep your account safe with a password only you know.',
                                     _Step.code =>
-                                      'Enter the six-digit code sent to ${_phone.text.trim()}.',
+                                      'Enter the six-digit code we sent to ${_phone.text.trim()}.',
                                     _Step.finish =>
                                       'Phone verified. Complete your details to finish signup.',
                                     _Step.reset =>
-                                      'We will send a reset link to your verified contact email.',
+                                      'We will email a secure reset link to your verified address.',
                                   },
                                   style: AppTypography.body.copyWith(
                                     color: colors.textSecondary,
+                                    height: 1.5,
                                   ),
                                 ),
-                                const SizedBox(height: AppSpacing.space24),
+                                const SizedBox(height: 28),
                                 if (_step == _Step.signUp ||
                                     _step == _Step.finish) ...[
+                                  _sectionLabel(context, 'Personal details'),
                                   _input(
                                     'First name',
                                     _first,
@@ -556,6 +629,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                     validator: _required,
                                   ),
                                   _input('Other names (optional)', _other),
+                                  _sectionLabel(context, 'How we reach you'),
                                 ],
                                 if (_step == _Step.signIn ||
                                     _step == _Step.signUp)
@@ -578,6 +652,9 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                 if (_step == _Step.signIn ||
                                     _step == _Step.credentials ||
                                     _step == _Step.finish) ...[
+                                  if (_step == _Step.credentials ||
+                                      _step == _Step.finish)
+                                    _sectionLabel(context, 'Account security'),
                                   _input(
                                     'Password',
                                     _password,
@@ -662,17 +739,14 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                   ),
                                 ],
                                 if (_step == _Step.signIn) ...[
-                                  TextButton(
-                                    onPressed: _busy
-                                        ? null
-                                        : () => _change(_Step.reset),
-                                    child: const Text('Forgot password?'),
-                                  ),
-                                  TextButton(
-                                    onPressed: _busy
-                                        ? null
-                                        : () => _change(_Step.signUp),
-                                    child: const Text('Create an account'),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _change(_Step.reset),
+                                      child: const Text('Forgot password?'),
+                                    ),
                                   ),
                                 ] else if (_step == _Step.reset) ...[
                                   TextButton(
@@ -684,8 +758,18 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                 ],
                                 if (_step == _Step.signUp ||
                                     _step == _Step.credentials ||
-                                    _step == _Step.finish)
-                                  const PublicInformationLinks(),
+                                    _step == _Step.finish) ...[
+                                  Text(
+                                    'Your information is used to set up your account and commute.',
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.caption.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                  const PublicInformationLinks(
+                                    showDeletion: false,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -693,18 +777,47 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                    decoration: BoxDecoration(
+                      color: AppPrimitiveColors.authPage(brightness),
+                      border: Border(
+                        top: BorderSide(color: colors.borderSubtle),
+                      ),
+                    ),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 520),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: FilledButton(
-                            onPressed: _busy ? null : _submit,
-                            child: Text(_busy ? 'Please wait…' : action),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              height: 56,
+                              child: FilledButton(
+                                onPressed: _busy ? null : _submit,
+                                child: Text(_busy ? 'Please wait…' : action),
+                              ),
+                            ),
+                            if (_step == _Step.signIn ||
+                                _step == _Step.signUp) ...[
+                              const SizedBox(height: 4),
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => _change(
+                                        _step == _Step.signIn
+                                            ? _Step.signUp
+                                            : _Step.signIn,
+                                      ),
+                                child: Text(
+                                  _step == _Step.signIn
+                                      ? 'New to Trotxi? Create an account'
+                                      : 'Already have an account? Sign in',
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ),

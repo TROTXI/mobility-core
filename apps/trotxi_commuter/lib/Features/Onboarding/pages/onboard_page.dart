@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
-import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
-import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
+
 import 'phone_password_page.dart';
 
 class OnBoardPage extends StatefulWidget {
@@ -28,168 +27,224 @@ class _OnBoardPageState extends State<OnBoardPage> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Theme-aware entry screen for the single commuter sign-in method.
-  // ---------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final brightness = Theme.of(context).brightness;
+    final dark = brightness == Brightness.dark;
     final pageColor = AppPrimitiveColors.authPage(brightness);
-    final systemIconBrightness = brightness == Brightness.dark
-        ? Brightness.light
-        : Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: pageColor,
-        statusBarIconBrightness: systemIconBrightness,
+        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
         statusBarBrightness: brightness,
         systemNavigationBarColor: pageColor,
-        systemNavigationBarIconBrightness: systemIconBrightness,
+        systemNavigationBarIconBrightness: dark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: pageColor,
         body: SafeArea(
           child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 30,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildLogo(context),
-                        const SizedBox(height: AppSpacing.space24),
-                        _buildHeader(context),
-                        const SizedBox(height: 22),
-                        _buildAuthCard(context),
-                        if (widget.client.authNotice != null) ...[
-                          const SizedBox(height: AppSpacing.space12),
-                          Text(
-                            widget.client.authNotice!,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: context.appColors.textPrimary,
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Image.asset(
+                              dark ? Appvectors.logodarktheme : Appvectors.logo,
+                              width: 118,
+                              semanticLabel: 'Trotxi',
                             ),
                           ),
+                          const SizedBox(height: 36),
+                          Text(
+                            'A better way to\nmove every day.',
+                            style: AppTypography.heading1.copyWith(
+                              color: colors.textPrimary,
+                              fontSize: 35,
+                              height: 1.13,
+                              letterSpacing: -1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Tell us your commute. We will find the right route and send you an offer to review.',
+                            style: AppTypography.body.copyWith(
+                              color: colors.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
+                          if (constraints.maxHeight >= 700) ...[
+                            const SizedBox(height: 28),
+                            _JourneyCard(dark: dark),
+                            const SizedBox(height: 28),
+                          ] else
+                            const SizedBox(height: 24),
+                          if (widget.client.authNotice != null) ...[
+                            Semantics(
+                              liveRegion: true,
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: colors.actionPrimaryDefault.withValues(
+                                    alpha: 0.09,
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Text(
+                                  widget.client.authNotice!,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          SizedBox(
+                            height: 56,
+                            child: FilledButton(
+                              onPressed: () => _open(true),
+                              child: const Text('Create account'),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 56,
+                            child: OutlinedButton(
+                              onPressed: () => _open(false),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: colors.borderDefault),
+                                foregroundColor: colors.textPrimary,
+                              ),
+                              child: const Text('Sign in'),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Learn how we handle your information.',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.caption.copyWith(
+                              color: colors.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
+                          const PublicInformationLinks(showDeletion: false),
                         ],
-                        const SizedBox(height: 10),
-
-                        const Spacer(),
-                        const SizedBox(height: AppSpacing.space24),
-
-                        const SizedBox(height: AppSpacing.space20),
-                        _buildTagline(context),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildLogo(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: Image.asset(
-        isDark ? Appvectors.logodarktheme : Appvectors.logo,
-        key: ValueKey('onboard-logo-${isDark ? 'dark' : 'light'}'),
-        width: 180,
-      ),
-    );
-  }
+class _JourneyCard extends StatelessWidget {
+  const _JourneyCard({required this.dark});
 
-  Widget _buildHeader(BuildContext context) {
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Welcome to Trotxi',
-          textAlign: TextAlign.center,
-          style: AppTypography.heading1.copyWith(
-            color: colors.textPrimary,
-            fontSize: 27,
-            height: 34 / 27,
-            letterSpacing: -0.2,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        Text(
-          'Create an account or sign in with your phone number.',
-          textAlign: TextAlign.center,
-          style: AppTypography.body.copyWith(
-            color: colors.textSecondary,
-            fontSize: 14.5,
-            height: 22 / 14.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAuthCard(BuildContext context) {
-    final colors = context.appColors;
+    final green = colors.actionPrimaryDefault;
+    final surface = dark
+        ? AppPrimitiveColors.green950
+        : AppPrimitiveColors.green50;
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(18),
+        color: surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: green.withValues(alpha: 0.14)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppSignInButton(
-            onPressed: () => _open(true),
-            text: 'Create account',
-            icon: Icon(
-              Icons.person_add_outlined,
-              color: colors.actionOnPrimary,
-            ),
-            backgroundColor: colors.actionPrimaryDefault,
-            borderColor: colors.actionPrimaryDefault,
-            textColor: colors.actionOnPrimary,
-          ),
-          const SizedBox(height: 13),
-          AppSignInButton(
-            onPressed: () => _open(false),
-            text: 'Sign in',
-            icon: Icon(Icons.phone_outlined, color: colors.textPrimary),
-          ),
-          const SizedBox(height: AppSpacing.space20),
           Text(
-            'Read how Trotxi handles your information before creating an account.',
-            textAlign: TextAlign.center,
+            'YOUR JOURNEY WITH TROTXI',
             style: AppTypography.caption.copyWith(
-              color: colors.textSecondary,
-              fontSize: 12,
-              height: 1.5,
+              color: green,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
             ),
           ),
-          const PublicInformationLinks(),
+          const SizedBox(height: 18),
+          _stop(context, Icons.edit_road_rounded, 'Choose your commute', true),
+          _connector(green),
+          _stop(
+            context,
+            Icons.local_offer_outlined,
+            'Review your offer',
+            false,
+          ),
+          _connector(green),
+          _stop(context, Icons.directions_bus_rounded, 'Get moving', false),
         ],
       ),
     );
   }
 
-  Widget _buildTagline(BuildContext context) {
-    return Text(
-      'Move smart. Live better.',
-      textAlign: TextAlign.center,
-      style: AppTypography.caption.copyWith(
-        color: context.appColors.textTertiary,
-        fontWeight: FontWeight.w500,
-      ),
+  Widget _connector(Color green) => Padding(
+    padding: const EdgeInsets.only(left: 18),
+    child: Container(
+      height: 12,
+      width: 2,
+      color: green.withValues(alpha: 0.30),
+    ),
+  );
+
+  Widget _stop(
+    BuildContext context,
+    IconData icon,
+    String label,
+    bool highlighted,
+  ) {
+    final colors = context.appColors;
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: highlighted
+                ? colors.actionPrimaryDefault
+                : colors.actionPrimaryDefault.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: highlighted
+                ? colors.actionOnPrimary
+                : colors.actionPrimaryDefault,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Text(
+          label,
+          style: AppTypography.bodySmall.copyWith(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
