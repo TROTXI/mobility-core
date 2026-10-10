@@ -194,14 +194,31 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                         )
                       : _items.isEmpty
                       ? ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
                           children: [
-                            const SizedBox(height: 80),
-                            Center(
-                              child: Text(
-                                _unreadOnly
-                                    ? 'You’re all caught up.'
-                                    : 'No notifications yet.',
-                                style: AppTypography.body,
+                            Icon(
+                              Icons.notifications_none_rounded,
+                              size: 38,
+                              color: colors.actionPrimaryDefault,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _unreadOnly
+                                  ? 'All caught up'
+                                  : 'Nothing here yet',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.title.copyWith(
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _unreadOnly
+                                  ? 'New ride updates will appear here.'
+                                  : 'We will show your offers, ride updates and payment notices here.',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.bodySmall.copyWith(
+                                color: colors.textSecondary,
                               ),
                             ),
                           ],
@@ -226,6 +243,10 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                             final copy = notificationCopy(item.kind);
                             return Card(
                               color: colors.surfaceElevated,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(color: colors.borderSubtle),
+                              ),
                               child: ListTile(
                                 leading: Icon(
                                   copy.$3,
@@ -241,7 +262,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                                   ),
                                 ),
                                 subtitle: Text(
-                                  '${copy.$2}\n${DateFormat('d MMM · h:mm a').format(item.createdAt.toUtc())} GMT',
+                                  '${copy.$2}\n${DateFormat('d MMM · h:mm a').format(item.createdAt.toLocal())}',
                                   style: AppTypography.caption.copyWith(
                                     color: colors.textSecondary,
                                   ),
