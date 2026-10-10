@@ -5,12 +5,13 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { trotxiLight } from '../theme';
 import { Riders } from './Riders';
 
-const { client, account } = vi.hoisted(() => ({
-  client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn() },
-  account: { id: 'operator', isSuperadmin: true },
-}));
+const { client, account, session } = vi.hoisted(() => {
+  const client = { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn() };
+  const account = { id: 'operator', isSuperadmin: true };
+  return { client, account, session: { client, account } };
+});
 vi.mock('../auth/AuthContext', () => ({
-  useAuth: () => ({ account, session: { client, account } }),
+  useAuth: () => ({ account, session }),
 }));
 
 const riderId = '11111111-1111-4111-8111-111111111111';
@@ -35,7 +36,13 @@ beforeEach(() => {
     if (path === '/v1/ops/riders/summary')
       return {
         data: {
-          data: { active: 1, paused: 0, monthly: 0, annual: 0, creditOutstanding: rider.availableCredit },
+          data: {
+            active: 1,
+            paused: 0,
+            monthly: 0,
+            annual: 0,
+            creditOutstanding: rider.availableCredit,
+          },
         },
       };
     if (path === '/v1/ops/riders/{id}')
