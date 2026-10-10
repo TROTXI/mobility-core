@@ -322,7 +322,11 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      appBar: Navbar(userData: userData, userName: userData.displayName),
+      appBar: Navbar(
+        userData: userData,
+        userName: userData.displayName,
+        onProfile: () => _goToDestination(CommuterDestination.profile),
+      ),
       // None of the 4 tabs hosts a TextField directly (edits happen in
       // pushed pages/dialogs, which have their own Scaffolds), so this
       // Scaffold never needs to shrink for the keyboard — and a stuck/

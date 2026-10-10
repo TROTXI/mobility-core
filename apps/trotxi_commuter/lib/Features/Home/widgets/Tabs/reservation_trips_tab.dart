@@ -227,7 +227,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
   Widget _buildSegmentedTabs(BuildContext context) {
     final colors = context.appColors;
     return Container(
-      height: 46,
+      height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colors.backgroundSubtle,
@@ -261,22 +261,27 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
   ) {
     final colors = context.appColors;
     final selected = _segment == segment;
-    return GestureDetector(
-      onTap: () => setState(() => _segment = segment),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? colors.surfaceElevated : Colors.transparent,
-          borderRadius: BorderRadius.circular(19),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.label.copyWith(
-            color: selected
-                ? colors.actionPrimaryDefault
-                : colors.textSecondary,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: () => setState(() => _segment = segment),
+        borderRadius: BorderRadius.circular(19),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? colors.surfaceElevated : Colors.transparent,
+            borderRadius: BorderRadius.circular(19),
+          ),
+          child: Text(
+            label,
+            style: AppTypography.label.copyWith(
+              color: selected
+                  ? colors.actionPrimaryDefault
+                  : colors.textSecondary,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            ),
           ),
         ),
       ),
@@ -331,7 +336,13 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
   List<Widget> _buildUpcomingSection(BuildContext context) {
     if (_upcoming.isEmpty) {
       return [
-        _buildEmptyCard(context, "No upcoming trips in the next 30 days."),
+        _buildEmptyCard(
+          context,
+          icon: Icons.event_available_outlined,
+          title: 'No upcoming trips',
+          message:
+              'Your confirmed rides for the next 30 days will appear here. Browse routes from Home to plan a commute.',
+        ),
       ];
     }
 
@@ -395,7 +406,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Tap for pickup, drop-off and vehicle details',
+                'View pickup, drop-off and vehicle details',
                 style: AppTypography.caption.copyWith(
                   color: colors.onSurfaceStrong.withValues(alpha: 0.72),
                 ),
@@ -413,7 +424,15 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
 
   List<Widget> _buildHistorySection(BuildContext context) {
     if (_history.isEmpty) {
-      return [_buildEmptyCard(context, 'No trips in the last 30 days.')];
+      return [
+        _buildEmptyCard(
+          context,
+          icon: Icons.history_rounded,
+          title: 'No recent trips',
+          message:
+              'Completed and cancelled trips from the last 30 days will appear here.',
+        ),
+      ];
     }
     return [
       _buildSectionTitle(context, 'Recent'),
@@ -434,19 +453,38 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
     );
   }
 
-  Widget _buildEmptyCard(BuildContext context, String message) {
+  Widget _buildEmptyCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
     final colors = context.appColors;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: colors.surfaceElevated,
         border: Border.all(color: colors.borderSubtle),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Text(
-        message,
-        style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 28, color: colors.actionPrimaryDefault),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: AppTypography.title.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }
