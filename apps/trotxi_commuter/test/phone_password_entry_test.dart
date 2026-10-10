@@ -43,13 +43,64 @@ void main() {
 
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
-    expect(find.text('Create your account'), findsAtLeastNWidgets(1));
+    expect(find.text('Create account'), findsOneWidget);
     expect(find.text('First name'), findsOneWidget);
     expect(find.text('Last name'), findsOneWidget);
     expect(find.text('Phone number'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Password'), findsOneWidget);
-    expect(find.text('Send verification code'), findsOneWidget);
+    expect(find.text('Password'), findsNothing);
+    expect(find.text('Continue'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Continue')).dy, lessThan(1000));
+    expect(fixture.requests, isEmpty);
+  });
+
+  testWidgets('signup keeps the action visible and preserves details on back', (
+    tester,
+  ) async {
+    final fixture = Fixture();
+    addTearDown(fixture.api.dispose);
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: PhonePasswordPage(client: fixture.api, signup: true),
+      ),
+    );
+
+    final continueButton = find.widgetWithText(FilledButton, 'Continue');
+    expect(continueButton, findsOneWidget);
+    expect(tester.getBottomRight(continueButton).dy, lessThan(640));
+    Future<void> enter(String label, String value) async {
+      final field = find.widgetWithText(TextFormField, label);
+      await tester.ensureVisible(field);
+      await tester.enterText(field, value);
+    }
+
+    await enter('First name', 'Ama');
+    await enter('Last name', 'Mensah');
+    await enter('Phone number', '0241234567');
+    await enter('Email', 'ama@example.com');
+    await tester.tap(continueButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Create a password'), findsOneWidget);
+    expect(find.text('Confirm password'), findsOneWidget);
+    expect(
+      tester.getBottomRight(
+        find.widgetWithText(FilledButton, 'Send verification code'),
+      ).dy,
+      lessThan(640),
+    );
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Your details'), findsAtLeastNWidgets(1));
+    expect(
+      tester.widget<TextFormField>(
+        find.widgetWithText(TextFormField, 'First name'),
+      ).controller?.text,
+      'Ama',
+    );
     expect(fixture.requests, isEmpty);
   });
 
@@ -133,6 +184,9 @@ void main() {
     await enter('Last name', 'Mensah');
     await enter('Phone number', '0241234567');
     await enter('Email', 'ama@example.com');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create a password'), findsOneWidget);
     await enter('Password', 'Correct horse trotxi battery1!');
     await enter('Confirm password', 'Correct horse trotxi battery1!');
     final send = find.text('Send verification code');
