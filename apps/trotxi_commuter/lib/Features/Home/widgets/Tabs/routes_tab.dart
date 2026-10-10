@@ -6,6 +6,21 @@ import 'route_preview_page.dart';
 import 'reservation_trips_tab.dart';
 import 'standby_page.dart';
 
+/// Standalone departures screen. RoutesTab is also embedded in other pages,
+/// so direct navigation must provide its own Material and back affordance.
+class RoutesPage extends StatelessWidget {
+  const RoutesPage({super.key, required this.client, this.routeId});
+
+  final CommuterApi client;
+  final String? routeId;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Departures')),
+    body: RoutesTab(client: client, routeId: routeId),
+  );
+}
+
 class RoutesTab extends StatefulWidget {
   const RoutesTab({super.key, required this.client, this.routeId});
   final CommuterApi client;
@@ -100,7 +115,7 @@ class _RoutesTabState extends State<RoutesTab> {
         children: [
           Expanded(
             child: Text(
-              'Departures',
+              'Available trips',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
@@ -114,8 +129,12 @@ class _RoutesTabState extends State<RoutesTab> {
           ),
         ],
       ),
-      const Text(
-        'Service dates and departure times are Ghana time. A listed trip does not confirm your seat or grant live tracking access.',
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          'Times are shown in Ghana time. A listed trip does not confirm a seat or enable live tracking.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ),
       TextButton.icon(
         onPressed: () => Navigator.of(context).push(

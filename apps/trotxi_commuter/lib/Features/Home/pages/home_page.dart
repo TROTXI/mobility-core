@@ -151,9 +151,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showRoutes() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => RoutesTab(client: widget.client)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => RoutesPage(client: widget.client)),
+    );
   }
 
   void _showSupport() {

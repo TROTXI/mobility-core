@@ -198,10 +198,50 @@ void main() {
         reads[0].queryParameters['fromDate'],
         reads[0].queryParameters['toDate'],
       );
-      expect(find.textContaining('does not confirm your seat'), findsOneWidget);
+      expect(find.textContaining('does not confirm a seat'), findsOneWidget);
       await finish(tester);
     },
   );
+  testWidgets('standalone departures has a back button and readable context', (
+    tester,
+  ) async {
+    final fixture = Fixture();
+    addTearDown(fixture.api.dispose);
+    await fixture.signedIn();
+    fixture.reply = (request) {
+      if (request.path == '/v1/trips' || request.path == '/v1/routes') {
+        return jsonResponse(page([]));
+      }
+      return jsonResponse({
+        'error': {'code': 'not_found', 'message': 'Unexpected route'},
+      }, 404);
+    };
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => RoutesPage(client: fixture.api),
+                ),
+              ),
+              child: const Text('Open routes'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open routes'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+    expect(find.text('Available trips'), findsOneWidget);
+    expect(find.textContaining('does not confirm a seat'), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Open routes'), findsOneWidget);
+  });
   testWidgets('catalogue previews stops without requesting live bus access', (
     tester,
   ) async {
