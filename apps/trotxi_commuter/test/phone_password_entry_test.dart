@@ -3,11 +3,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/phone_password_page.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/auth/password_policy.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 
 import 'replacement_fixture.dart';
 
 void main() {
+  test('new password policy requires a capital, number and symbol', () {
+    expect(validateNewPassword('GoodPass123!'), isNull);
+    for (final value in [
+      'GoodPass12!',
+      'goodpassword1!',
+      'GoodPassword!',
+      'GoodPassword1',
+      'GoodPassword1 ',
+    ]) {
+      expect(validateNewPassword(value), isNotNull);
+    }
+  });
+
   testWidgets('commuter entry shows one phone method with distinct signup', (
     tester,
   ) async {
@@ -58,7 +72,7 @@ void main() {
         firstName: 'Ama',
         lastName: 'Mensah',
         email: 'ama@example.com',
-        password: 'correct horse trotxi battery',
+        password: 'Correct horse trotxi battery1!',
       );
 
       expect(await fixture.store.getAccessToken(), isNull);
@@ -119,8 +133,8 @@ void main() {
     await enter('Last name', 'Mensah');
     await enter('Phone number', '0241234567');
     await enter('Email', 'ama@example.com');
-    await enter('Password', 'correct horse trotxi battery');
-    await enter('Confirm password', 'correct horse trotxi battery');
+    await enter('Password', 'Correct horse trotxi battery1!');
+    await enter('Confirm password', 'Correct horse trotxi battery1!');
     final send = find.text('Send verification code');
     await tester.ensureVisible(send);
     await tester.tap(send);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/auth/password_policy.dart';
 
 class EmailSecurityPage extends StatefulWidget {
   const EmailSecurityPage({super.key, required this.client});
@@ -193,11 +194,9 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
                       maxLength: 128,
                       decoration: const InputDecoration(
                         labelText: 'New password',
-                        helperText: 'Use at least 15 characters',
+                        helperText: newPasswordGuidance,
                       ),
-                      validator: (v) => v == null || v.runes.length < 15
-                          ? 'Use at least 15 characters'
-                          : null,
+                      validator: validateNewPassword,
                     ),
                     TextFormField(
                       controller: _confirm,

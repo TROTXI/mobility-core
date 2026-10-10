@@ -126,8 +126,9 @@ password and recent sign-in. It signs out all sessions. Google-only users
 manage their Google password with Google until they explicitly add email
 sign-in here. Driver PIN recovery and Ops invitations/passkeys are unchanged.
 
-Passwords allow 15 to 128 characters without composition rules, with a small
-local common-password rejection list. They are hashed with Argon2id (19 MiB,
+New passwords require 12 to 128 characters, including an uppercase letter,
+a number and a symbol. A small local common-password list and simple repeated
+patterns are rejected. They are hashed with Argon2id (19 MiB,
 two passes, one lane) and random salts. At most two hashes run concurrently per
 API process; excess work returns a retryable busy error. Login is bounded by
 shared IP, phone/IP, phone-account and email/IP budgets. Verification/resets send at most once per

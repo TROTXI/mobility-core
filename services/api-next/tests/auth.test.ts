@@ -17,7 +17,7 @@ import { AuthService } from '../src/auth/service.js';
 import type { AuthOptions } from '../src/auth/service.js';
 import { credentialReplay } from '../src/auth/secret-replay.js';
 import { fullName } from '../src/auth/full-name.js';
-import { hashPassword, checkPassword } from '../src/auth/password.js';
+import { hashPassword, checkPassword, validatePassword } from '../src/auth/password.js';
 
 test('EMAIL-U01 full names retain their parts, normalize whitespace and reject incomplete or control text', () => {
   assert.deepEqual(
@@ -42,7 +42,7 @@ test('EMAIL-U01 full names retain their parts, normalize whitespace and reject i
     assert.throws(() => fullName(input));
 });
 test('EMAIL-U02 password hashing is salted, bounded and verifies without storing plaintext', async () => {
-  const password = 'a long unique test passphrase';
+  const password = 'A long unique test passphrase1!';
   const a = await hashPassword(password),
     b = await hashPassword(password);
   assert.notEqual(a, b);
@@ -51,6 +51,18 @@ test('EMAIL-U02 password hashing is salted, bounded and verifies without storing
   assert.equal(await checkPassword(password, null), false);
   await assert.rejects(hashPassword('short'));
   await assert.rejects(hashPassword('x'.repeat(129)));
+});
+test('EMAIL-U03 new passwords require 12 characters, a capital, number and symbol', () => {
+  assert.doesNotThrow(() => validatePassword('GoodPass123!'));
+  for (const password of [
+    'GoodPass12!',
+    'goodpassword1!',
+    'GoodPassword!',
+    'GoodPassword1',
+    'GoodPassword1 ',
+    'A1!'.repeat(43),
+  ])
+    assert.throws(() => validatePassword(password), { message: /password|capital/ });
 });
 
 const pair = await generateKeyPair('RS256'),

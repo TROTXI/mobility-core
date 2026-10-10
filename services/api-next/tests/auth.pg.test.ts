@@ -328,7 +328,7 @@ test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enabl
   data(
     await f.request('POST', '/v1/auth/email/complete', {
       token: resetToken,
-      password: 'new correct horse trotxi battery',
+      password: 'New correct horse trotxi battery1!',
     }),
     204,
   );
@@ -345,7 +345,7 @@ test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enabl
     (
       await f.request('POST', '/v1/auth/phone/password', {
         phone: '0241234567',
-        password: 'new correct horse trotxi battery',
+        password: 'New correct horse trotxi battery1!',
       })
     ).statusCode,
     200,
@@ -2360,7 +2360,7 @@ function withReason(url: string, payload: unknown): unknown {
   return payload;
 }
 
-const emailPassword = 'correct horse trotxi battery';
+const emailPassword = 'Correct horse trotxi battery1!';
 const emailRegistration = {
   email: 'ama@outlook.com',
   firstName: 'Ama',
@@ -2461,7 +2461,7 @@ test('EMAIL-02 password reset is one-use, rejects old password, revokes every ol
   );
   assert.deepEqual(known, unknown);
   const token = await emailToken(f),
-    password = 'another long password phrase';
+    password = 'Another long password phrase1!';
   const results = await Promise.all(
     [1, 2].map(() => f.request('POST', '/v1/auth/email/complete', { token, password })),
   );
@@ -2562,7 +2562,7 @@ test('EMAIL-05 change password checks current proof and recent sign-in, then rev
       await f.request(
         'POST',
         '/v1/me/password',
-        { currentPassword: 'wrong', password: 'a different long password' },
+        { currentPassword: 'wrong', password: 'A different long password1!' },
         session.accessToken,
       )
     ).statusCode,
@@ -2572,7 +2572,7 @@ test('EMAIL-05 change password checks current proof and recent sign-in, then rev
     await f.request(
       'POST',
       '/v1/me/password',
-      { currentPassword: emailPassword, password: 'a different long password' },
+      { currentPassword: emailPassword, password: 'A different long password1!' },
       session.accessToken,
     ),
     204,
@@ -2581,7 +2581,7 @@ test('EMAIL-05 change password checks current proof and recent sign-in, then rev
   const signed = data(
     await f.request('POST', '/v1/auth/email/login', {
       email: emailRegistration.email,
-      password: 'a different long password',
+      password: 'A different long password1!',
     }),
   );
   await f.owner.query(
@@ -2593,7 +2593,7 @@ test('EMAIL-05 change password checks current proof and recent sign-in, then rev
       await f.request(
         'POST',
         '/v1/me/password',
-        { currentPassword: 'a different long password', password: emailPassword },
+        { currentPassword: 'A different long password1!', password: emailPassword },
         signed.accessToken,
       )
     ).json().error.code,

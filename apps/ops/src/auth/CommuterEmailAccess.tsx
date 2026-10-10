@@ -74,8 +74,17 @@ export function CommuterEmailAccess() {
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
-            if ([...password].length < 15 || password.length > 128 || password !== confirm) {
-              setError('Use 15 to 128 characters and enter the same password twice.');
+            if (
+              [...password].length < 12 ||
+              password.length > 128 ||
+              !/[A-Z]/.test(password) ||
+              !/[0-9]/.test(password) ||
+              !/[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/.test(password) ||
+              password !== confirm
+            ) {
+              setError(
+                'Use 12 to 128 characters with a capital letter, number and symbol. Enter the same password twice.',
+              );
               return;
             }
             setBusy(true);
@@ -100,14 +109,17 @@ export function CommuterEmailAccess() {
             }
           }}
         >
-          <p>Use a long, unique password or a password manager.</p>
+          <p>
+            Use 12 to 128 characters with a capital letter, number and symbol. Choose a unique
+            password.
+          </p>
           <label htmlFor="new-password">New password</label>
           <input
             id="new-password"
             type="password"
             autoComplete="new-password"
             required
-            minLength={15}
+            minLength={12}
             maxLength={128}
             value={password}
             disabled={busy}

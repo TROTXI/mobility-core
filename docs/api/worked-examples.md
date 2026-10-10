@@ -399,7 +399,7 @@ Content-Type: application/json
   "otherNames": "Akua",
   "lastName": "Mensah",
   "email": "rider@example.invalid",
-  "password": "example unique long passphrase"
+  "password": "Example unique long passphrase1!"
 }
 ```
 
@@ -418,7 +418,7 @@ Content-Type: application/json
 
 {
   "phone": "+233200000000",
-  "password": "example unique long passphrase"
+  "password": "Example unique long passphrase1!"
 }
 ```
 

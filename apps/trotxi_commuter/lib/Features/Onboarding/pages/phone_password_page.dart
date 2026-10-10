@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/auth/password_policy.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -267,6 +268,9 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
         },
         decoration: InputDecoration(
           labelText: label,
+          helperText: label == 'Password' && _step != _Step.signIn
+              ? newPasswordGuidance
+              : null,
           counterText: '',
           border: const OutlineInputBorder(),
           suffixIcon: secret
@@ -361,9 +365,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                     maxLength: 128,
                     validator: (value) => _step == _Step.signIn
                         ? _required(value)
-                        : value == null || value.length < 15
-                        ? 'Use at least 15 characters.'
-                        : null,
+                        : validateNewPassword(value),
                   ),
                 if (_step == _Step.signUp || _step == _Step.finish)
                   _input(

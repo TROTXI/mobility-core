@@ -260,6 +260,11 @@ named(
 );
 named('PhoneSignInRequest', obj({ phone: text(32) }));
 named('PhonePasswordSignIn', obj({ phone: text(32), password: z.string().min(1).max(128) }));
+const newPassword = z
+  .string()
+  .min(12)
+  .max(128)
+  .regex(/(?=.*[A-Z])(?=.*[0-9])(?=.*[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e])/);
 named(
   'PhoneRegistration',
   obj({
@@ -267,7 +272,7 @@ named(
     lastName: text(60),
     otherNames: text(80).nullable().optional(),
     email: z.email().max(320),
-    password: z.string().min(15).max(128),
+    password: newPassword,
   }),
 );
 named(
@@ -283,11 +288,11 @@ named('EmailAddress', obj({ email: z.email().max(320) }));
 named('EmailSignIn', obj({ email: z.email().max(320), password: z.string().min(1).max(128) }));
 named(
   'EmailAccessComplete',
-  obj({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/), password: z.string().min(15).max(128) }),
+  obj({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/), password: newPassword }),
 );
 named(
   'PasswordChange',
-  obj({ currentPassword: z.string().min(1).max(128), password: z.string().min(15).max(128) }),
+  obj({ currentPassword: z.string().min(1).max(128), password: newPassword }),
 );
 named('EmailAccessMessage', obj({ message: text(500) }));
 named(
