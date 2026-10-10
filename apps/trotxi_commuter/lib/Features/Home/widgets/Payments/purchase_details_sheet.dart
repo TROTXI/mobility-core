@@ -152,11 +152,24 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(context, purchase),
+          if (purchase.offerTerms != null) ...[
+            const SizedBox(height: 20),
+            _buildCoverage(context, purchase),
+          ],
           const SizedBox(height: 20),
           _buildAmounts(context, purchase),
           const SizedBox(height: 20),
-          _buildMeta(context, purchase),
-          const SizedBox(height: 12),
+          _buildPaymentStatus(context, purchase),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _copy(purchase.id),
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copy reference for support'),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: TextButton(onPressed: _close, child: const Text('Close')),
@@ -167,7 +180,7 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
   }
 
   // -------------------------------------------------------------------
-  // Header — plan, state badge, when it was started
+  // Header: the purchase state is prominent; internal identifiers are not.
   // -------------------------------------------------------------------
 
   Widget _buildHeader(BuildContext context, Purchase purchase) {
@@ -178,32 +191,21 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
       collectionState: purchase.collectionState,
     );
 
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                purchase.offerTerms != null
-                    ? 'Subscription offer'
-                    : purchasePlanLabel(purchase.plan),
-                style: AppTypography.heading2.copyWith(
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Started ${_formatMoment(purchase.createdAt)}',
-                style: AppTypography.caption.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+        Text(
+          purchase.offerTerms != null
+              ? 'Subscription payment'
+              : purchasePlanLabel(purchase.plan),
+          style: AppTypography.heading3.copyWith(color: colors.textPrimary),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(height: 4),
+        Text(
+          'Created ${_formatMoment(purchase.createdAt)}',
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -219,6 +221,64 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCoverage(BuildContext context, Purchase purchase) {
+    final terms = purchase.offerTerms!;
+    final colors = context.appColors;
+    final start = DateFormat(
+      'd MMM y',
+    ).format(terms.coverageStart.toDateTime(utc: true));
+    final end = DateFormat('d MMM y').format(
+      terms.coverageEnd.toDateTime(utc: true).subtract(const Duration(days: 1)),
+    );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.backgroundSubtle,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your coverage',
+            style: AppTypography.label.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$start to $end',
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          for (final leg in terms.legs) ...[
+            const SizedBox(height: 16),
+            Divider(height: 1, color: colors.borderSubtle),
+            const SizedBox(height: 14),
+            Text(
+              '${leg.pickupName} → ${leg.dropoffName}',
+              style: AppTypography.label.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              '${leg.direction.name == 'return_' ? 'Return' : 'Outbound'} · ${leg.ridesGranted} rides',
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            Text(
+              '${leg.creditPerUnusedRide.formatted} credit per unused ride',
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -239,22 +299,28 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildAmountRow(context, 'Price', purchase.price),
-          const SizedBox(height: 8),
+          if (purchase.appliedCredit.amountMinor > 0) ...[
+            _buildAmountRow(context, 'Package price', purchase.price),
+            const SizedBox(height: 8),
+            _buildAmountRow(
+              context,
+              'Ride credit applied',
+              purchase.appliedCredit,
+              prefix: '−',
+            ),
+            const SizedBox(height: 12),
+            Divider(
+              height: 1,
+              color: colors.onSurfaceStrong.withValues(alpha: 0.18),
+            ),
+            const SizedBox(height: 12),
+          ],
           _buildAmountRow(
             context,
-            'Credit applied',
-            purchase.appliedCredit,
-            // Credit comes off the price, so it reads as a deduction.
-            prefix: purchase.appliedCredit.amountMinor > 0 ? '−' : '',
+            purchaseCashLabel(purchase.collectionState),
+            purchase.cashDue,
+            strong: true,
           ),
-          const SizedBox(height: 10),
-          Divider(
-            height: 1,
-            color: colors.onSurfaceStrong.withValues(alpha: 0.18),
-          ),
-          const SizedBox(height: 10),
-          _buildAmountRow(context, 'Cash due', purchase.cashDue, strong: true),
         ],
       ),
     );
@@ -270,134 +336,110 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
     final colors = context.appColors;
     final style = strong ? AppTypography.buttonAction : AppTypography.label;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: style.copyWith(
-            color: colors.onSurfaceStrong.withValues(
-              alpha: strong ? 1.0 : 0.72,
-            ),
-          ),
-        ),
-        Text(
-          '$prefix${money.formatted}',
-          style: style.copyWith(color: colors.onSurfaceStrong),
-        ),
-      ],
-    );
-  }
-
-  // -------------------------------------------------------------------
-  // Everything else worth showing, including the fields that are only set
-  // in particular states (checkout, failureCode, billingPeriodId).
-  // -------------------------------------------------------------------
-
-  Widget _buildMeta(BuildContext context, Purchase purchase) {
-    final colors = context.appColors;
-    final checkout = purchase.checkout;
-    final failureCode = purchase.failureCode;
-    final billingPeriodId = purchase.billingPeriodId;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.backgroundDefault,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildMetaRow(
-            context,
-            'Collection',
-            purchaseCollectionStateLabel(purchase.collectionState),
-          ),
-          if (checkout != null) ...[
-            const SizedBox(height: 10),
-            _buildMetaRow(
-              context,
-              'Checkout link',
-              checkout.expiresAt == null
-                  ? 'Open'
-                  : 'Expires ${_formatMoment(checkout.expiresAt!)}',
-            ),
-          ],
-          // Only set once a payment has actually gone wrong, and the raw code
-          // is what support will ask for, so it's shown verbatim.
-          if (failureCode != null) ...[
-            const SizedBox(height: 10),
-            _buildMetaRow(
-              context,
-              'Failure code',
-              failureCode,
-              valueColor: colors.error,
-            ),
-          ],
-          // Absent until the purchase is fulfilled and a billing period exists.
-          if (billingPeriodId != null) ...[
-            const SizedBox(height: 10),
-            _buildMetaRow(context, 'Billing period', billingPeriodId),
-          ],
-          const SizedBox(height: 10),
-          _buildMetaRow(
-            context,
-            'Reference',
-            purchase.id,
-            // The one field a rider is ever asked to read back to support.
-            onCopy: () => _copy(purchase.id),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetaRow(
-    BuildContext context,
-    String label,
-    String value, {
-    Color? valueColor,
-    VoidCallback? onCopy,
-  }) {
-    final colors = context.appColors;
-    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          flex: 2,
           child: Text(
             label,
-            style: AppTypography.caption.copyWith(color: colors.textSecondary),
-          ),
-        ),
-        Expanded(
-          flex: 3,
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: AppTypography.caption.copyWith(
-              color: valueColor ?? colors.textPrimary,
-            ),
-          ),
-        ),
-        if (onCopy != null) ...[
-          const SizedBox(width: 6),
-          InkWell(
-            onTap: onCopy,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: Icon(
-                Icons.copy_rounded,
-                size: 14,
-                color: colors.textSecondary,
+            style: style.copyWith(
+              color: colors.onSurfaceStrong.withValues(
+                alpha: strong ? 1.0 : 0.72,
               ),
             ),
           ),
-        ],
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            '$prefix${money.formatted}',
+            textAlign: TextAlign.right,
+            style: style.copyWith(color: colors.onSurfaceStrong),
+          ),
+        ),
       ],
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // Explain what happens next without exposing database or Paystack internals.
+  // -------------------------------------------------------------------
+
+  Widget _buildPaymentStatus(BuildContext context, Purchase purchase) {
+    final colors = context.appColors;
+    final stateColor = purchaseStateColor(
+      context,
+      purchase.state,
+      collectionState: purchase.collectionState,
+    );
+    final message = switch (purchase.state) {
+      PurchaseStateEnum.fulfilled =>
+        'Payment confirmed. Check Wallet for your coverage. Rides become available on the coverage start date.',
+      PurchaseStateEnum.reviewRequired =>
+        'Our team is reviewing this payment. Please do not pay again.',
+      PurchaseStateEnum.processing =>
+        'We are confirming your payment. Please do not pay again.',
+      PurchaseStateEnum.awaitingPayment
+          when purchase.collectionState ==
+              PurchaseCollectionStateEnum.successful =>
+        'We received your payment and are confirming it. Please do not pay again.',
+      PurchaseStateEnum.failed
+          when purchase.collectionState ==
+              PurchaseCollectionStateEnum.successful =>
+        'We received your payment, but could not activate coverage. Our team will review it. Please do not pay again.',
+      PurchaseStateEnum.failed =>
+        'This payment was not completed. Check your payment options or contact support.',
+      PurchaseStateEnum.cancelled => 'This payment was cancelled.',
+      _ =>
+        'Payment is still due. Review the amount before continuing to Paystack.',
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: stateColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: stateColor, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  purchaseStateLabel(
+                    purchase.state,
+                    collectionState: purchase.collectionState,
+                  ),
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                if (purchase.state == PurchaseStateEnum.awaitingPayment &&
+                    purchase.checkout?.expiresAt != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Payment link expires ${_formatMoment(purchase.checkout!.expiresAt!)}',
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

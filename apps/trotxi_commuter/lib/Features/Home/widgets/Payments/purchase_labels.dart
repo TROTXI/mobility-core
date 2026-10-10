@@ -10,6 +10,11 @@ import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 String purchasePlanLabel(PurchasePlanEnum plan) =>
     plan == PurchasePlanEnum.annual ? 'Annual plan' : 'Monthly plan';
 
+String purchaseCashLabel(PurchaseCollectionStateEnum state) =>
+    state == PurchaseCollectionStateEnum.successful
+    ? 'Collected via Paystack'
+    : 'Cash due';
+
 /// Where the purchase itself stands.
 String purchaseStateLabel(
   PurchaseStateEnum state, {
@@ -19,6 +24,10 @@ String purchaseStateLabel(
       collectionState == PurchaseCollectionStateEnum.successful) {
     return 'Payment received · Under review';
   }
+  if (state == PurchaseStateEnum.awaitingPayment &&
+      collectionState == PurchaseCollectionStateEnum.successful) {
+    return 'Payment processing';
+  }
   return switch (state) {
     PurchaseStateEnum.awaitingPayment => 'Awaiting payment',
     PurchaseStateEnum.processing => 'Payment processing',
@@ -27,18 +36,6 @@ String purchaseStateLabel(
     PurchaseStateEnum.cancelled => 'Cancelled',
     PurchaseStateEnum.reviewRequired => 'Under review',
     _ => 'Purchase',
-  };
-}
-
-/// Where the money collection stands, which can lag the purchase state while
-/// Paystack settles.
-String purchaseCollectionStateLabel(PurchaseCollectionStateEnum state) {
-  return switch (state) {
-    PurchaseCollectionStateEnum.pending => 'Pending',
-    PurchaseCollectionStateEnum.successful => 'Collected',
-    PurchaseCollectionStateEnum.failed => 'Not collected',
-    PurchaseCollectionStateEnum.unknown => 'Unknown',
-    _ => 'Unknown',
   };
 }
 

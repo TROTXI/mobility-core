@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/utils/money_format.dart';
 
 class AutoRenewalPage extends StatefulWidget {
@@ -176,6 +178,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final renewal = _renewal;
     final card = renewal?.card;
     final upcoming = renewal?.upcoming;
@@ -183,56 +186,114 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
       appBar: AppBar(title: const Text('Card auto-renewal')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
+          constraints: const BoxConstraints(maxWidth: 540),
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
               children: [
                 Text(
-                  'Renewals on your terms',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  'Renew on your terms',
+                  style: AppTypography.heading2.copyWith(
+                    color: colors.textPrimary,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'You choose whether to use a saved card for eligible renewals. '
-                  'Mobile money is never charged automatically.',
+                const SizedBox(height: 6),
+                Text(
+                  'Decide whether an eligible card payment can renew your commute. Mobile money is never charged automatically.',
+                  style: AppTypography.body.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
-                const SizedBox(height: 20),
-                if (_loading) const LinearProgressIndicator(),
+                const SizedBox(height: 24),
+                if (_loading) ...[
+                  const LinearProgressIndicator(),
+                  const SizedBox(height: 16),
+                ],
                 if (_error != null) ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(_error!),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textPrimary,
+                      ),
                     ),
                   ),
                   TextButton(onPressed: _load, child: const Text('Retry')),
+                  const SizedBox(height: 12),
                 ],
                 if (!_loading && renewal != null) ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            renewal.enabled ? 'On' : 'Off',
-                            style: Theme.of(context).textTheme.titleLarge,
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceElevated,
+                      border: Border.all(color: colors.borderSubtle),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.credit_card_rounded,
+                              color: colors.actionPrimaryDefault,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Card auto-renewal',
+                                style: AppTypography.title.copyWith(
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: renewal.enabled
+                                    ? colors.actionPrimaryDefault.withValues(
+                                        alpha: 0.1,
+                                      )
+                                    : colors.backgroundSubtle,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                renewal.enabled ? 'On' : 'Off',
+                                style: AppTypography.caption.copyWith(
+                                  color: renewal.enabled
+                                      ? colors.actionPrimaryDefault
+                                      : colors.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          card == null
+                              ? renewal.enabled
+                                    ? 'No card is saved yet. Pay an eligible offer by card to make auto-renewal available.'
+                                    : 'No reusable card is saved.'
+                              : '${card.brand} ending ${card.last4} · expires ${card.expMonth.toString().padLeft(2, '0')}/${card.expYear}',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: colors.textSecondary,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            card == null
-                                ? renewal.enabled
-                                      ? 'No card is saved yet. Pay an eligible '
-                                            'offer by card to activate automatic renewal.'
-                                      : 'No reusable card is saved.'
-                                : '${card.brand} ending ${card.last4} · '
-                                      'expires ${card.expMonth.toString().padLeft(2, '0')}/${card.expYear}',
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton(
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          height: 50,
+                          child: FilledButton(
                             onPressed: _busy ? null : _toggle,
                             child: Text(
                               renewal.enabled
@@ -240,51 +301,83 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                                   : 'Turn on auto-renewal',
                             ),
                           ),
-                          if (card != null)
-                            TextButton(
-                              onPressed: _busy ? null : _removeCard,
-                              child: const Text('Remove saved card'),
-                            ),
+                        ),
+                        if (card != null) ...[
+                          const SizedBox(height: 4),
+                          TextButton(
+                            onPressed: _busy ? null : _removeCard,
+                            child: const Text('Remove saved card'),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                   if (upcoming != null) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Next renewal',
+                      style: AppTypography.title.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Next renewal',
-                              style: Theme.of(context).textTheme.titleMedium,
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceElevated,
+                        border: Border.all(color: colors.borderSubtle),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _upcomingState(upcoming.state),
+                            style: AppTypography.label.copyWith(
+                              color: colors.actionPrimaryDefault,
                             ),
-                            const SizedBox(height: 8),
-                            Text(_upcomingState(upcoming.state)),
-                            Text('Package price: ${upcoming.price.formatted}'),
-                            Text(
-                              'Coverage ends: ${_date(upcoming.periodEndsAt)}',
-                            ),
-                            Text(
-                              'Charge may start: ${_date(upcoming.chargeFrom)}',
-                            ),
-                            if (upcoming.nextAttemptAt case final retry?)
-                              Text('Next attempt: ${_date(retry)}'),
-                            if (upcoming.failureCode != null)
-                              const Text(
-                                'Review this renewal with operations.',
-                              ),
+                          ),
+                          const SizedBox(height: 14),
+                          _detailRow(
+                            context,
+                            'Package price',
+                            upcoming.price.formatted,
+                          ),
+                          const SizedBox(height: 10),
+                          _detailRow(
+                            context,
+                            'Coverage ends',
+                            _date(upcoming.periodEndsAt),
+                          ),
+                          const SizedBox(height: 10),
+                          _detailRow(
+                            context,
+                            'Earliest charge',
+                            _date(upcoming.chargeFrom),
+                          ),
+                          if (upcoming.nextAttemptAt case final retry?) ...[
+                            const SizedBox(height: 10),
+                            _detailRow(context, 'Next attempt', _date(retry)),
                           ],
-                        ),
+                          if (upcoming.failureCode != null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              'This renewal needs a review. Contact support before trying again.',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: colors.warning,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  const Text(
-                    'If your route or price changes, we will ask you to review a new offer. '
-                    'Turning this off will not affect rides you have already paid for.',
+                  const SizedBox(height: 20),
+                  Text(
+                    'If your route or price changes, we will ask you to review a new offer. Turning auto-renewal off does not affect coverage you already paid for.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ],
@@ -292,6 +385,27 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _detailRow(BuildContext context, String label, String value) {
+    final colors = context.appColors;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: AppTypography.label.copyWith(color: colors.textPrimary),
+        ),
+      ],
     );
   }
 }

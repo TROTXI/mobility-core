@@ -137,54 +137,12 @@ class _StandbyPageState extends State<StandbyPage> {
     if (offer == null) return;
     final terms = offer.terms;
     if (terms == null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Accept this offer?'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Package: GHS ${(terms.price.amountMinor / 100).toStringAsFixed(2)}',
-              ),
-              Text(
-                'Coverage: ${_coverage(terms.coverageStart, terms.coverageEnd)}.',
-              ),
-              for (final leg in terms.legs) ...[
-                const SizedBox(height: 12),
-                Text(
-                  '${leg.direction.name}: ${leg.pickupName} → ${leg.dropoffName}',
-                ),
-                Text(
-                  '${leg.ridesGranted} rides on ${leg.travelDays.map((d) => _dayNames[d - 1]).join(', ')}',
-                ),
-                Text(
-                  'Journey fare: GHS ${(leg.fare.amountMinor / 100).toStringAsFixed(2)}',
-                ),
-                Text(
-                  'Credit per unused ride: GHS ${(leg.creditPerUnusedRide.amountMinor / 100).toStringAsFixed(2)}',
-                ),
-              ],
-              const SizedBox(height: 12),
-              const Text(
-                'Unused rides convert to the stated credit when coverage closes. Outbound and return allowances are separate. Trips still require confirmation and available seats. Upcoming rides cannot be used before their start date. Pauses and commute changes are blocked while a renewal checkout or paid renewal is pending. You will review the final cash due before paying on Paystack.',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: context.appColors.surfaceElevated,
+      builder: (sheetContext) => _offerReviewSheet(sheetContext, terms),
     );
     if (!mounted ||
         confirmed != true ||
@@ -199,28 +157,11 @@ class _StandbyPageState extends State<StandbyPage> {
       final purchase = await widget.client.acceptStandbyOffer(application.id);
       if (!mounted || generation != widget.client.sessionGeneration) return;
       final uri = paystackCheckoutUri(purchase, DateTime.now());
-      await showDialog<void>(
+      await showModalBottomSheet<void>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Review checkout'),
-          content: Text(
-            'Amount due: ${purchase.cashDue.currency.name} ${(purchase.cashDue.amountMinor / 100).toStringAsFixed(2)}. Paying is optional until you confirm on Paystack.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Later'),
-            ),
-            if (uri != null)
-              FilledButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await openPaystackCheckout(uri);
-                },
-                child: const Text('Open Paystack'),
-              ),
-          ],
-        ),
+        showDragHandle: true,
+        backgroundColor: context.appColors.surfaceElevated,
+        builder: (sheetContext) => _checkoutPrompt(sheetContext, purchase, uri),
       );
       await _refresh();
     } on wire.TrotxiException catch (error) {
@@ -232,6 +173,226 @@ class _StandbyPageState extends State<StandbyPage> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  Widget _offerReviewSheet(
+    BuildContext sheetContext,
+    wire.OpsPurchaseOfferTerms terms,
+  ) {
+    final colors = sheetContext.appColors;
+    final price = 'GHS ${(terms.price.amountMinor / 100).toStringAsFixed(2)}';
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(sheetContext).height * 0.82,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Review your offer',
+                style: AppTypography.heading3.copyWith(
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Check the journeys, allowance and credit before accepting.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceStrong,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Package price',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: colors.onSurfaceStrong.withValues(
+                                  alpha: 0.72,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              price,
+                              style: AppTypography.heading2.copyWith(
+                                color: colors.onSurfaceStrong,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Coverage: ${_coverage(terms.coverageStart, terms.coverageEnd)}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: colors.onSurfaceStrong,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      for (final leg in terms.legs) ...[
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSubtle,
+                            border: Border.all(color: colors.borderSubtle),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                leg.direction.name == 'return_'
+                                    ? 'Return journey'
+                                    : 'Outbound journey',
+                                style: AppTypography.caption.copyWith(
+                                  color: colors.actionPrimaryDefault,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${leg.pickupName} → ${leg.dropoffName}',
+                                style: AppTypography.title.copyWith(
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${leg.ridesGranted} rides · ${leg.travelDays.map((d) => _dayNames[d - 1]).join(', ')}',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                'Journey fare: GHS ${(leg.fare.amountMinor / 100).toStringAsFixed(2)}',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                'Credit per unused ride: GHS ${(leg.creditPerUnusedRide.amountMinor / 100).toStringAsFixed(2)}',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Before you continue',
+                        style: AppTypography.label.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Outbound and return rides have separate allowances. Unused rides become the credit shown above after coverage ends. A paid plan does not reserve a seat; each trip still needs confirmation and an available seat.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Rides start on the coverage date. During a pending renewal, pauses and commute changes are unavailable. You will review the final amount due before confirming payment on Paystack.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(sheetContext, true),
+                  child: const Text('Accept and review payment'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext, false),
+                child: const Text('Not now'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _checkoutPrompt(
+    BuildContext sheetContext,
+    wire.Purchase purchase,
+    Uri? uri,
+  ) {
+    final colors = sheetContext.appColors;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Ready for payment',
+              style: AppTypography.heading3.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Amount due',
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            Text(
+              '${purchase.cashDue.currency.name} ${(purchase.cashDue.amountMinor / 100).toStringAsFixed(2)}',
+              style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'You are not charged until you confirm on Paystack. You can come back to this payment later.',
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (uri != null)
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await openPaystackCheckout(uri);
+                  },
+                  child: const Text('Continue to Paystack'),
+                ),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(sheetContext),
+              child: const Text('Later'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

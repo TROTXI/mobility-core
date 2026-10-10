@@ -25,16 +25,22 @@ void main() {
   };
   Future<void> drain(
     WidgetTester tester,
-    Future<void> Function() action,
-  ) async {
+    Future<void> Function() action, {
+    Finder? until,
+  }) async {
     await tester.runAsync(() async {
       await action();
       for (var i = 0; i < 100; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
         await tester.pump();
-        if (find.byType(LinearProgressIndicator).evaluate().isEmpty) break;
+        if (until != null
+            ? until.evaluate().isNotEmpty
+            : find.byType(LinearProgressIndicator).evaluate().isEmpty) {
+          break;
+        }
       }
     });
+    if (until != null) expect(until, findsOneWidget);
     await tester.pumpAndSettle();
   }
 
@@ -88,7 +94,9 @@ void main() {
     'restart discovery finds old payment; browser return never declares it paid',
     (tester) async {
       await pump(tester);
-      expect(find.textContaining('old-purchase'), findsOneWidget);
+      expect(find.text('Monthly plan'), findsOneWidget);
+      expect(find.textContaining('old-purchase'), findsNothing);
+      expect(find.text('View payment details'), findsOneWidget);
       expect(find.text('Prepare checkout'), findsNothing);
       expect(f.requests.last.queryParameters.containsKey('fromDate'), isFalse);
       await pay(tester);
@@ -132,7 +140,8 @@ void main() {
     launchWorks = false;
     await pay(tester);
     expect(find.textContaining('Could not open Paystack'), findsOneWidget);
-    expect(find.textContaining('old-purchase'), findsOneWidget);
+    expect(find.text('Monthly plan'), findsOneWidget);
+    expect(find.textContaining('old-purchase'), findsNothing);
     expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
     await finish(tester);
   });
@@ -149,6 +158,18 @@ void main() {
     expect(find.textContaining('Continue to Paystack'), findsNothing);
     await finish(tester);
   });
+  testWidgets('collected payment awaiting fulfilment is not shown as due', (
+    tester,
+  ) async {
+    await pump(tester);
+    collection = 'successful';
+    await drain(tester, () => tester.tap(find.text('Refresh payment status')));
+    expect(find.text('Payment processing'), findsOneWidget);
+    expect(find.text('Collected via Paystack'), findsOneWidget);
+    expect(find.textContaining('Please do not pay again'), findsOneWidget);
+    expect(find.textContaining('Continue to Paystack'), findsNothing);
+    await finish(tester);
+  });
   testWidgets(
     'changed server amount requires new consent instead of opening an old quote',
     (tester) async {
@@ -157,7 +178,7 @@ void main() {
       await pay(tester);
       expect(launched, isEmpty);
       expect(find.textContaining('amounts changed'), findsOneWidget);
-      expect(find.text('Cash due: GHS 245.00'), findsOneWidget);
+      expect(find.text('GHS 245.00'), findsOneWidget);
       await finish(tester);
     },
   );
@@ -172,6 +193,29 @@ void main() {
       findsOneWidget,
     );
     expect(launched, isEmpty);
+    await finish(tester);
+  });
+  testWidgets('details show support action without database ids', (
+    tester,
+  ) async {
+    await pump(tester);
+    state = 'fulfilled';
+    collection = 'successful';
+    final previousReply = f.reply;
+    f.reply = (request) => request.path == '/v1/me/purchases/old-purchase'
+        ? jsonResponse({'data': purchase()})
+        : previousReply(request);
+    await drain(tester, () => tester.tap(find.text('Refresh payment status')));
+    await tester.ensureVisible(find.text('View payment details'));
+    await drain(
+      tester,
+      () => tester.tap(find.text('View payment details')),
+      until: find.text('Copy reference for support'),
+    );
+    expect(find.text('Copy reference for support'), findsOneWidget);
+    expect(find.text('Billing period'), findsNothing);
+    expect(find.text('period'), findsNothing);
+    expect(find.textContaining('old-purchase'), findsNothing);
     await finish(tester);
   });
   testWidgets(

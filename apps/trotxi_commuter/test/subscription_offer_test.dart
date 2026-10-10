@@ -91,7 +91,7 @@ void main() {
         }
         return jsonResponse({'data': account()});
       };
-      await tester.binding.setSurfaceSize(const Size(430, 932));
+      await tester.binding.setSurfaceSize(const Size(360, 640));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       Future<void> drain(Future<void> Function() action) async {
         await tester.runAsync(() async {
@@ -123,10 +123,10 @@ void main() {
       expect(find.textContaining('We will let you know'), findsNothing);
       await tester.tap(find.text('Review your offer'));
       await tester.pumpAndSettle();
-      expect(find.text('Package: GHS 70.00'), findsOneWidget);
+      expect(find.text('GHS 70.00'), findsOneWidget);
       expect(find.text('Credit per unused ride: GHS 1.00'), findsOneWidget);
       expect(find.text('Credit per unused ride: GHS 2.00'), findsOneWidget);
-      expect(find.text('6 rides on Mon, Wed, Fri'), findsNWidgets(2));
+      expect(find.text('6 rides · Mon, Wed, Fri'), findsNWidgets(2));
       expect(
         f.requests.where(
           (r) => r.method == 'POST' && r.path.endsWith('/accept'),

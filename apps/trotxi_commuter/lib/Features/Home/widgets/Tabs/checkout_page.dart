@@ -5,6 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:trotxi_client/commuter_checkout.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_details_sheet.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
 import 'standby_page.dart';
 
@@ -158,136 +161,341 @@ class _CheckoutPageState extends State<CheckoutPage>
   String _coverage(wire.Date start, wire.Date end) =>
       '${DateFormat('d MMM y').format(start.toDateTime(utc: true))} to '
       '${DateFormat('d MMM y').format(end.toDateTime(utc: true).subtract(const Duration(days: 1)))}';
+
+  Future<void> _showDetails(wire.Purchase purchase) async {
+    final latest = await showPurchaseDetailsSheet(
+      context,
+      client: widget.client,
+      purchaseId: purchase.id,
+    );
+    if (mounted && latest != null && latest.state != purchase.state) {
+      await _recover();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final checkout = _checkout;
     final unresolved = checkout?.purchases.any(purchaseUnresolved) ?? false;
     final saved = checkout?.intent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Purchase & payment')),
+      appBar: AppBar(title: const Text('Payments')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          const Text(
-            'Pay securely with Paystack. After paying, return here to check your payment status. Your rides appear once payment is confirmed.',
+          Text(
+            'Your payments',
+            style: AppTypography.heading2.copyWith(color: colors.textPrimary),
           ),
-          if (_busy) const LinearProgressIndicator(),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(_error!),
-            ),
-          TextButton(
-            onPressed: _busy ? null : _recover,
-            child: const Text('Refresh payment status'),
+          const SizedBox(height: 6),
+          Text(
+            'Review your subscription payments and continue a checkout when one is ready.',
+            style: AppTypography.body.copyWith(color: colors.textSecondary),
           ),
-          if (saved != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Your checkout is saved'),
-                    const Text(
-                      'Continue where you left off. This resumes the same purchase. If it is no longer available, contact support before trying to pay again.',
-                    ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _work(() async {
-                              await checkout!.retry();
-                            }),
-                      child: const Text('Resume saved checkout'),
-                    ),
-                  ],
-                ),
-              ),
+          const SizedBox(height: 20),
+          if (_busy) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 16),
+          ],
+          if (_error != null) ...[
+            _messageCard(
+              context,
+              icon: Icons.error_outline_rounded,
+              message: _error!,
+              accent: colors.error,
             ),
+            const SizedBox(height: 16),
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _busy ? null : _recover,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Refresh payment status'),
+            ),
+          ),
+          if (saved != null) ...[
+            const SizedBox(height: 18),
+            _savedCheckoutCard(context, checkout!),
+          ],
           if (checkout != null) ...[
-            const Text('Payment history'),
-            for (final p in checkout.purchases)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${p.offerTerms == null ? purchasePlanLabel(p.plan) : 'Subscription offer'} · ${_money(p.price)}',
-                      ),
-                      if (p.offerTerms != null) ...[
-                        Text(
-                          'Coverage: ${_coverage(p.offerTerms!.coverageStart, p.offerTerms!.coverageEnd)}',
-                        ),
-                        for (final leg in p.offerTerms!.legs)
-                          Text(
-                            '${leg.direction.name}: ${leg.ridesGranted} rides, ${leg.pickupName} → ${leg.dropoffName}. Unused credit: ${_money(leg.creditPerUnusedRide)} per ride.',
-                          ),
-                      ],
-                      Text('Ride Credit applied: ${_money(p.appliedCredit)}'),
-                      Text('Cash due: ${_money(p.cashDue)}'),
-                      SelectableText('Payment reference: ${p.id}'),
-                      Text(
-                        purchaseStateLabel(
-                          p.state,
-                          collectionState: p.collectionState,
-                        ),
-                      ),
-                      if (p.state == wire.PurchaseStateEnum.fulfilled)
-                        const Text(
-                          'Payment confirmed. Refresh Wallet to see your rides.',
-                        ),
-                      if (p.state == wire.PurchaseStateEnum.failed &&
-                          p.collectionState ==
-                              wire.PurchaseCollectionStateEnum.successful)
-                        const Text(
-                          'We received your payment, but could not activate this subscription. Operations will review it. Please do not pay again.',
-                        )
-                      else if (p.state == wire.PurchaseStateEnum.processing ||
-                          p.collectionState ==
-                                  wire.PurchaseCollectionStateEnum.successful &&
-                              p.state == wire.PurchaseStateEnum.awaitingPayment)
-                        const Text(
-                          'We are confirming your payment. Please do not pay again.',
-                        ),
-                      if (p.state == wire.PurchaseStateEnum.reviewRequired)
-                        const Text(
-                          'Your payment needs a review. Please do not pay again.',
-                        ),
-                      if (paystackCheckoutUri(p, DateTime.now()) != null)
-                        FilledButton(
-                          onPressed: _busy ? null : () => _pay(p),
-                          child: Text(
-                            'Continue to Paystack · ${_money(p.cashDue)}',
-                          ),
-                        )
-                      else if (p.state ==
-                          wire.PurchaseStateEnum.awaitingPayment)
-                        const Text(
-                          'The payment link is unavailable. Resume your saved checkout or contact support with this payment reference.',
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+            const SizedBox(height: 28),
+            Text(
+              'Payment history',
+              style: AppTypography.title.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: 12),
+            if (checkout.purchases.isEmpty)
+              _messageCard(
+                context,
+                icon: Icons.receipt_long_outlined,
+                message: 'No payments yet. Offers you accept will appear here.',
+                accent: colors.actionPrimaryDefault,
+              )
+            else
+              for (final p in checkout.purchases) ...[
+                _purchaseCard(context, p),
+                const SizedBox(height: 12),
+              ],
             if (saved == null && !unresolved && _error == null) ...[
-              const Divider(),
-              const Text(
-                'To start or renew a plan, tell us which journeys and travel days you need. We will send you an offer to review before you pay.',
-              ),
-              FilledButton(
-                onPressed: _busy
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => StandbyPage(client: widget.client),
-                        ),
-                      ),
-                child: const Text('View waitlist'),
-              ),
+              const SizedBox(height: 16),
+              _newPlanCard(context),
             ],
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _savedCheckoutCard(BuildContext context, CommuterCheckout checkout) {
+    final colors = context.appColors;
+    return _surfaceCard(
+      context,
+      children: [
+        Icon(Icons.bookmark_added_outlined, color: colors.actionPrimaryDefault),
+        const SizedBox(height: 10),
+        Text(
+          'Checkout saved',
+          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Pick up where you left off. We will check the same purchase before you pay.',
+          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 14),
+        OutlinedButton(
+          onPressed: _busy ? null : () => _work(() async => checkout.retry()),
+          child: const Text('Resume saved checkout'),
+        ),
+      ],
+    );
+  }
+
+  Widget _purchaseCard(BuildContext context, wire.Purchase purchase) {
+    final colors = context.appColors;
+    final stateColor = purchaseStateColor(
+      context,
+      purchase.state,
+      collectionState: purchase.collectionState,
+    );
+    final terms = purchase.offerTerms;
+    final payable = paystackCheckoutUri(purchase, DateTime.now()) != null;
+    final needsReview =
+        purchase.state == wire.PurchaseStateEnum.reviewRequired ||
+        (purchase.state == wire.PurchaseStateEnum.failed &&
+            purchase.collectionState ==
+                wire.PurchaseCollectionStateEnum.successful);
+    final confirming =
+        purchase.state == wire.PurchaseStateEnum.processing ||
+        (purchase.state == wire.PurchaseStateEnum.awaitingPayment &&
+            purchase.collectionState ==
+                wire.PurchaseCollectionStateEnum.successful);
+    return _surfaceCard(
+      context,
+      children: [
+        Text(
+          terms == null
+              ? purchasePlanLabel(purchase.plan)
+              : 'Subscription payment',
+          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          DateFormat('d MMM y').format(purchase.createdAt.toLocal()),
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: stateColor.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              purchaseStateLabel(
+                purchase.state,
+                collectionState: purchase.collectionState,
+              ),
+              style: AppTypography.caption.copyWith(
+                color: stateColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        if (terms != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Coverage',
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+          Text(
+            _coverage(terms.coverageStart, terms.coverageEnd),
+            style: AppTypography.bodySmall.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 12),
+          for (final leg in terms.legs) ...[
+            Text(
+              '${leg.pickupName} → ${leg.dropoffName}',
+              style: AppTypography.label.copyWith(color: colors.textPrimary),
+            ),
+            Text(
+              '${leg.direction.name == 'return_' ? 'Return' : 'Outbound'} · ${leg.ridesGranted} rides',
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ],
+        const SizedBox(height: 10),
+        Divider(height: 1, color: colors.borderSubtle),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                purchaseCashLabel(purchase.collectionState),
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+            Text(
+              _money(purchase.cashDue),
+              style: AppTypography.title.copyWith(color: colors.textPrimary),
+            ),
+          ],
+        ),
+        if (purchase.appliedCredit.amountMinor > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            '${_money(purchase.appliedCredit)} ride credit applied',
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+        ],
+        if (purchase.state == wire.PurchaseStateEnum.fulfilled ||
+            needsReview ||
+            confirming) ...[
+          const SizedBox(height: 12),
+          Text(
+            purchase.state == wire.PurchaseStateEnum.fulfilled
+                ? 'Payment confirmed. Check Wallet for your coverage.'
+                : needsReview
+                ? 'We received your payment and are reviewing it. Please do not pay again.'
+                : 'We are confirming your payment. Please do not pay again.',
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        ],
+        if (payable) ...[
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : () => _pay(purchase),
+              child: Text('Continue to Paystack · ${_money(purchase.cashDue)}'),
+            ),
+          ),
+        ] else if (purchase.state == wire.PurchaseStateEnum.awaitingPayment &&
+            !confirming) ...[
+          const SizedBox(height: 12),
+          Text(
+            'The payment link is unavailable. Resume your saved checkout or contact support.',
+            style: AppTypography.bodySmall.copyWith(color: colors.warning),
+          ),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => _showDetails(purchase),
+            child: const Text('View payment details'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _newPlanCard(BuildContext context) {
+    final colors = context.appColors;
+    return _surfaceCard(
+      context,
+      children: [
+        Text(
+          'Need a new plan?',
+          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Tell us your route and travel days. We will send an offer with the price and ride allowance for you to review.',
+          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _busy
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => StandbyPage(client: widget.client),
+                    ),
+                  ),
+            child: const Text('View waitlist'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _surfaceCard(BuildContext context, {required List<Widget> children}) {
+    final colors = context.appColors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated,
+        border: Border.all(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _messageCard(
+    BuildContext context, {
+    required IconData icon,
+    required String message,
+    required Color accent,
+  }) {
+    final colors = context.appColors;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: accent, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
         ],
       ),
     );
