@@ -115,7 +115,7 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
           const SizedBox(height: 8),
           Text(
             '${widget.trip.direction == wire.TripDirectionEnum.outbound ? 'Outbound' : 'Return'}'
-            ' · ${DateFormat('EEE, d MMM, HH:mm').format(widget.trip.scheduledAt.toUtc())} Ghana time',
+            ' · ${DateFormat('EEE, d MMM, HH:mm').format(widget.trip.scheduledAt.toUtc())}',
           ),
           const SizedBox(height: 8),
           const Text(

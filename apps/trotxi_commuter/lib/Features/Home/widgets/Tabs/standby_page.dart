@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:trotxi_client/commuter_checkout.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -23,6 +24,17 @@ class _StandbyPageState extends State<StandbyPage> {
   bool _useCredit = false;
   wire.PurchaseInputPlanEnum _plan = wire.PurchaseInputPlanEnum.monthly;
   static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  String _coverage(wire.Date start, wire.Date end) =>
+      '${DateFormat('d MMM y').format(start.toDateTime(utc: true))} to '
+      '${DateFormat('d MMM y').format(end.toDateTime(utc: true).subtract(const Duration(days: 1)))}';
+
+  String _status(wire.StandbyApplicationStateEnum state) => switch (state) {
+    wire.StandbyApplicationStateEnum.submitted => 'Request received',
+    wire.StandbyApplicationStateEnum.offered => 'Offer ready',
+    wire.StandbyApplicationStateEnum.checkoutOpen => 'Awaiting payment',
+    _ => 'Request updated',
+  };
 
   @override
   void initState() {
@@ -136,7 +148,7 @@ class _StandbyPageState extends State<StandbyPage> {
                 'Package: GHS ${(terms.price.amountMinor / 100).toStringAsFixed(2)}',
               ),
               Text(
-                'Coverage: ${terms.coverageStart} until ${terms.coverageEnd} (end date excluded).',
+                'Coverage: ${_coverage(terms.coverageStart, terms.coverageEnd)}.',
               ),
               for (final leg in terms.legs) ...[
                 const SizedBox(height: 12),
@@ -231,13 +243,33 @@ class _StandbyPageState extends State<StandbyPage> {
               a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
         )
         .toList();
+    final checkoutOpen = active.any(
+      (a) => a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
+    );
+    final offerReady = active.any(
+      (a) =>
+          a.state == wire.StandbyApplicationStateEnum.offered &&
+          a.offer?.terms != null &&
+          (a.offer?.expiresAt.isAfter(DateTime.now()) ?? false),
+    );
+    final offered = active.any(
+      (a) => a.state == wire.StandbyApplicationStateEnum.offered,
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Waitlist')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Join the waitlist for your commute or renewal. Joining is free and does not guarantee a seat. Operations will send an offer with your journeys, dates, ride allowance and price. You can pay for one upcoming renewal before your current coverage ends. Its rides become available on its start date. Current unused rides only become credit after that period closes. Card auto-renewal is optional and managed in Wallet.',
+          Text(
+            active.isEmpty
+                ? 'Tell us where and when you travel. Joining is free and does not reserve a seat. We will send an offer when we can serve your commute.'
+                : checkoutOpen
+                ? 'Your checkout is open. Review it below to complete payment.'
+                : offerReady
+                ? 'Your offer is ready. Review it below before it expires.'
+                : offered
+                ? 'Your offer needs attention. Check it below for next steps.'
+                : 'Your request is in. We will let you know when an offer is ready to review.',
           ),
           const SizedBox(height: 16),
           if (_busy) const LinearProgressIndicator(),
@@ -320,8 +352,11 @@ class _StandbyPageState extends State<StandbyPage> {
                       application.routeName,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    Text('Status: ${application.state.name}'),
-                    Text('Requested plan: ${application.selection.plan.name}'),
+                    const SizedBox(height: 8),
+                    Text(_status(application.state)),
+                    Text(
+                      '${application.selection.plan.name == 'annual' ? 'Annual' : 'Monthly'} plan',
+                    ),
                     Text(
                       application.travelDays
                           .map((day) => _dayNames[day - 1])
@@ -329,7 +364,7 @@ class _StandbyPageState extends State<StandbyPage> {
                     ),
                     if (application.offer != null)
                       Text(
-                        'Offer expires ${application.offer!.expiresAt.toLocal()}',
+                        'Offer available until ${DateFormat('d MMM, h:mm a').format(application.offer!.expiresAt.toUtc())}',
                       ),
                     if (application.state ==
                             wire.StandbyApplicationStateEnum.offered &&
@@ -375,6 +410,15 @@ class _StandbyPageState extends State<StandbyPage> {
                 ),
               ),
             ),
+          const ExpansionTile(
+            title: Text('How offers and renewals work'),
+            childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Text(
+                'An offer shows your journeys, travel days, ride allowance, dates and price before you pay. You can pay for one renewal ahead of time; its rides start when the new coverage begins. Unused rides become credit after the current coverage ends. Card auto-renewal is optional and can be managed in Wallet.',
+              ),
+            ],
+          ),
           TextButton(
             onPressed: _busy ? null : _refresh,
             child: const Text('Refresh'),

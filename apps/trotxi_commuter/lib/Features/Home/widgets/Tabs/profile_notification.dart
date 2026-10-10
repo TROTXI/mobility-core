@@ -178,7 +178,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                       const SizedBox(height: 20),
                     ],
                     Text(
-                      'Preferred daily seat-ask time',
+                      'Daily seat request',
                       style: AppTypography.label.copyWith(
                         color: colors.textPrimary,
                       ),
@@ -202,7 +202,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your preference is saved in Ghana time. Check the inbox for the authoritative request if a phone alert is delayed.',
+                      'Choose when you would like to be asked about your next ride. You can always respond from your inbox.',
                       style: AppTypography.caption.copyWith(
                         color: colors.textSecondary,
                       ),
@@ -210,9 +210,9 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                     const SizedBox(height: 20),
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Optional updates'),
+                      title: const Text('News and promotions'),
                       subtitle: const Text(
-                        'Product news and non-essential messages',
+                        'Occasional Trotxi updates. Trip and account messages still arrive when this is off.',
                       ),
                       value: preferences.optionalUpdatesEnabled,
                       onChanged: _saving

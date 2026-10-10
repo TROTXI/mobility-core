@@ -5,7 +5,6 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
-import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
 
 String _formatSessionDate(DateTime date) {
   return DateFormat('d MMM y, h:mm a').format(date.toLocal());
@@ -146,8 +145,10 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
 
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
+      appBar: AppBar(title: const Text('Security & sign-in')),
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxContentWidth),
             child: SingleChildScrollView(
@@ -160,14 +161,11 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 24),
                   _buildSectionTitle(context, 'Sign-in security'),
                   const SizedBox(height: 12),
                   _SecurityTile(
-                    title: 'Security & recovery',
-                    subtitle:
-                        'Update your password and verify your recovery email',
+                    title: 'Password & recovery email',
+                    subtitle: 'Change your password or verify your email',
                     onTap: _onChangePasswordOrPin,
                   ),
                   const SizedBox(height: 28),
@@ -181,7 +179,6 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   const SizedBox(height: 28),
                   _buildSectionTitle(context, 'Account actions'),
                   const SizedBox(height: 12),
-                  const PublicInformationLinks(),
                   Container(
                     decoration: BoxDecoration(
                       color: colors.surfaceElevated,
@@ -211,37 +208,6 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Row(
-      children: [
-        Semantics(
-          button: true,
-          label: 'Back',
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 20,
-                color: colors.textPrimary,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Security & sign-in',
-            style: AppTypography.title.copyWith(color: colors.textPrimary),
-          ),
-        ),
-      ],
     );
   }
 

@@ -96,8 +96,8 @@ void main() {
         launched.single.toString(),
         'https://checkout.paystack.com/test-only',
       );
-      expect(find.textContaining('Purchase: awaitingPayment'), findsOneWidget);
-      expect(find.textContaining('Server-confirmed fulfilment'), findsNothing);
+      expect(find.text('Awaiting payment'), findsOneWidget);
+      expect(find.textContaining('Payment confirmed'), findsNothing);
       await drain(tester, () async {
         tester.binding.handleAppLifecycleStateChanged(
           AppLifecycleState.inactive,
@@ -106,24 +106,21 @@ void main() {
           AppLifecycleState.resumed,
         );
       });
-      expect(find.textContaining('Server-confirmed fulfilment'), findsNothing);
+      expect(find.textContaining('Payment confirmed'), findsNothing);
       state = 'processing';
       collection = 'successful';
       await drain(
         tester,
         () => tester.tap(find.text('Refresh payment status')),
       );
-      expect(find.textContaining('Do not pay again'), findsOneWidget);
+      expect(find.textContaining('Please do not pay again'), findsOneWidget);
       expect(find.textContaining('Continue to Paystack'), findsNothing);
       state = 'fulfilled';
       await drain(
         tester,
         () => tester.tap(find.text('Refresh payment status')),
       );
-      expect(
-        find.textContaining('Server-confirmed fulfilment'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Payment confirmed'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await finish(tester);
     },
@@ -137,6 +134,19 @@ void main() {
     expect(find.textContaining('Could not open Paystack'), findsOneWidget);
     expect(find.textContaining('old-purchase'), findsOneWidget);
     expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
+    await finish(tester);
+  });
+  testWidgets('collected payment needing Ops review is not labelled failed', (
+    tester,
+  ) async {
+    await pump(tester);
+    state = 'failed';
+    collection = 'successful';
+    await drain(tester, () => tester.tap(find.text('Refresh payment status')));
+    expect(find.text('Payment received · Under review'), findsOneWidget);
+    expect(find.text('Payment failed'), findsNothing);
+    expect(find.textContaining('Please do not pay again'), findsOneWidget);
+    expect(find.textContaining('Continue to Paystack'), findsNothing);
     await finish(tester);
   });
   testWidgets(
@@ -157,7 +167,10 @@ void main() {
       unsafeUrl: 'https://checkout.paystack.com.attacker.test/x',
     );
     expect(find.textContaining('Continue to Paystack'), findsNothing);
-    expect(find.textContaining('No usable checkout link'), findsOneWidget);
+    expect(
+      find.textContaining('The payment link is unavailable'),
+      findsOneWidget,
+    );
     expect(launched, isEmpty);
     await finish(tester);
   });
@@ -166,7 +179,7 @@ void main() {
     (tester) async {
       await pump(tester, noPurchases: true);
       expect(find.text('Prepare checkout'), findsNothing);
-      expect(find.text('Waitlist and offers'), findsOneWidget);
+      expect(find.text('View waitlist'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await finish(tester);
     },

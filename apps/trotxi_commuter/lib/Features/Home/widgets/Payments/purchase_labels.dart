@@ -11,7 +11,14 @@ String purchasePlanLabel(PurchasePlanEnum plan) =>
     plan == PurchasePlanEnum.annual ? 'Annual plan' : 'Monthly plan';
 
 /// Where the purchase itself stands.
-String purchaseStateLabel(PurchaseStateEnum state) {
+String purchaseStateLabel(
+  PurchaseStateEnum state, {
+  PurchaseCollectionStateEnum? collectionState,
+}) {
+  if (state == PurchaseStateEnum.failed &&
+      collectionState == PurchaseCollectionStateEnum.successful) {
+    return 'Payment received · Under review';
+  }
   return switch (state) {
     PurchaseStateEnum.awaitingPayment => 'Awaiting payment',
     PurchaseStateEnum.processing => 'Payment processing',
@@ -36,8 +43,16 @@ String purchaseCollectionStateLabel(PurchaseCollectionStateEnum state) {
 }
 
 /// Badge colour for a purchase state: settled green, dead red, in-flight amber.
-Color purchaseStateColor(BuildContext context, PurchaseStateEnum state) {
+Color purchaseStateColor(
+  BuildContext context,
+  PurchaseStateEnum state, {
+  PurchaseCollectionStateEnum? collectionState,
+}) {
   final colors = context.appColors;
+  if (state == PurchaseStateEnum.failed &&
+      collectionState == PurchaseCollectionStateEnum.successful) {
+    return colors.warning;
+  }
   return switch (state) {
     PurchaseStateEnum.fulfilled => colors.success,
     PurchaseStateEnum.failed || PurchaseStateEnum.cancelled => colors.error,

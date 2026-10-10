@@ -37,6 +37,9 @@ void main() {
     'erasure requires confirmation and describes retained records honestly',
     (tester) async {
       await pump(tester);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.text('Privacy notice'), findsNothing);
+      expect(find.text('Request account deletion'), findsNothing);
       await openDelete(tester);
       expect(
         find.textContaining('required accounting records are retained'),

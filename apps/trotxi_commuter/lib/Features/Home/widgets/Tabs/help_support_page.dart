@@ -61,7 +61,7 @@ class HelpSupportPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'For a trip or payment question, include the trip or purchase ID shown in the app. Never share a password or verification code.',
+                'For trip help, tell us the route and travel date. For payment help, share the payment reference if available. Never share your password or verification code.',
               ),
               if (hours?.isNotEmpty ?? false) ...[
                 const SizedBox(height: 12),

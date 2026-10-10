@@ -306,7 +306,8 @@ class _SearchPanelState extends State<_SearchPanel> {
           title:
               '${purchasePlanLabel(p.plan)} · '
               '${dayFormat.format(p.createdAt.toUtc())}',
-          subtitle: '${purchaseStateLabel(p.state)} · ${p.price.formatted}',
+          subtitle:
+              '${purchaseStateLabel(p.state, collectionState: p.collectionState)} · ${p.price.formatted}',
           icon: Icons.receipt_long_outlined,
           keywords:
               'payment purchase receipt wallet subscription membership '

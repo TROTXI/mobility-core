@@ -191,14 +191,13 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
               padding: const EdgeInsets.all(20),
               children: [
                 Text(
-                  'You are in control',
+                  'Renewals on your terms',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Card auto-renewal is optional. It does not apply to mobile '
-                  'money payments. Turning it off does not cancel coverage '
-                  'you have already paid for.',
+                  'You choose whether to use a saved card for eligible renewals. '
+                  'Mobile money is never charged automatically.',
                 ),
                 const SizedBox(height: 20),
                 if (_loading) const LinearProgressIndicator(),
@@ -284,10 +283,8 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                   ],
                   const SizedBox(height: 16),
                   const Text(
-                    'If the fare or route changes, automatic charging stops '
-                    'and you will need a new Ops offer. Ride Credit can '
-                    'reduce the amount charged. You can refresh this page to '
-                    'check the latest status.',
+                    'If your route or price changes, we will ask you to review a new offer. '
+                    'Turning this off will not affect rides you have already paid for.',
                   ),
                 ],
               ],

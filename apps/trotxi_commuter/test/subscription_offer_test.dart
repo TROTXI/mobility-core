@@ -116,6 +116,11 @@ void main() {
       expect(find.byType(FilterChip), findsNWidgets(7));
       offered = true;
       await drain(() => tester.tap(find.text('Refresh')));
+      expect(
+        find.text('Your offer is ready. Review it below before it expires.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('We will let you know'), findsNothing);
       await tester.tap(find.text('Review your offer'));
       await tester.pumpAndSettle();
       expect(find.text('Package: GHS 70.00'), findsOneWidget);

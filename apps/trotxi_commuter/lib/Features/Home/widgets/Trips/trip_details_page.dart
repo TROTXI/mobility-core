@@ -78,6 +78,21 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     final colors = context.appColors;
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
+      appBar: AppBar(
+        title: const Text('Trip details'),
+        actions: [
+          if (_detail case final detail?)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: _buildStatusPill(
+                  context,
+                  tripOutcomeOf(detail.reservation.status),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -103,7 +118,6 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
     if (_loading && detail == null) {
       return [
-        _buildTopBar(context, null),
         const SizedBox(height: 60),
         Center(
           child: CircularProgressIndicator(color: colors.actionPrimaryDefault),
@@ -112,11 +126,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     }
 
     if (detail == null) {
-      return [
-        _buildTopBar(context, null),
-        const SizedBox(height: 24),
-        _buildErrorCard(context),
-      ];
+      return [const SizedBox(height: 24), _buildErrorCard(context)];
     }
 
     final outcome = tripOutcomeOf(detail.reservation.status);
@@ -128,8 +138,6 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     };
 
     return [
-      _buildTopBar(context, outcome),
-      const SizedBox(height: 4),
       Text(
         '${_formatWeekdayDayShort(detail.reservation.travelDate.toDateTime())} · '
         '${directionLabel(detail.reservation.direction)}',
@@ -151,42 +159,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         _buildVehicleCard(context, detail.trip!),
       ],
       ..._buildActions(context, detail, outcome),
-      const SizedBox(height: 20),
-      Center(
-        child: Text(
-          'Trip ID  ${detail.reservation.id}',
-          style: AppTypography.caption.copyWith(color: colors.textTertiary),
-        ),
-      ),
     ];
-  }
-
-  // ---------------------------------------------------------------------
-  // Header
-  // ---------------------------------------------------------------------
-
-  Widget _buildTopBar(BuildContext context, TripOutcome? outcome) {
-    final colors = context.appColors;
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: colors.textPrimary,
-            size: 18,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            'Trip details',
-            style: AppTypography.title.copyWith(color: colors.textPrimary),
-          ),
-        ),
-        if (outcome != null) _buildStatusPill(context, outcome),
-        const SizedBox(width: 4),
-      ],
-    );
   }
 
   Widget _buildStatusPill(BuildContext context, TripOutcome outcome) {
