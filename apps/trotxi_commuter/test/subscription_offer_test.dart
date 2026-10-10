@@ -111,16 +111,18 @@ void main() {
       expect(find.text('Verify phone'), findsOneWidget);
       expect(find.text('Choose a route'), findsNothing);
       verified = true;
-      await drain(() => tester.tap(find.text('Refresh')));
+      await drain(() => tester.tap(find.byTooltip('Refresh waitlist')));
       expect(find.text('Choose a route'), findsOneWidget);
       expect(find.byType(FilterChip), findsNWidgets(7));
       offered = true;
-      await drain(() => tester.tap(find.text('Refresh')));
+      await drain(() => tester.tap(find.byTooltip('Refresh waitlist')));
+      expect(find.text('Your offer is here'), findsOneWidget);
       expect(
-        find.text('Your offer is ready. Review it below before it expires.'),
+        find.text('Review the journeys, dates and price before deciding.'),
         findsOneWidget,
       );
-      expect(find.textContaining('We will let you know'), findsNothing);
+      await tester.drag(find.byType(ListView), const Offset(0, -260));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Review your offer'));
       await tester.pumpAndSettle();
       expect(find.text('GHS 70.00'), findsOneWidget);

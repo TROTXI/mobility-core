@@ -32,9 +32,9 @@ class _StandbyPageState extends State<StandbyPage> {
       '${DateFormat('d MMM y').format(end.toDateTime(utc: true).subtract(const Duration(days: 1)))}';
 
   String _status(wire.StandbyApplicationStateEnum state) => switch (state) {
-    wire.StandbyApplicationStateEnum.submitted => 'Request received',
+    wire.StandbyApplicationStateEnum.submitted => 'On the waitlist',
     wire.StandbyApplicationStateEnum.offered => 'Offer ready',
-    wire.StandbyApplicationStateEnum.checkoutOpen => 'Awaiting payment',
+    wire.StandbyApplicationStateEnum.checkoutOpen => 'Payment pending',
     _ => 'Request updated',
   };
 
@@ -407,59 +407,41 @@ class _StandbyPageState extends State<StandbyPage> {
               a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
         )
         .toList();
-    final checkoutOpen = active.any(
-      (a) => a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
-    );
-    final offerReady = active.any(
-      (a) =>
-          a.state == wire.StandbyApplicationStateEnum.offered &&
-          a.offer?.terms != null &&
-          (a.offer?.expiresAt.isAfter(DateTime.now()) ?? false),
-    );
-    final offered = active.any(
-      (a) => a.state == wire.StandbyApplicationStateEnum.offered,
-    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Waitlist'),
         scrolledUnderElevation: 0,
         actions: [
-          TextButton(
+          IconButton(
+            tooltip: 'Refresh waitlist',
             onPressed: _busy ? null : _refresh,
-            child: const Text('Refresh'),
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
+      bottomNavigationBar: eligible && active.isEmpty
+          ? SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: SizedBox(
+                  height: 54,
+                  child: FilledButton(
+                    onPressed: _busy || _travelDays.isEmpty ? null : _join,
+                    child: const Text('Choose a route'),
+                  ),
+                ),
+              ),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
-            Text(
-              active.isEmpty ? 'Plan your commute' : 'Your request',
-              style: AppTypography.heading2.copyWith(
-                color: colors.textPrimary,
-                letterSpacing: -0.6,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              active.isEmpty
-                  ? 'Choose your travel days and route. We will send an offer when we can serve your commute.'
-                  : checkoutOpen
-                  ? 'Your checkout is open. Complete payment when you are ready.'
-                  : offerReady
-                  ? 'Your offer is ready. Review it below before it expires.'
-                  : offered
-                  ? 'Your offer needs attention. Check the details below.'
-                  : 'We have your request. We will let you know when an offer is ready.',
-              style: AppTypography.body.copyWith(
-                color: colors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 22),
+            _hero(active),
+            const SizedBox(height: 20),
             if (_busy) ...[
               const LinearProgressIndicator(),
               const SizedBox(height: 16),
@@ -494,26 +476,128 @@ class _StandbyPageState extends State<StandbyPage> {
               _applicationCard(application),
               const SizedBox(height: 12),
             ],
-            const SizedBox(height: 16),
-            Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: colors.borderSubtle),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const ExpansionTile(
-                title: Text('How offers and renewals work'),
-                childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                children: [
-                  Text(
-                    'An offer shows your journeys, travel days, ride allowance, dates and price before you pay. You can pay for one renewal ahead of time; its rides start when the new coverage begins. Unused rides become credit after the current coverage ends. Card auto-renewal is optional and can be managed in Wallet.',
-                  ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 20),
+            _howItWorks(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _hero(List<wire.StandbyApplication> active) {
+    final colors = context.appColors;
+    final hasOffer = active.any(
+      (a) =>
+          a.state == wire.StandbyApplicationStateEnum.offered &&
+          a.offer?.terms != null &&
+          (a.offer?.expiresAt.isAfter(DateTime.now()) ?? false),
+    );
+    final checkoutOpen = active.any(
+      (a) => a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
+    );
+    final expiredOffer = active.any(
+      (a) =>
+          a.state == wire.StandbyApplicationStateEnum.offered &&
+          (a.offer?.expiresAt.isBefore(DateTime.now()) ?? false),
+    );
+    final title = active.isEmpty
+        ? 'A commute that fits your week'
+        : checkoutOpen
+        ? 'Your payment is ready'
+        : hasOffer
+        ? 'Your offer is here'
+        : expiredOffer
+        ? 'Your offer has expired'
+        : 'We have your request';
+    final description = active.isEmpty
+        ? 'Tell us when and where you travel. We will send a price for you to review.'
+        : checkoutOpen
+        ? 'You can finish paying from your payment history.'
+        : hasOffer
+        ? 'Review the journeys, dates and price before deciding.'
+        : expiredOffer
+        ? 'You can leave the waitlist and start a new request.'
+        : 'We will let you know when we can offer your commute.';
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colors.surfaceStrong,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            active.isEmpty
+                ? Icons.route_outlined
+                : Icons.directions_bus_outlined,
+            color: colors.onSurfaceStrong,
+            size: 26,
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            style: AppTypography.heading3.copyWith(
+              color: colors.onSurfaceStrong,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.onSurfaceStrong.withValues(alpha: 0.82),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _howItWorks() {
+    final colors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'What happens next',
+          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: 14),
+        _nextStep(
+          Icons.schedule_outlined,
+          'Tell us your travel days and route',
+        ),
+        _nextStep(
+          Icons.local_offer_outlined,
+          'Review an offer when it arrives',
+        ),
+        _nextStep(Icons.lock_outline, 'Pay only when you accept'),
+        const SizedBox(height: 6),
+        Text(
+          'Joining is free. An offer does not reserve a seat; confirm each trip after your plan starts.',
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _nextStep(IconData icon, String text) {
+    final colors = context.appColors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: colors.actionPrimaryDefault),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -554,7 +638,7 @@ class _StandbyPageState extends State<StandbyPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceElevated,
+        color: colors.backgroundSubtle,
         border: Border.all(color: colors.borderSubtle),
         borderRadius: BorderRadius.circular(22),
       ),
@@ -562,42 +646,19 @@ class _StandbyPageState extends State<StandbyPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Build your request',
+            'Your travel plans',
             style: AppTypography.title.copyWith(color: colors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
-            'Joining is free and does not reserve a seat.',
+            'Start with the days you need a ride.',
             style: AppTypography.bodySmall.copyWith(
               color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 24),
-          DropdownButtonFormField<wire.PurchaseInputPlanEnum>(
-            initialValue: _plan,
-            decoration: InputDecoration(
-              labelText: 'Requested plan',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: wire.PurchaseInputPlanEnum.monthly,
-                child: Text('Monthly'),
-              ),
-              DropdownMenuItem(
-                value: wire.PurchaseInputPlanEnum.annual,
-                child: Text('Annual'),
-              ),
-            ],
-            onChanged: _busy
-                ? null
-                : (plan) => setState(() => _plan = plan ?? _plan),
-          ),
-          const SizedBox(height: 22),
           Text(
-            'Travel days',
+            'Which days do you travel?',
             style: AppTypography.label.copyWith(
               color: colors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -622,25 +683,69 @@ class _StandbyPageState extends State<StandbyPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          if (_travelDays.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Select at least one day to continue.',
+              style: AppTypography.caption.copyWith(color: colors.error),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Text(
+            'How long do you plan to travel?',
+            style: AppTypography.label.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<wire.PurchaseInputPlanEnum>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: wire.PurchaseInputPlanEnum.monthly,
+                  label: Text('Monthly'),
+                ),
+                ButtonSegment(
+                  value: wire.PurchaseInputPlanEnum.annual,
+                  label: Text('Annual'),
+                ),
+              ],
+              selected: {_plan},
+              onSelectionChanged: _busy
+                  ? null
+                  : (selection) => setState(() => _plan = selection.first),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'We will show the exact dates, rides and price in your offer.',
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 20),
           Material(
             color: Colors.transparent,
-            child: CheckboxListTile(
+            child: SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               value: _useCredit,
               onChanged: _busy
                   ? null
-                  : (v) => setState(() => _useCredit = v ?? false),
-              title: const Text('Use available ride credit'),
-              subtitle: const Text('Applied only if you accept an offer.'),
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 54,
-            child: FilledButton(
-              onPressed: _busy || _travelDays.isEmpty ? null : _join,
-              child: const Text('Choose a route'),
+                  : (value) => setState(() => _useCredit = value),
+              title: Text(
+                'Use my ride credit',
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                'Any available credit reduces the final amount you pay.',
+                style: AppTypography.caption.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
             ),
           ),
         ],
@@ -663,42 +768,64 @@ class _StandbyPageState extends State<StandbyPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: colors.actionPrimaryDefault.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              _status(application.state),
-              style: AppTypography.caption.copyWith(
+          Row(
+            children: [
+              Icon(
+                application.state == wire.StandbyApplicationStateEnum.submitted
+                    ? Icons.hourglass_top_outlined
+                    : Icons.local_offer_outlined,
                 color: colors.actionPrimaryDefault,
-                fontWeight: FontWeight.w700,
+                size: 20,
               ),
-            ),
+              const SizedBox(width: 8),
+              Text(
+                application.state == wire.StandbyApplicationStateEnum.offered &&
+                        !offerCurrent
+                    ? 'Offer expired'
+                    : _status(application.state),
+                style: AppTypography.label.copyWith(
+                  color: colors.actionPrimaryDefault,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           Text(
             application.routeName,
             style: AppTypography.title.copyWith(color: colors.textPrimary),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${application.selection.plan.name == 'annual' ? 'Annual' : 'Monthly'} plan',
-            style: AppTypography.bodySmall.copyWith(
-              color: colors.textSecondary,
-            ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _metadataPill(
+                Icons.event_outlined,
+                '${application.selection.plan.name == 'annual' ? 'Annual' : 'Monthly'} plan',
+              ),
+              _metadataPill(
+                Icons.calendar_today_outlined,
+                application.travelDays
+                    .map((day) => _dayNames[day - 1])
+                    .join(', '),
+              ),
+            ],
           ),
-          Text(
-            application.travelDays.map((day) => _dayNames[day - 1]).join(', '),
-            style: AppTypography.bodySmall.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
-          if (offer != null) ...[
-            const SizedBox(height: 12),
+          if (offer?.terms != null && offerCurrent) ...[
+            const SizedBox(height: 16),
             Text(
-              'Offer available until ${DateFormat('d MMM, h:mm a').format(offer.expiresAt.toLocal())}',
+              'Offer price · GHS ${(offer.terms!.price.amountMinor / 100).toStringAsFixed(2)}',
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (offer != null && offerCurrent) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Review by ${DateFormat('d MMM, h:mm a').format(offer.expiresAt.toLocal())}',
               style: AppTypography.bodySmall.copyWith(
                 color: colors.textSecondary,
               ),
@@ -718,7 +845,8 @@ class _StandbyPageState extends State<StandbyPage> {
           ],
           if (offer != null &&
               offer.terms == null &&
-              application.state == wire.StandbyApplicationStateEnum.offered)
+              application.state == wire.StandbyApplicationStateEnum.offered &&
+              offerCurrent)
             const Padding(
               padding: EdgeInsets.only(top: 12),
               child: Text(
@@ -730,14 +858,18 @@ class _StandbyPageState extends State<StandbyPage> {
             const Padding(
               padding: EdgeInsets.only(top: 12),
               child: Text(
-                'This offer has expired. Leave the waitlist to choose a route again.',
+                'This offer can no longer be accepted. Start a new request to receive an updated price.',
               ),
             ),
           if (application.state == wire.StandbyApplicationStateEnum.submitted ||
               application.state == wire.StandbyApplicationStateEnum.offered)
             TextButton(
               onPressed: _busy ? null : () => _withdraw(application),
-              child: const Text('Leave waitlist'),
+              child: Text(
+                offer != null && !offerCurrent
+                    ? 'Start a new request'
+                    : 'Cancel request',
+              ),
             ),
           if (application.state ==
               wire.StandbyApplicationStateEnum.checkoutOpen)
@@ -748,8 +880,30 @@ class _StandbyPageState extends State<StandbyPage> {
                   builder: (_) => CheckoutPage(client: widget.client),
                 ),
               ),
-              child: const Text('View checkout'),
+              child: const Text('Continue to payment'),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metadataPill(IconData icon, String text) {
+    final colors = context.appColors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.backgroundSubtle,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.textSecondary),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
         ],
       ),
     );

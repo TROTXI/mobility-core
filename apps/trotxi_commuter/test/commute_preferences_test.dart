@@ -192,6 +192,9 @@ void main() {
     if (reveal) {
       await tester.tap(find.text('Request a new route'));
       await tester.pumpAndSettle();
+    } else {
+      await tester.drag(find.byType(ListView), const Offset(0, -240));
+      await tester.pumpAndSettle();
     }
     await tester.ensureVisible(find.text(button));
     await tester.tap(find.text(button));
@@ -269,15 +272,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Waitlist'), findsOneWidget);
       expect(
-        find.textContaining('Joining is free and does not reserve a seat'),
+        find.textContaining('Tell us when and where you travel'),
         findsOneWidget,
       );
       if (plan == 'annual') {
-        await tester.tap(
-          find.byType(DropdownButtonFormField<wire.PurchaseInputPlanEnum>),
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Annual').last);
+        await tester.tap(find.text('Annual'));
         await tester.pumpAndSettle();
       }
       await choose(tester, button: 'Choose a route', reveal: false);
