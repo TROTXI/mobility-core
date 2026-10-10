@@ -42,6 +42,7 @@ void main() {
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('Apple'), findsNothing);
     expect(find.textContaining('Continue with email'), findsNothing);
+    expect(find.text('Request account deletion'), findsOneWidget);
 
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();

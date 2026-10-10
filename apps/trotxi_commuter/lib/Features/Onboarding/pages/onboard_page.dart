@@ -133,14 +133,14 @@ class _OnBoardPageState extends State<OnBoardPage> {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            'Learn how we handle your information.',
+                            'Privacy and account help',
                             textAlign: TextAlign.center,
                             style: AppTypography.caption.copyWith(
                               color: colors.textSecondary,
                               height: 1.5,
                             ),
                           ),
-                          const PublicInformationLinks(showDeletion: false),
+                          const PublicInformationLinks(),
                         ],
                       ),
                     ),
