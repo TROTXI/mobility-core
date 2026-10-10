@@ -234,6 +234,8 @@ void main() {
               isFalse,
             );
           }
+          await tester.ensureVisible(find.text('Retry saving this PIN'));
+          await tester.pump();
           await tester.tap(find.text('Retry saving this PIN'));
           await tester.pump();
           await tester.pump();
@@ -390,7 +392,10 @@ void main() {
         ),
       );
       expect(find.text('Forgot PIN?'), findsOneWidget);
-      expect(find.textContaining('one-way hash'), findsOneWidget);
+      expect(
+        find.textContaining('cannot see the PIN you choose'),
+        findsOneWidget,
+      );
       await tester.ensureVisible(find.text('Forgot PIN?'));
       await tester.tap(find.text('Forgot PIN?'));
       await tester.pumpAndSettle();
@@ -426,6 +431,10 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'DR-7K9Q');
     await tester.enterText(find.byType(TextField).last, '481205');
     await tester.pump();
+    expect(signedIn, isNull);
+    expect(held, isNull);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pump();
     expect(signedIn?.mustChangePin, isTrue);
     expect(held, '481205');
