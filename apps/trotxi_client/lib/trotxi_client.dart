@@ -318,6 +318,7 @@ class AuthInterceptor extends Interceptor {
       '/v1/auth/google',
       '/v1/auth/apple',
       '/v1/auth/email/login',
+      '/v1/auth/phone/password',
     }.contains(Uri.parse(path).path);
   }
 

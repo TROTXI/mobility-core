@@ -350,6 +350,40 @@ test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enabl
     ).statusCode,
     200,
   );
+  await f.owner.query('UPDATE app.users SET deleted_at=clock_timestamp() WHERE id=$1', [
+    signed.account.id,
+  ]);
+  const replacementChallenge = data(
+    await f.request('POST', '/v1/auth/phone/request', { phone: '0247654321' }),
+  );
+  const replacement = data(
+    await f.request('POST', '/v1/auth/phone/verify', {
+      challengeId: replacementChallenge.challengeId,
+      code,
+    }),
+  );
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/phone-registration',
+      {
+        firstName: 'New',
+        lastName: 'Rider',
+        email: 'ama@outlook.com',
+        password: emailPassword,
+      },
+      replacement.accessToken,
+    ),
+    204,
+  );
+  const emails = (
+    await f.owner.query('SELECT user_id,email FROM app.email_credentials ORDER BY user_id')
+  ).rows;
+  assert.equal(emails.find((row) => row.user_id === signed.account.id)?.email, null);
+  assert.equal(
+    emails.find((row) => row.user_id === replacement.account.id)?.email,
+    'ama@outlook.com',
+  );
 });
 
 test('PHONE-02: five incorrect guesses commit and exhaust the challenge', async (t) => {
