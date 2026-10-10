@@ -15,12 +15,14 @@ Home, Trips, Wallet and Profile expose reservations/passes, a public route and
 stop preview, scoped live bus tracking,
 current/upcoming membership, payment recovery/history, ride/credit history,
 pauses, commute-change requests, avatar/account controls and support.
+Wallet also exposes opt-in card auto-renewal, turn-off and saved-card removal.
 The bell opens the durable inbox; preferences use the server ETag. When the
 rider enables phone alerts, the app registers its Firebase device token and
 opens the server inbox from a push tap. Push content is not authorization.
 
 There is no fixed 44-ride subscription, direct public purchase bypass, cash
-top-up wallet, automatic card renewal or single-seat standby cascade.
+top-up wallet or single-seat standby cascade. Card auto-renewal requires a
+reusable card and explicit consent; mobile money is not charged automatically.
 The signup OTP verifies the phone. It is not Ghana Card identity verification.
 
 See [API integration](../../docs/api/README.md),

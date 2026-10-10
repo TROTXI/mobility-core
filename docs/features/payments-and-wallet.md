@@ -60,11 +60,12 @@ This applies to Ops too; resolve/refund the upcoming renewal before changing dat
 
 The API supports reading renewal state (`GET /v1/me/auto-renewal`) and explicit
 opt-in or opt-out (`PUT /v1/me/auto-renewal` with `enabled: true` or `false`).
-The generated Dart client exists, but the commuter app does not yet expose
-opt-in, turn-off or remove-card controls. Do not describe this as a completed
-mobile flow or enable it on a rider's behalf without consent.
+Wallet now exposes opt-in, turn-off, saved-card removal and the upcoming
+renewal state. Enabling or removing a card requires an explicit confirmation.
+End-to-end acceptance on physical devices and Paystack test cards remains
+outstanding; never enable it on a rider's behalf without consent.
 
-The intended app flow asks for consent before offer checkout. Consent alone
+The rider can opt in from Wallet before offer checkout. Consent alone
 does not save a card: a verified reusable card payment is required. Mobile
 money cannot be charged later, so it never enables renewal.
 
