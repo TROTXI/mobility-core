@@ -118,8 +118,6 @@ class AuthLayout extends StatelessWidget {
                             subtitle!,
                             textAlign: TextAlign.center,
                             style: AppTypography.authRowDetail.copyWith(
-                              fontSize: 13,
-                              height: 20 / 13,
                               color: colors.textSecondary,
                             ),
                           ),

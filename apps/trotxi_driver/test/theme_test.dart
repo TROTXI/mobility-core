@@ -36,18 +36,19 @@ void main() {
       expect(AppTheme.darkTheme.scaffoldBackgroundColor, AppColors.dark.page);
     });
 
-    test('all Material text slots use the bundled Poppins family', () {
+    test('display text is branded, reading text uses the native face', () {
       for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
         for (final text in [theme.textTheme, theme.primaryTextTheme]) {
           for (final style in [
-            text.displayLarge,
-            text.displayMedium,
-            text.displaySmall,
             text.headlineLarge,
             text.headlineMedium,
             text.headlineSmall,
             text.titleLarge,
             text.titleMedium,
+          ]) {
+            expect(style?.fontFamily, 'Poppins');
+          }
+          for (final style in [
             text.titleSmall,
             text.bodyLarge,
             text.bodyMedium,
@@ -56,7 +57,7 @@ void main() {
             text.labelMedium,
             text.labelSmall,
           ]) {
-            expect(style?.fontFamily, 'Poppins');
+            expect(style?.fontFamily, isNot('Poppins'));
           }
         }
       }

@@ -239,24 +239,21 @@ abstract final class AppTheme {
   static TextTheme _textTheme(AppColors colors, TextTheme base) {
     final primary = colors.textPrimary;
     final secondary = colors.textSecondary;
-    // Apply the bundled family to *every* Material slot, including the lesser
-    // used dialog/segmented-control styles. Otherwise newly added screens can
-    // quietly mix platform fonts with Poppins despite using this theme.
-    return base
-        .apply(fontFamily: AppTypography.fontFamily)
-        .copyWith(
-          headlineLarge: AppTypography.heading1.copyWith(color: primary),
-          headlineMedium: AppTypography.heading2.copyWith(color: primary),
-          headlineSmall: AppTypography.heading3.copyWith(color: primary),
-          titleLarge: AppTypography.title.copyWith(color: primary),
-          titleMedium: AppTypography.runTitle.copyWith(color: primary),
-          titleSmall: AppTypography.label.copyWith(color: primary),
-          bodyLarge: AppTypography.bodyLarge.copyWith(color: primary),
-          bodyMedium: AppTypography.body.copyWith(color: primary),
-          bodySmall: AppTypography.bodySmall.copyWith(color: secondary),
-          labelLarge: AppTypography.label.copyWith(color: primary),
-          labelMedium: AppTypography.caption.copyWith(color: secondary),
-          labelSmall: AppTypography.caption.copyWith(color: secondary),
-        );
+    // Keep the platform's native reading face in Material controls. The
+    // branded display styles opt into Poppins individually.
+    return base.copyWith(
+      headlineLarge: AppTypography.heading1.copyWith(color: primary),
+      headlineMedium: AppTypography.heading2.copyWith(color: primary),
+      headlineSmall: AppTypography.heading3.copyWith(color: primary),
+      titleLarge: AppTypography.title.copyWith(color: primary),
+      titleMedium: AppTypography.runTitle.copyWith(color: primary),
+      titleSmall: AppTypography.label.copyWith(color: primary),
+      bodyLarge: AppTypography.bodyLarge.copyWith(color: primary),
+      bodyMedium: AppTypography.body.copyWith(color: primary),
+      bodySmall: AppTypography.bodySmall.copyWith(color: secondary),
+      labelLarge: AppTypography.label.copyWith(color: primary),
+      labelMedium: AppTypography.caption.copyWith(color: secondary),
+      labelSmall: AppTypography.caption.copyWith(color: secondary),
+    );
   }
 }

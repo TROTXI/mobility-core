@@ -32,7 +32,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Driver privacy & guidance'), findsOneWidget);
+      expect(find.text('Driver information'), findsOneWidget);
       expect(
         driverInformationSections['Location during an active trip'],
         contains('background'),
@@ -59,14 +59,31 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Driver privacy & guidance'),
-        -400,
-      );
-      final heading = tester.widget<Text>(
-        find.text('Driver privacy & guidance'),
-      );
+      await tester.scrollUntilVisible(find.text('Driver information'), -400);
+      final heading = tester.widget<Text>(find.text('Driver information'));
       expect(heading.style?.color, AppColors.dark.textPrimary);
     },
   );
+
+  testWidgets('nested information page leaves the title to its app bar', (
+    tester,
+  ) async {
+    final config = ConfigController(config: _Config());
+    addTearDown(config.dispose);
+    await config.load();
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: config,
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(body: DriverInformationPage(showHeading: false)),
+        ),
+      ),
+    );
+    expect(find.text('Driver information'), findsNothing);
+    expect(
+      find.text('How Trotxi uses your information and how to work safely.'),
+      findsOneWidget,
+    );
+  });
 }

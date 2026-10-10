@@ -17,7 +17,6 @@ import 'package:trotxi_driver/Presentations/Support/pages/incident_support_page.
 import 'package:trotxi_driver/Presentations/Work/pages/work_requests_page.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/driver_notifications.dart';
-import 'package:trotxi_driver/core/widgets/public_information_links.dart';
 import 'driver_information_page.dart';
 
 /// Profile and settings (prototype frames 49 to 54).
@@ -284,15 +283,23 @@ class _ProfilePageState extends State<ProfilePage> {
               colors: colors,
               danger: true,
             ),
-            _destination(
-              context,
-              title: 'Privacy & driver guidance',
-              subtitle: 'Location sharing, your information and safe operation',
-              pageTitle: 'Privacy & driver guidance',
-              page: const DriverInformationPage(),
-              colors: colors,
-            ),
           ],
+        ),
+      ),
+    );
+
+    final help = _ProfileSection(
+      label: 'Help & privacy',
+      colors: colors,
+      child: _Card(
+        colors: colors,
+        child: _destination(
+          context,
+          title: 'Driver information',
+          subtitle: 'Privacy, location sharing and safe operation',
+          pageTitle: 'Driver information',
+          page: const DriverInformationPage(showHeading: false),
+          colors: colors,
         ),
       ),
     );
@@ -401,6 +408,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         work,
                         const SizedBox(height: AppSpacing.space24),
+                        help,
+                        const SizedBox(height: AppSpacing.space24),
                         appearance,
                       ],
                     ),
@@ -412,6 +421,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   identity,
                   const SizedBox(height: AppSpacing.space24),
                   work,
+                  const SizedBox(height: AppSpacing.space24),
+                  help,
                   const SizedBox(height: AppSpacing.space24),
                   device,
                   const SizedBox(height: AppSpacing.space24),
@@ -432,7 +443,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: content,
                 ),
               ),
-              const PublicInformationLinks(),
             ],
           ),
         );

@@ -49,4 +49,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
   });
+
+  testWidgets('sign-in can show privacy without a deletion action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: PublicInformationLinks(showDeletion: false)),
+      ),
+    );
+    expect(find.text('Privacy notice'), findsOneWidget);
+    expect(find.text('Request account deletion'), findsNothing);
+  });
 }

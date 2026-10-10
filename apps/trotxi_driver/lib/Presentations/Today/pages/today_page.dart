@@ -157,8 +157,8 @@ class _TodayPageState extends State<TodayPage> {
           _ScrollableMessage(
             title: 'No trips assigned yet',
             detail:
-                'Operations has not put you on a run today. This updates when they do, '
-                'so pull down if you have just been told otherwise.',
+                'Your trips will appear here when Operations assigns them. '
+                'Pull down to refresh.',
             colors: colors,
             embedded: true,
           )

@@ -202,8 +202,6 @@ class _SignInPageState extends State<SignInPage> {
                           : 'Use the driver code and PIN provided by your operator.',
                       textAlign: TextAlign.center,
                       style: AppTypography.authRowDetail.copyWith(
-                        fontSize: 13,
-                        height: 20 / 13,
                         color: colors.textSecondary,
                       ),
                     ),
@@ -371,11 +369,13 @@ class _SignInPageState extends State<SignInPage> {
                     const SizedBox(height: AppSpacing.space20),
 
                     const AuthCaption(
-                      'Your PIN is stored only as a one-way hash. Operations can '
-                      'issue a temporary PIN but can never see the one you choose.',
+                      'Operations can issue a temporary PIN, but cannot see the '
+                      'PIN you choose.',
                     ),
                     const SizedBox(height: AppSpacing.space8),
-                    const Center(child: PublicInformationLinks()),
+                    const Center(
+                      child: PublicInformationLinks(showDeletion: false),
+                    ),
                   ],
                 ),
               ),

@@ -2,22 +2,21 @@ import 'package:flutter/material.dart';
 
 /// The driver type scale.
 ///
-/// Shares the commuter app's family and ramp, with one deliberate difference:
+/// Shares the commuter app's brand display face, while supporting text uses
+/// the platform's native face for clarity at small sizes. One difference:
 /// [runTitle] and [counter] exist because the active-trip frames lean on two
 /// numbers a driver reads at a glance while moving — seats boarded against
 /// capacity, and stop N of M. Those are not body text and should not inherit
 /// body's line height.
 abstract final class AppTypography {
-  /// Bundled from assets/fonts (#236). Until it was, this named a face that did
-  /// not ship, so every screen rendered in SF Pro or Roboto and only the sizes
-  /// and weights below took effect — which is most of why the built screens did
-  /// not look like the file.
-  ///
-  /// The commuter app still has that gap.
-  static const String fontFamily = 'Poppins';
+  /// A null family lets body text use the platform's native UI face.
+  static const String? fontFamily = null;
+
+  /// Bundled brand face, reserved for short display text and glanceable values.
+  static const String displayFontFamily = 'Poppins';
 
   static const heading1 = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 32,
     fontWeight: FontWeight.w700,
     height: 40 / 32,
@@ -25,7 +24,7 @@ abstract final class AppTypography {
   );
 
   static const heading2 = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w600,
     height: 36 / 28,
@@ -33,14 +32,14 @@ abstract final class AppTypography {
   );
 
   static const heading3 = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 24,
     fontWeight: FontWeight.w600,
     height: 32 / 24,
   );
 
   static const title = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 28 / 20,
@@ -48,7 +47,7 @@ abstract final class AppTypography {
 
   /// "7:40 Medina · Circle" — the run identity, on every trip screen.
   static const runTitle = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w700,
     height: 26 / 20,
@@ -76,44 +75,42 @@ abstract final class AppTypography {
   /// [title] at the same sort of size, because it is the one word a driver
   /// reads while moving.
   static const stopName = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 18,
     fontWeight: FontWeight.w700,
     height: 27 / 18,
   );
 
-  /// The uppercase label inside a status chip. 11/600 at 0.44 letter spacing,
-  /// straight off Components / Driver Status Chips.
+  /// The uppercase label inside a status chip, raised for legibility.
   static const chipLabel = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: FontWeight.w600,
-    height: 17 / 11,
+    height: 18 / 12,
     letterSpacing: 0.44,
   );
 
-  /// The small uppercase heading above a number in a stat tile — "BOARDED",
-  /// "STOP", "NEXT STOP". 10/600 in the file.
+  /// The small uppercase heading above a number in a stat tile.
   static const tileLabel = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: FontWeight.w600,
-    height: 15 / 10,
+    height: 18 / 12,
     letterSpacing: 0.3,
   );
 
-  /// The line under a stat tile's number — "7 remaining", "Shiashie next".
+  /// The line under a stat tile's number, such as "7 remaining".
   static const tileCaption = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: FontWeight.w400,
-    height: 17 / 11,
+    height: 19 / 13,
   );
 
   /// "11 / 18" and "3 of 11". Tabular so the layout does not jump as riders
   /// board and the digits change width.
   static const counter = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     height: 32 / 28,
@@ -150,37 +147,36 @@ abstract final class AppTypography {
     height: 20 / 14,
   );
 
-  /// The second line of a card row, and a detail label. The file draws these
-  /// at 11; 12 keeps them readable on a phone clamped to a windscreen.
+  /// The second line of a card row, and a detail label, kept readable on a
+  /// phone clamped to a windscreen.
   static const authRowDetail = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: FontWeight.w400,
-    height: 18 / 12,
+    height: 20 / 14,
   );
 
   /// A detail value beside [authRowDetail].
   static const authRowValue = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: FontWeight.w600,
-    height: 18 / 12,
+    height: 20 / 14,
   );
 
-  /// The one line of small print under a screen's actions. 10 in the file; 11
-  /// so it can still be read.
+  /// The one line of small print under a screen's actions.
   static const authCaption = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: FontWeight.w400,
-    height: 16 / 11,
+    height: 18 / 12,
   );
 
   /// The centred title on a full-screen auth or readiness frame. 26/600 in the
   /// file, deliberately smaller than [heading1]: these screens lead with the
   /// wordmark, so the title sits under a logo rather than carrying the page.
   static const screenTitle = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 26,
     fontWeight: FontWeight.w600,
     height: 39 / 26,
@@ -189,17 +185,17 @@ abstract final class AppTypography {
   /// The one explanatory line under [screenTitle].
   static const screenContext = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: FontWeight.w400,
-    height: 18 / 12,
+    height: 20 / 14,
   );
 
-  /// The label above an input, and the inline links at this size. 12/600.
+  /// The label above an input, and inline links at this size.
   static const fieldLabel = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: FontWeight.w600,
-    height: 18 / 12,
+    height: 20 / 14,
   );
 
   /// What a driver types, and the placeholder before they do. The file draws
@@ -219,13 +215,12 @@ abstract final class AppTypography {
     height: 24 / 16,
   );
 
-  /// The smallest type in the app: a note card's body, the security line under
-  /// sign-in, and an inline field error. 10/400.
+  /// The smallest type in the app: notes and inline field errors.
   static const footnote = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: FontWeight.w400,
-    height: 15 / 10,
+    height: 18 / 12,
   );
 
   static const bodyLarge = TextStyle(
@@ -259,16 +254,16 @@ abstract final class AppTypography {
   /// Status chips and the small caps above a value.
   static const caption = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: FontWeight.w500,
-    height: 16 / 12,
+    height: 18 / 13,
     letterSpacing: 0.2,
   );
 
   /// The boarding code as the rider shows it and the driver retypes it.
   /// Monospaced-by-feature so four characters stay evenly spaced.
   static const boardingCode = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: displayFontFamily,
     fontSize: 32,
     fontWeight: FontWeight.w700,
     height: 40 / 32,
