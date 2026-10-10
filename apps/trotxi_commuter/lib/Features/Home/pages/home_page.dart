@@ -6,9 +6,11 @@ import 'package:trotxi_commuter/Features/Home/widgets/BottomNavigation/commuter_
 import 'package:trotxi_commuter/Features/Search/commuter_search.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Navbar/navbar.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/home_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/help_support_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/pass_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/reservation_trips_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/wallet_tab.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
@@ -145,6 +147,18 @@ class _HomePageState extends State<HomePage> {
   void _showBoardingPass() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => PassTab(client: widget.client)),
+    );
+  }
+
+  void _showRoutes() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => RoutesTab(client: widget.client)));
+  }
+
+  void _showSupport() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => HelpSupportPage(client: widget.client)),
     );
   }
 
@@ -297,6 +311,10 @@ class _HomePageState extends State<HomePage> {
         client: widget.client,
         userData: userData,
         onShowBoardingPass: _showBoardingPass,
+        onShowTrips: () => _goToDestination(CommuterDestination.trips),
+        onShowRoutes: _showRoutes,
+        onShowWallet: () => _goToDestination(CommuterDestination.wallet),
+        onShowSupport: _showSupport,
       ),
       ReservationTripsTab(client: widget.client),
       WalletTab(client: widget.client),

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/splash_view.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/notifications_inbox_page.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_client/public_information.dart';
@@ -18,6 +19,7 @@ import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/api/api_debug_interceptor.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/notifications/commuter_notifications.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
@@ -126,18 +128,100 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
   static const _revalidateAfter = Duration(minutes: 5);
 
   final _themeController = AppThemeController();
+  GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+  late final CommuterNotifications _notifications = CommuterNotifications(
+    api: widget.client,
+    openInbox: _openInbox,
+    showForegroundNotice: _showRideNotice,
+  );
   DateTime? _pausedAt;
+  bool _pendingInbox = false;
+  bool _openingInbox = false;
+  String? _boundOwner;
+  late CommuterStage _boundStage;
+  late bool _boundUpgrade;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _boundStage = widget.client.stage.value;
+    _boundUpgrade = widget.client.upgradeRequired.value;
+    widget.client.stage.addListener(_syncNotificationOwner);
+    widget.client.identityRevision.addListener(_syncNotificationOwner);
+    widget.client.upgradeRequired.addListener(_syncNotificationOwner);
+    _notifications.start();
     unawaited(widget.client.load());
+  }
+
+  void _syncNotificationOwner() {
+    final ready = widget.client.stage.value == CommuterStage.ready;
+    final owner = ready ? widget.client.currentAccount?.id : null;
+    final stage = widget.client.stage.value;
+    final upgrade = widget.client.upgradeRequired.value;
+    if (owner != _boundOwner ||
+        stage != _boundStage ||
+        upgrade != _boundUpgrade) {
+      _boundOwner = owner;
+      _boundStage = stage;
+      _boundUpgrade = upgrade;
+      _navigatorKey = GlobalKey<NavigatorState>();
+      _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+      _openingInbox = false;
+    }
+    _notifications.setOwner(owner);
+    if (widget.client.stage.value == CommuterStage.signedOut) {
+      _pendingInbox = false;
+    } else if (ready && _pendingInbox) {
+      _openInbox();
+    }
+  }
+
+  void _openInbox() {
+    if (widget.client.stage.value != CommuterStage.ready) {
+      _pendingInbox = widget.client.stage.value == CommuterStage.loading;
+      return;
+    }
+    _pendingInbox = false;
+    if (_openingInbox) return;
+    _openingInbox = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final navigator = _navigatorKey.currentState;
+      if (!mounted || navigator == null) {
+        _openingInbox = false;
+        return;
+      }
+      await navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => NotificationsInboxPage(client: widget.client),
+        ),
+      );
+      _openingInbox = false;
+    });
+  }
+
+  void _showRideNotice() {
+    final messenger = _scaffoldMessengerKey.currentState;
+    if (messenger == null || widget.client.stage.value != CommuterStage.ready) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Your commute needs a response.'),
+        action: SnackBarAction(label: 'View', onPressed: _openInbox),
+      ),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.client.stage.removeListener(_syncNotificationOwner);
+    widget.client.identityRevision.removeListener(_syncNotificationOwner);
+    widget.client.upgradeRequired.removeListener(_syncNotificationOwner);
+    _notifications.dispose();
     _themeController.dispose();
     super.dispose();
   }
@@ -151,6 +235,9 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
     if (state == AppLifecycleState.paused) {
       _pausedAt = DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
+      if (widget.client.stage.value == CommuterStage.ready) {
+        unawaited(_notifications.sync());
+      }
       final pausedAt = _pausedAt;
       _pausedAt = null;
       if (pausedAt != null &&
@@ -189,61 +276,71 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
             '${widget.client.stage.value}:${widget.client.store.generation}:${widget.client.upgradeRequired.value}',
           ),
           overrides: [trotxiClientProvider.overrideWithValue(widget.client)],
-          child: MaterialApp(
-            title: 'Trotxi Commuter',
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: _themeController.themeMode,
-            home: widget.client.upgradeRequired.value
-                ? const PopScope(
-                    canPop: false,
-                    child: Scaffold(
-                      body: SafeArea(
-                        child: Center(
-                          child: Text('Please update the app to continue.'),
-                        ),
-                      ),
-                    ),
-                  )
-                : switch (widget.client.stage.value) {
-                    CommuterStage.loading => const Scaffold(body: SplashView()),
-                    CommuterStage.signedOut => OnBoardPage(
-                      client: widget.client,
-                    ),
-                    CommuterStage.ready =>
-                      widget.client.currentAccount?.phoneRegistrationPending ==
-                              true
-                          ? PhonePasswordPage(
-                              client: widget.client,
-                              resume: true,
-                            )
-                          : widget.client.currentAccount?.firstName == null ||
-                                widget.client.currentAccount?.lastName == null
-                          ? FullNamePage(
-                              client: widget.client,
-                              requiredForSignup: true,
-                            )
-                          : HomePage(client: widget.client),
-                    CommuterStage.failed => Scaffold(
-                      body: SafeArea(
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                widget.client.startupError?.message ??
-                                    'Could not restore your session.',
-                              ),
-                              TextButton(
-                                onPressed: widget.client.load,
-                                child: const Text('Try again'),
-                              ),
-                            ],
+          child: CommuterNotificationsScope(
+            notifications: _notifications,
+            child: MaterialApp(
+              navigatorKey: _navigatorKey,
+              scaffoldMessengerKey: _scaffoldMessengerKey,
+              title: 'Trotxi Commuter',
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: _themeController.themeMode,
+              home: widget.client.upgradeRequired.value
+                  ? const PopScope(
+                      canPop: false,
+                      child: Scaffold(
+                        body: SafeArea(
+                          child: Center(
+                            child: Text('Please update the app to continue.'),
                           ),
                         ),
                       ),
-                    ),
-                  },
+                    )
+                  : switch (widget.client.stage.value) {
+                      CommuterStage.loading => const Scaffold(
+                        body: SplashView(),
+                      ),
+                      CommuterStage.signedOut => OnBoardPage(
+                        client: widget.client,
+                      ),
+                      CommuterStage.ready =>
+                        widget
+                                    .client
+                                    .currentAccount
+                                    ?.phoneRegistrationPending ==
+                                true
+                            ? PhonePasswordPage(
+                                client: widget.client,
+                                resume: true,
+                              )
+                            : widget.client.currentAccount?.firstName == null ||
+                                  widget.client.currentAccount?.lastName == null
+                            ? FullNamePage(
+                                client: widget.client,
+                                requiredForSignup: true,
+                              )
+                            : HomePage(client: widget.client),
+                      CommuterStage.failed => Scaffold(
+                        body: SafeArea(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.client.startupError?.message ??
+                                      'Could not restore your session.',
+                                ),
+                                TextButton(
+                                  onPressed: widget.client.load,
+                                  child: const Text('Try again'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    },
+            ),
           ),
         ),
       ),

@@ -29,6 +29,10 @@ class HomeTab extends ConsumerStatefulWidget {
     required this.client,
     required this.userData,
     this.onShowBoardingPass,
+    this.onShowTrips,
+    this.onShowRoutes,
+    this.onShowWallet,
+    this.onShowSupport,
   });
 
   final CommuterApi client;
@@ -36,19 +40,37 @@ class HomeTab extends ConsumerStatefulWidget {
   final Account userData;
 
   final VoidCallback? onShowBoardingPass;
+  final VoidCallback? onShowTrips;
+  final VoidCallback? onShowRoutes;
+  final VoidCallback? onShowWallet;
+  final VoidCallback? onShowSupport;
 
   @override
   ConsumerState<HomeTab> createState() => _HomeTabState();
 }
 
 class _HomeTabState extends ConsumerState<HomeTab> {
-  // TODO: replace with real stats data once that endpoint exists on
-  // CommuterApi — these are placeholders matching the design.
-  final List<QuickAction> _quickActions = const [
-    QuickAction(icon: Icons.event_seat_rounded, label: 'Track ride'),
-    QuickAction(icon: Icons.history_rounded, label: 'Schedule'),
-    QuickAction(icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
-    QuickAction(icon: Icons.support_agent_rounded, label: 'Support'),
+  List<QuickAction> get _quickActions => [
+    QuickAction(
+      icon: Icons.event_seat_rounded,
+      label: 'Track ride',
+      onTap: widget.onShowTrips,
+    ),
+    QuickAction(
+      icon: Icons.route_outlined,
+      label: 'Routes',
+      onTap: widget.onShowRoutes,
+    ),
+    QuickAction(
+      icon: Icons.account_balance_wallet_rounded,
+      label: 'Wallet',
+      onTap: widget.onShowWallet,
+    ),
+    QuickAction(
+      icon: Icons.support_agent_rounded,
+      label: 'Support',
+      onTap: widget.onShowSupport,
+    ),
   ];
   bool _deciding = false;
 

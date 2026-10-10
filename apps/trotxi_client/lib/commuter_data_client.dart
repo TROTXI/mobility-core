@@ -438,6 +438,25 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  Future<void> registerPushDevice(String token) async {
+    await _command(
+      'registerDevice',
+      [metadata.platform, token],
+      (key, extra) => client.getSelfApi().registerDevice(
+            idempotencyKey: key,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            deviceInput: DeviceInput((b) => b
+              ..token = token
+              ..platform = metadata.platform == 'ios'
+                  ? DeviceInputPlatformEnum.ios
+                  : DeviceInputPlatformEnum.android),
+            extra: extra,
+          ),
+    );
+  }
+
   /// Load one bounded page; the screen requests the next cursor on demand.
   Future<RiderNotificationPage> notificationPage({
     String? cursor,

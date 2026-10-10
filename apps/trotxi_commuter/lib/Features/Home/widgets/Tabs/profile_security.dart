@@ -14,9 +14,8 @@ String _formatSessionDate(DateTime date) {
 /// Full-page "Security & sign-in", pushed from ProfileTab's
 /// "Security & sign-in" row.
 ///
-/// Replacement session management uses `/v1/me/sessions`; account erasure
-/// uses `DELETE /v1/me`. Provider credentials are not local passwords, and
-/// unavailable biometric app-lock is labelled rather than pretending to enable it.
+/// Session management uses `/v1/me/sessions`; account erasure uses
+/// `DELETE /v1/me`.
 class ProfileSecurityPage extends StatefulWidget {
   const ProfileSecurityPage({super.key, required this.client});
 
@@ -27,20 +26,10 @@ class ProfileSecurityPage extends StatefulWidget {
 }
 
 class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
-  final bool _biometricUnlock = false;
-
   void _onChangePasswordOrPin() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => EmailSecurityPage(client: widget.client),
-      ),
-    );
-  }
-
-  void _onToggleBiometricUnlock(bool value) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Biometric app lock is not available in this build.'),
       ),
     );
   }
@@ -177,15 +166,9 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   const SizedBox(height: 12),
                   _SecurityTile(
                     title: 'Security & recovery',
-                    subtitle: 'Add email sign-in or change your password',
+                    subtitle:
+                        'Update your password and verify your recovery email',
                     onTap: _onChangePasswordOrPin,
-                  ),
-                  const SizedBox(height: 8),
-                  _SecuritySwitchTile(
-                    title: 'Biometric unlock',
-                    subtitle: 'Not available in this build',
-                    value: _biometricUnlock,
-                    onChanged: _onToggleBiometricUnlock,
                   ),
                   const SizedBox(height: 28),
                   _buildSectionTitle(context, 'Devices & sessions'),
@@ -343,62 +326,6 @@ class _SecurityTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(onTap: onTap, child: content),
-      ),
-    );
-  }
-}
-
-class _SecuritySwitchTile extends StatelessWidget {
-  const _SecuritySwitchTile({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.label.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: AppTypography.caption.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: colors.actionPrimaryDefault,
-          ),
-        ],
       ),
     );
   }
