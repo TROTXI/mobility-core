@@ -19,7 +19,11 @@ abstract final class AppTheme {
   static ThemeData get darkTheme => _build(AppColors.dark, Brightness.dark);
 
   static ThemeData _build(AppColors colors, Brightness brightness) {
-    final base = ThemeData(brightness: brightness, useMaterial3: true);
+    final base = ThemeData(
+      brightness: brightness,
+      useMaterial3: true,
+      fontFamily: AppTypography.fontFamily,
+    );
 
     return base.copyWith(
       colorScheme:
@@ -239,9 +243,7 @@ abstract final class AppTheme {
   static TextTheme _textTheme(AppColors colors, TextTheme base) {
     final primary = colors.textPrimary;
     final secondary = colors.textSecondary;
-    // Apply the bundled family to *every* Material slot, including the lesser
-    // used dialog/segmented-control styles. Otherwise newly added screens can
-    // quietly mix platform fonts with Poppins despite using this theme.
+    // Match the commuter app: every Material text role uses bundled Poppins.
     return base
         .apply(fontFamily: AppTypography.fontFamily)
         .copyWith(

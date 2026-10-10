@@ -24,7 +24,9 @@ const driverInformationSections = <String, String>{
 };
 
 class DriverInformationPage extends StatelessWidget {
-  const DriverInformationPage({super.key});
+  const DriverInformationPage({super.key, this.showHeading = true});
+
+  final bool showHeading;
 
   @override
   Widget build(BuildContext context) {
@@ -33,15 +35,17 @@ class DriverInformationPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.space20),
       children: [
+        if (showHeading) ...[
+          Text(
+            'Driver information',
+            style: AppTypography.heading3.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+        ],
         Text(
-          'Driver privacy & guidance',
-          style: AppTypography.heading3.copyWith(color: colors.textPrimary),
-        ),
-        Text(
-          'Pilot information · updated 26 September 2026',
+          'How Trotxi uses your information and how to work safely.',
           style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
         ),
-        const PublicInformationLinks(),
         for (final section in driverInformationSections.entries) ...[
           const SizedBox(height: AppSpacing.space24),
           Text(
@@ -62,6 +66,8 @@ class DriverInformationPage extends StatelessWidget {
           isLoaded: config.isLoaded,
           title: 'Support & privacy requests',
         ),
+        const SizedBox(height: AppSpacing.space16),
+        const PublicInformationLinks(),
       ],
     );
   }

@@ -6,6 +6,7 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/widgets/operations_contact.dart';
+import 'package:trotxi_driver/core/widgets/public_information_links.dart';
 
 /// "Can't sign in?" (prototype frame 06).
 ///
@@ -81,6 +82,8 @@ class CantSignInPage extends StatelessWidget {
                   'office, or another driver on your corridor will have it.',
             ),
             const SizedBox(height: AppSpacing.space24),
+            const PublicInformationLinks(),
+            const SizedBox(height: AppSpacing.space16),
             OutlinedButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Back to sign in'),

@@ -7,9 +7,14 @@ Future<bool> _openExternally(Uri uri) =>
 
 /// Available without an account; opening a request page never erases a user.
 class PublicInformationLinks extends StatelessWidget {
-  const PublicInformationLinks({super.key, this.open = _openExternally});
+  const PublicInformationLinks({
+    super.key,
+    this.open = _openExternally,
+    this.showDeletion = true,
+  });
 
   final Future<bool> Function(Uri) open;
+  final bool showDeletion;
 
   Future<void> _show(BuildContext context, Uri uri) async {
     try {
@@ -41,10 +46,11 @@ class PublicInformationLinks extends StatelessWidget {
         onPressed: () => _show(context, TrotxiPublicInformation.privacy),
         child: const Text('Privacy notice'),
       ),
-      TextButton(
-        onPressed: () => _show(context, TrotxiPublicInformation.deletion),
-        child: const Text('Request account deletion'),
-      ),
+      if (showDeletion)
+        TextButton(
+          onPressed: () => _show(context, TrotxiPublicInformation.deletion),
+          child: const Text('Request account deletion'),
+        ),
     ],
   );
 }

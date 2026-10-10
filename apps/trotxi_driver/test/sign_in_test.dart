@@ -71,8 +71,14 @@ Future<void> _pump(
 
 Future<void> _fillForm(WidgetTester tester, {String code = 'DR-B7K9'}) async {
   await tester.enterText(find.byType(TextField).first, code);
-  // The PIN field's real input is the second TextField, hidden behind the boxes.
   await tester.enterText(find.byType(TextField).last, '482913');
+  await tester.pump();
+}
+
+Future<void> _tapSignIn(WidgetTester tester) async {
+  final button = find.widgetWithText(FilledButton, 'Sign in');
+  await tester.ensureVisible(button);
+  await tester.tap(button);
   await tester.pump();
 }
 
@@ -83,22 +89,29 @@ void main() {
     await _pump(tester, auth, onIn: (s) => received = s);
 
     await _fillForm(tester);
+    expect(auth.signInCalls, 0);
+    await _tapSignIn(tester);
     await tester.pump();
 
     expect(auth.signInCalls, 1);
     expect(received?.fullName, 'Kwame Asare');
   });
 
-  testWidgets('submits on the sixth digit without a button press', (
-    tester,
-  ) async {
-    // A driver typing a PIN one-handed at a depot gate should not then have to
-    // find a button.
+  testWidgets('six digits and keyboard Done do not sign in', (tester) async {
     final auth = _StubAuth();
     await _pump(tester, auth);
     await _fillForm(tester);
     await tester.pump();
-    expect(auth.signInCalls, 1);
+    expect(auth.signInCalls, 0);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Sign in'))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(auth.signInCalls, 0);
   });
 
   testWidgets('sends the code as typed, leaving normalising to the server', (
@@ -107,6 +120,7 @@ void main() {
     final auth = _StubAuth();
     await _pump(tester, auth);
     await _fillForm(tester, code: 'dr-b7k9');
+    await _tapSignIn(tester);
     await tester.pump();
     expect(auth.lastDriverCode, 'dr-b7k9');
   });
@@ -116,6 +130,7 @@ void main() {
     final auth = _StubAuth();
     await _pump(tester, auth);
     await _fillForm(tester);
+    await _tapSignIn(tester);
     await tester.pump();
     expect(auth.lastRememberDevice, isFalse);
   });
@@ -126,6 +141,7 @@ void main() {
     );
     await _pump(tester, auth);
     await _fillForm(tester);
+    await _tapSignIn(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('Check your PIN'), findsOneWidget);
@@ -143,6 +159,7 @@ void main() {
     );
     await _pump(tester, auth);
     await _fillForm(tester);
+    await _tapSignIn(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('Too many attempts'), findsOneWidget);
@@ -160,6 +177,7 @@ void main() {
     );
     await _pump(tester, auth);
     await _fillForm(tester);
+    await _tapSignIn(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('Account suspended'), findsOneWidget);
@@ -179,6 +197,7 @@ void main() {
     );
     await _pump(tester, auth);
     await _fillForm(tester);
+    await _tapSignIn(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('No connection'), findsOneWidget);
@@ -192,6 +211,7 @@ void main() {
     );
     await _pump(tester, auth);
     await _fillForm(tester);
+    await _tapSignIn(tester);
     await tester.pumpAndSettle();
     expect(find.text('Check your PIN'), findsOneWidget);
 
@@ -211,6 +231,7 @@ void main() {
     );
     await _pump(tester, auth);
     await _fillForm(tester, code: 'DR-B7K9');
+    await _tapSignIn(tester);
     await tester.pumpAndSettle();
 
     expect(
