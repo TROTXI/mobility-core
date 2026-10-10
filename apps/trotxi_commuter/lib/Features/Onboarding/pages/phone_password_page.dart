@@ -53,12 +53,25 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
   DateTime? _resendAt;
   Timer? _ticker;
 
+  @override
+  void initState() {
+    super.initState();
+    _password.addListener(_refreshPasswordChecklist);
+  }
+
+  void _refreshPasswordChecklist() {
+    if (mounted && (_step == _Step.signUp || _step == _Step.finish)) {
+      setState(() {});
+    }
+  }
+
   int get _wait =>
       ((_resendAt?.difference(DateTime.now()).inSeconds ?? 0)).clamp(0, 60);
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _password.removeListener(_refreshPasswordChecklist);
     for (final controller in [
       _first,
       _last,
@@ -249,6 +262,22 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
         controller: controller,
         enabled: !_busy,
         keyboardType: keyboard,
+        autofocus: label == 'Six-digit code',
+        textCapitalization:
+            label == 'First name' ||
+                label == 'Last name' ||
+                label == 'Other names (optional)'
+            ? TextCapitalization.words
+            : TextCapitalization.none,
+        textInputAction:
+            label == 'Six-digit code' ||
+                label == 'Confirm password' ||
+                (_step == _Step.signIn && label == 'Password')
+            ? TextInputAction.done
+            : TextInputAction.next,
+        inputFormatters: label == 'Six-digit code'
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : null,
         validator: validator,
         maxLength: maxLength,
         obscureText: secret && !_showPassword,
@@ -262,17 +291,17 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                 ? const [AutofillHints.password]
                 : const [AutofillHints.newPassword],
           'Confirm password' => const [AutofillHints.newPassword],
+          'Six-digit code' => const [AutofillHints.oneTimeCode],
           'First name' => const [AutofillHints.givenName],
           'Last name' => const [AutofillHints.familyName],
           _ => null,
         },
         decoration: InputDecoration(
           labelText: label,
-          helperText: label == 'Password' && _step != _Step.signIn
-              ? newPasswordGuidance
-              : null,
           counterText: '',
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: context.appColors.surfaceElevated,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           suffixIcon: secret
               ? IconButton(
                   tooltip: _showPassword ? 'Hide password' : 'Show password',
@@ -284,6 +313,79 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                 )
               : null,
         ),
+      ),
+    );
+  }
+
+  Widget _passwordChecklist(BuildContext context) {
+    final value = _password.text;
+    final rules = [
+      ('12 to 128 characters', value.runes.length >= 12 && value.length <= 128),
+      ('Capital letter', RegExp(r'[A-Z]').hasMatch(value)),
+      ('Number', RegExp(r'[0-9]').hasMatch(value)),
+      (
+        'Symbol',
+        RegExp(r'[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]').hasMatch(value),
+      ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 6,
+        children: [
+          for (final (label, valid) in rules)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  valid ? Icons.check_circle : Icons.circle_outlined,
+                  size: 16,
+                  color: valid
+                      ? context.appColors.actionPrimaryDefault
+                      : context.appColors.textSecondary,
+                ),
+                const SizedBox(width: 5),
+                Text(label, style: AppTypography.caption),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _signupProgress(BuildContext context) {
+    final current = _step == _Step.signUp ? 0 : 1;
+    const labels = ['Your details', 'Phone verification'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (var i = 0; i < labels.length; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: i <= current ? 1 : 0,
+                    minHeight: 5,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Step ${current + 1} of 2 · ${labels[current]}',
+              style: AppTypography.caption.copyWith(
+                color: context.appColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -304,144 +406,199 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       body: SafeArea(
         child: Form(
           key: _form,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: AutofillGroup(
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               children: [
-                Text(
-                  title,
-                  style: AppTypography.heading1.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space12),
-                Text(
-                  switch (_step) {
-                    _Step.signIn =>
-                      'Use your verified phone number and password.',
-                    _Step.signUp =>
-                      'Enter your details, then verify your phone by SMS.',
-                    _Step.code =>
-                      'Enter the six-digit code sent to ${_phone.text.trim()}.',
-                    _Step.finish =>
-                      'Phone verified. Complete your details to finish signup.',
-                    _Step.reset =>
-                      'We will send a reset link to your verified contact email.',
-                  },
-                  style: AppTypography.body.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space24),
-                if (_step == _Step.signUp || _step == _Step.finish) ...[
-                  _input('First name', _first, validator: _required),
-                  _input('Last name', _last, validator: _required),
-                  _input('Other names (optional)', _other),
-                ],
-                if (_step == _Step.signIn || _step == _Step.signUp)
-                  _input(
-                    'Phone number',
-                    _phone,
-                    validator: _phoneCheck,
-                    keyboard: TextInputType.phone,
-                    maxLength: 16,
-                  ),
-                if (_step == _Step.signUp ||
-                    _step == _Step.finish ||
-                    _step == _Step.reset)
-                  _input(
-                    'Email',
-                    _email,
-                    validator: _emailCheck,
-                    keyboard: TextInputType.emailAddress,
-                  ),
-                if (_step == _Step.signIn ||
-                    _step == _Step.signUp ||
-                    _step == _Step.finish)
-                  _input(
-                    'Password',
-                    _password,
-                    secret: true,
-                    maxLength: 128,
-                    validator: (value) => _step == _Step.signIn
-                        ? _required(value)
-                        : validateNewPassword(value),
-                  ),
-                if (_step == _Step.signUp || _step == _Step.finish)
-                  _input(
-                    'Confirm password',
-                    _confirm,
-                    secret: true,
-                    maxLength: 128,
-                    validator: (value) => value == _password.text
-                        ? null
-                        : 'Passwords do not match.',
-                  ),
-                if (_step == _Step.code)
-                  _input(
-                    'Six-digit code',
-                    _code,
-                    validator: (value) =>
-                        RegExp(r'^\d{6}$').hasMatch(value ?? '')
-                        ? null
-                        : 'Enter the six-digit code.',
-                    keyboard: TextInputType.phone,
-                    maxLength: 6,
-                  ),
-                if (_error != null) ...[
-                  Text(_error!, style: TextStyle(color: colors.error)),
-                  const SizedBox(height: 12),
-                ],
-                if (_message != null) ...[
-                  Text(
-                    _message!,
-                    style: TextStyle(color: colors.actionPrimaryDefault),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: Text(
-                    _busy
-                        ? 'Please wait…'
-                        : switch (_step) {
-                            _Step.signIn => 'Sign in',
-                            _Step.signUp => 'Send verification code',
-                            _Step.code => 'Verify and create account',
-                            _Step.finish => 'Complete signup',
-                            _Step.reset => 'Send reset link',
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_step == _Step.signUp ||
+                            _step == _Step.code ||
+                            _step == _Step.finish)
+                          _signupProgress(context),
+                        Text(
+                          title,
+                          style: AppTypography.heading1.copyWith(
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space12),
+                        Text(
+                          switch (_step) {
+                            _Step.signIn =>
+                              'Use your verified phone number and password.',
+                            _Step.signUp =>
+                              'Enter your details, then verify your phone by SMS.',
+                            _Step.code =>
+                              'Enter the six-digit code sent to ${_phone.text.trim()}.',
+                            _Step.finish =>
+                              'Phone verified. Complete your details to finish signup.',
+                            _Step.reset =>
+                              'We will send a reset link to your verified contact email.',
                           },
-                  ),
-                ),
-                if (_step == _Step.code) ...[
-                  TextButton(
-                    onPressed: _busy || _wait > 0 ? null : _sendCode,
-                    child: Text(
-                      _wait > 0 ? 'Resend in ${_wait}s' : 'Resend code',
+                          style: AppTypography.body.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space24),
+                        if (_step == _Step.signUp || _step == _Step.finish) ...[
+                          Text(
+                            'Personal details',
+                            style: AppTypography.title.copyWith(
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (_step == _Step.signUp || _step == _Step.finish) ...[
+                          _input('First name', _first, validator: _required),
+                          _input('Last name', _last, validator: _required),
+                          _input('Other names (optional)', _other),
+                        ],
+                        if (_step == _Step.signIn || _step == _Step.signUp)
+                          _input(
+                            'Phone number',
+                            _phone,
+                            validator: _phoneCheck,
+                            keyboard: TextInputType.phone,
+                            maxLength: 16,
+                          ),
+                        if (_step == _Step.signUp ||
+                            _step == _Step.finish ||
+                            _step == _Step.reset)
+                          _input(
+                            'Email',
+                            _email,
+                            validator: _emailCheck,
+                            keyboard: TextInputType.emailAddress,
+                          ),
+                        if (_step == _Step.signIn ||
+                            _step == _Step.signUp ||
+                            _step == _Step.finish) ...[
+                          _input(
+                            'Password',
+                            _password,
+                            secret: true,
+                            maxLength: 128,
+                            validator: (value) => _step == _Step.signIn
+                                ? _required(value)
+                                : validateNewPassword(value),
+                          ),
+                          if (_step != _Step.signIn)
+                            _passwordChecklist(context),
+                        ],
+                        if (_step == _Step.signUp || _step == _Step.finish)
+                          _input(
+                            'Confirm password',
+                            _confirm,
+                            secret: true,
+                            maxLength: 128,
+                            validator: (value) => value == _password.text
+                                ? null
+                                : 'Passwords do not match.',
+                          ),
+                        if (_step == _Step.code)
+                          _input(
+                            'Six-digit code',
+                            _code,
+                            validator: (value) =>
+                                RegExp(r'^\d{6}$').hasMatch(value ?? '')
+                                ? null
+                                : 'Enter the six-digit code.',
+                            keyboard: TextInputType.number,
+                            maxLength: 6,
+                          ),
+                        if (_error != null) ...[
+                          Semantics(
+                            liveRegion: true,
+                            child: Card(
+                              color: colors.error.withValues(alpha: 0.10),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(
+                                  _error!,
+                                  style: TextStyle(color: colors.error),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (_message != null) ...[
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              _message!,
+                              style: TextStyle(
+                                color: colors.actionPrimaryDefault,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        SizedBox(
+                          height: 52,
+                          child: FilledButton(
+                            onPressed: _busy ? null : _submit,
+                            child: Text(
+                              _busy
+                                  ? 'Please wait…'
+                                  : switch (_step) {
+                                      _Step.signIn => 'Sign in',
+                                      _Step.signUp => 'Send verification code',
+                                      _Step.code => 'Verify and create account',
+                                      _Step.finish => 'Complete signup',
+                                      _Step.reset => 'Send reset link',
+                                    },
+                            ),
+                          ),
+                        ),
+                        if (_step == _Step.code) ...[
+                          TextButton(
+                            onPressed: _busy || _wait > 0 ? null : _sendCode,
+                            child: Text(
+                              _wait > 0 ? 'Resend in ${_wait}s' : 'Resend code',
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _change(_Step.signUp),
+                            child: const Text('Change phone number'),
+                          ),
+                        ],
+                        if (_step == _Step.signIn) ...[
+                          TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _change(_Step.reset),
+                            child: const Text('Forgot password?'),
+                          ),
+                          TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _change(_Step.signUp),
+                            child: const Text('Create an account'),
+                          ),
+                        ] else if (_step == _Step.reset) ...[
+                          TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _change(_Step.signIn),
+                            child: const Text('Back to sign in'),
+                          ),
+                        ],
+                        if (_step == _Step.signUp || _step == _Step.finish)
+                          const PublicInformationLinks(),
+                      ],
                     ),
                   ),
-                  TextButton(
-                    onPressed: _busy ? null : () => _change(_Step.signUp),
-                    child: const Text('Change phone number'),
-                  ),
-                ],
-                if (_step == _Step.signIn) ...[
-                  TextButton(
-                    onPressed: _busy ? null : () => _change(_Step.reset),
-                    child: const Text('Forgot password?'),
-                  ),
-                  TextButton(
-                    onPressed: _busy ? null : () => _change(_Step.signUp),
-                    child: const Text('Create an account'),
-                  ),
-                ] else if (_step == _Step.reset) ...[
-                  TextButton(
-                    onPressed: _busy ? null : () => _change(_Step.signIn),
-                    child: const Text('Back to sign in'),
-                  ),
-                ],
-                if (_step == _Step.signUp || _step == _Step.finish)
-                  const PublicInformationLinks(),
+                ),
               ],
             ),
           ),

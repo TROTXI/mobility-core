@@ -10,6 +10,7 @@ import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/utils/money_format.dart';
+import 'auto_renewal_page.dart';
 
 // ---------------------------------------------------------------------
 // Activity feed
@@ -289,6 +290,20 @@ class _WalletTabState extends State<WalletTab> {
           ),
         ),
       ],
+      const SizedBox(height: 12),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.credit_card_outlined),
+          title: const Text('Card auto-renewal'),
+          subtitle: const Text('Optional card renewal and saved-card controls'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => AutoRenewalPage(client: widget.client),
+            ),
+          ),
+        ),
+      ),
       const SizedBox(height: 8),
       TextButton(
         onPressed: () async {
@@ -614,11 +629,9 @@ class _WalletTabState extends State<WalletTab> {
     }
     final endsAt = coverage.endsAt;
     if (endsAt == null) return 'Started ${_formatFullDay(coverage.startsAt)}';
-    // renewalMode is manual-only today, so this is a deadline for the rider
-    // to act on, not a promise that we will charge them again.
     return coverage.renewalMode == MembershipCoverageRenewalModeEnum.manual
         ? 'Renew by ${_formatFullDay(endsAt)}'
-        : 'Renews ${_formatFullDay(endsAt)}';
+        : 'Card renewal planned by ${_formatFullDay(endsAt)}';
   }
 
   Widget _buildStatusBadge(BuildContext context, bool paused) {

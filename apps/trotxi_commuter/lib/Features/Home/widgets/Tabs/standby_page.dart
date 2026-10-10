@@ -237,7 +237,7 @@ class _StandbyPageState extends State<StandbyPage> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Join the waitlist for your commute or renewal. Joining is free and does not guarantee a seat. Operations will send an offer with your journeys, dates, ride allowance and price. You can pay for one upcoming renewal before your current coverage ends. Its rides become available on its start date. Current unused rides only become credit after that period closes. Renewals are not automatic.',
+            'Join the waitlist for your commute or renewal. Joining is free and does not guarantee a seat. Operations will send an offer with your journeys, dates, ride allowance and price. You can pay for one upcoming renewal before your current coverage ends. Its rides become available on its start date. Current unused rides only become credit after that period closes. Card auto-renewal is optional and managed in Wallet.',
           ),
           const SizedBox(height: 16),
           if (_busy) const LinearProgressIndicator(),

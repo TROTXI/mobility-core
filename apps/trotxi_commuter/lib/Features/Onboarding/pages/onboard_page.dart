@@ -150,25 +150,30 @@ class _OnBoardPageState extends State<OnBoardPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSignInButton(
+            onPressed: () => _open(true),
+            text: 'Create account',
+            icon: Icon(
+              Icons.person_add_outlined,
+              color: colors.actionOnPrimary,
+            ),
+            backgroundColor: colors.actionPrimaryDefault,
+            borderColor: colors.actionPrimaryDefault,
+            textColor: colors.actionOnPrimary,
+          ),
+          const SizedBox(height: 13),
+          AppSignInButton(
             onPressed: () => _open(false),
             text: 'Sign in',
             icon: Icon(Icons.phone_outlined, color: colors.textPrimary),
           ),
-          const SizedBox(height: 13),
-          AppSignInButton(
-            onPressed: () => _open(true),
-            text: 'Create account',
-            icon: Icon(Icons.person_add_outlined, color: colors.textPrimary),
-          ),
-          const SizedBox(height: AppSpacing.space8),
+          const SizedBox(height: AppSpacing.space20),
           Text(
-            'By continuing, '
-            'you agree to Trotxi\u2019s Terms and acknowledge the Privacy Policy.',
+            'Read how Trotxi handles your information before creating an account.',
             textAlign: TextAlign.center,
             style: AppTypography.caption.copyWith(
-              color: colors.textTertiary,
-              fontSize: 9.5,
-              height: 14 / 10,
+              color: colors.textSecondary,
+              fontSize: 12,
+              height: 1.5,
             ),
           ),
           const PublicInformationLinks(),

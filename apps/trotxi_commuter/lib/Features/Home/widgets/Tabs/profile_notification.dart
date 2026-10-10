@@ -4,6 +4,7 @@ import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_client/commuter_data_client.dart';
+import 'package:trotxi_commuter/core/notifications/commuter_notifications.dart';
 
 class ProfileNotificationsPage extends StatefulWidget {
   const ProfileNotificationsPage({super.key, required this.client});
@@ -107,6 +108,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final preferences = _snapshot?.preferences;
+    final push = CommuterNotificationsScope.maybeOf(context);
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
       appBar: AppBar(
@@ -143,12 +145,38 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Seat confirmations, trip changes, boarding receipts and cancellations are always on so you do not miss a ride.',
+                      'Ride updates are saved in your inbox. Enable phone alerts to be notified when a trip needs your response.',
                       style: AppTypography.bodySmall.copyWith(
                         color: colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 24),
+                    if (push != null) ...[
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Phone alerts', style: AppTypography.label),
+                              const SizedBox(height: 6),
+                              Text(push.status),
+                              if (!push.enabled) ...[
+                                const SizedBox(height: 12),
+                                FilledButton.icon(
+                                  onPressed: push.enable,
+                                  icon: const Icon(
+                                    Icons.notifications_active_outlined,
+                                  ),
+                                  label: const Text('Enable ride alerts'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     Text(
                       'Preferred daily seat-ask time',
                       style: AppTypography.label.copyWith(
@@ -174,7 +202,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Saved for scheduled dispatch in Ghana time. During the pilot, seat asks are run manually, so this does not schedule delivery yet.',
+                      'Your preference is saved in Ghana time. Check the inbox for the authoritative request if a phone alert is delayed.',
                       style: AppTypography.caption.copyWith(
                         color: colors.textSecondary,
                       ),

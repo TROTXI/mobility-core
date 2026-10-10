@@ -37,10 +37,10 @@ for rollout and acceptance checks.
 - One prepaid upcoming renewal can coexist with current coverage without
   overlap. Day-ahead booking uses the period covering the departure, while the
   wallet reports upcoming coverage separately.
-- Automatic card renewal has API, generated-client, payment-worker and Ops
-  review support. It requires explicit rider consent and a verified reusable
-  Paystack card. Commuter opt-in, turn-off and remove-card controls are not yet
-  implemented. Mobile money is not automatically charged.
+- Automatic card renewal has API, commuter opt-in/turn-off/remove-card controls,
+  payment-worker and Ops review support. It requires explicit rider consent
+  and a verified reusable Paystack card. Mobile money is not automatically
+  charged. End-to-end product acceptance is still pending.
 - Superadmins invite administrators by email, manage superadmin capability and
   delete administrator accounts through Team & access. Invitations require the
   matching Google identity and a passkey. Sensitive operational and financial
@@ -77,8 +77,8 @@ finishing that acceptance exercise.
 - Production provisioning, store releases, provider live-mode acceptance and
   physical-device acceptance across supported phones.
 - Ghana Card/NIA verification, automatic account merging by phone number.
-- Commuter card-renewal controls and end-to-end card-renewal product acceptance;
-  automated operator payouts and corporate billing.
+- End-to-end card-renewal product acceptance, automated operator payouts and
+  corporate billing.
 - One-way subscription offers, holiday calendars and mid-period offer replacement.
 - Automated released-seat standby cascade and single-journey checkout.
 - MQTT/Go/WebSocket telemetry, Redis serving infrastructure, automatic road

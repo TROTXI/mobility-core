@@ -438,6 +438,51 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  Future<AutoRenewal> autoRenewal() async =>
+      (await _read((extra) => client.getRiderOwnApi().getAutoRenewal(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              extra: extra)))
+          .data;
+
+  Future<AutoRenewal> setAutoRenewal(bool enabled) async =>
+      (await _read((extra) => client.getRiderOwnApi().setAutoRenewal(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              autoRenewalInput: AutoRenewalInput((b) => b..enabled = enabled),
+              extra: extra)))
+          .data;
+
+  Future<void> removeAutoRenewalCard() async {
+    await _read((extra) => _ack(client.getRiderOwnApi().removeAutoRenewalCard(
+          xTrotxiClient: metadata.app,
+          xTrotxiBuild: metadata.build,
+          xTrotxiPlatform: metadata.platform,
+          extra: extra,
+        )));
+  }
+
+  Future<void> registerPushDevice(String token) async {
+    await _command(
+      'registerDevice',
+      [metadata.platform, token],
+      (key, extra) => client.getSelfApi().registerDevice(
+            idempotencyKey: key,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            deviceInput: DeviceInput((b) => b
+              ..token = token
+              ..platform = metadata.platform == 'ios'
+                  ? DeviceInputPlatformEnum.ios
+                  : DeviceInputPlatformEnum.android),
+            extra: extra,
+          ),
+    );
+  }
+
   /// Load one bounded page; the screen requests the next cursor on demand.
   Future<RiderNotificationPage> notificationPage({
     String? cursor,

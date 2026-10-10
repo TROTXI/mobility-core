@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
-import 'trip_tracking_page.dart';
+import 'route_preview_page.dart';
 import 'reservation_trips_tab.dart';
 import 'standby_page.dart';
 
@@ -154,8 +154,11 @@ class _RoutesTabState extends State<RoutesTab> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) =>
-                    TripTrackingPage(client: widget.client, tripId: trip.id),
+                builder: (_) => RoutePreviewPage(
+                  client: widget.client,
+                  trip: trip,
+                  routeName: _names[trip.routeId] ?? 'Route preview',
+                ),
               ),
             ),
           ),

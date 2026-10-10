@@ -122,6 +122,32 @@ void main() {
           );
         }
         if (o.path == '/v1/routes') return jsonResponse(page([]));
+        if (o.path == '/v1/route-patterns/outbound/versions/version') {
+          return jsonResponse({
+            'data': {
+              'id': 'version',
+              'patternId': 'outbound',
+              'revision': 1,
+              'state': 'published',
+              'effectiveFrom': '2026-09-01',
+              'effectiveTo': null,
+              'geometryId': null,
+              'editToken': 'version:1',
+              'createdAt': timestamp,
+              'updatedAt': timestamp,
+              'version': 1,
+              'stops': [
+                {
+                  'id': 'first',
+                  'stopId': 'stop',
+                  'ordinal': 1,
+                  'name': 'Circle',
+                  'location': {'latitude': 5.6, 'longitude': -.1},
+                },
+              ],
+            },
+          });
+        }
         return jsonResponse({
           'error': {'code': 'not_found', 'message': 'Not found'},
         }, 404);
@@ -176,6 +202,22 @@ void main() {
       await finish(tester);
     },
   );
+  testWidgets('catalogue previews stops without requesting live bus access', (
+    tester,
+  ) async {
+    await pump(tester, catalogue: true);
+    await drain(tester, () async {
+      await tester.tap(find.textContaining('Service 2026-09-16').first);
+      await tester.pump();
+    });
+    expect(find.text('Route preview'), findsWidgets);
+    expect(find.text('Circle'), findsOneWidget);
+    expect(
+      f.requests.where((request) => request.path.endsWith('/live')),
+      isEmpty,
+    );
+    await finish(tester);
+  });
   testWidgets(
     'missing tiles do not hide authorized ETA; rider location is never requested',
     (tester) async {

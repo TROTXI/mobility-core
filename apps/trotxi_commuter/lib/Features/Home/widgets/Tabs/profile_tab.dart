@@ -6,11 +6,13 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.d
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/personal_info.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_security.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/help_support_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/phone_verification_page.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.client});
@@ -24,11 +26,26 @@ class _ProfileTabState extends State<ProfileTab> {
   Account? _user;
   bool _loading = true;
   Object? _error;
+  String? _version;
 
   @override
   void initState() {
     super.initState();
     _fetchUser();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final package = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(
+          () => _version = '${package.version} (${package.buildNumber})',
+        );
+      }
+    } catch (_) {
+      // Package metadata is decorative and must not block account controls.
+    }
   }
 
   Future<void> _fetchUser() async {
@@ -241,9 +258,11 @@ class _ProfileTabState extends State<ProfileTab> {
                 const SizedBox(height: 8),
                 _SettingsCardTile(
                   title: 'Help, support & legal',
-                  onTap: () {
-                    // TODO: navigate to help, support & legal screen
-                  },
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => HelpSupportPage(client: widget.client),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 28),
                 // Not part of the new layout's captured frame, but kept —
@@ -252,7 +271,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    'Version 2.4.1 (Stable)\nHandcrafted for Ghana by Trotxi',
+                    '${_version == null ? 'Trotxi' : 'Version $_version'}\nHandcrafted for Ghana by Trotxi',
                     textAlign: TextAlign.center,
                     style: AppTypography.bodySmall.copyWith(
                       color: colors.textTertiary,

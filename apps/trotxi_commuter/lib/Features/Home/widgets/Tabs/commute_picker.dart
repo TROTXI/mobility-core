@@ -5,6 +5,7 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart'
     show commuteError;
+import 'route_preview_page.dart';
 
 class SelectedCommuteLeg {
   const SelectedCommuteLeg(this.choice, this.pickup, this.dropoff);
@@ -262,6 +263,17 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                           _choice = c;
                           _step = _Step.pickup;
                         }),
+                        onPreview: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => RouteChoicePreviewPage(
+                              client: widget.client,
+                              version: c.version,
+                              routeName: c.route.name,
+                              departureLabel:
+                                  '${_returning ? 'Return' : 'Outbound'} · ${c.schedule.localDeparture} Ghana time',
+                            ),
+                          ),
+                        ),
                       ),
                   ] else ...[
                     for (final stop in stops)
@@ -282,11 +294,22 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
     );
   }
 
-  Widget _tile(String title, String? subtitle, VoidCallback onTap) => Card(
+  Widget _tile(
+    String title,
+    String? subtitle,
+    VoidCallback onTap, {
+    VoidCallback? onPreview,
+  }) => Card(
     child: ListTile(
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: onPreview == null
+          ? const Icon(Icons.chevron_right)
+          : IconButton(
+              tooltip: 'Preview route and stops',
+              icon: const Icon(Icons.map_outlined),
+              onPressed: onPreview,
+            ),
       onTap: onTap,
     ),
   );
