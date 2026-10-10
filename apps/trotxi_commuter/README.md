@@ -32,3 +32,8 @@ See [API integration](../../docs/api/README.md),
 Push, map tiles, store builds and production configuration require separate
 device and deployment acceptance; source support is not proof a handset
 received a notification or rendered a basemap.
+For iOS push, the Runner target includes the Push Notifications entitlement and
+background modes. The Apple app identifier and signing profile must allow push,
+and the APNs authentication key must be uploaded to the matching Firebase app.
+Verify registration and delivery on a physical device; Xcode selects the APNs
+environment from the signing profile.

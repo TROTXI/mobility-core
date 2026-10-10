@@ -64,6 +64,9 @@ class CommuterNotifications extends ChangeNotifier {
   }
 
   Future<void> enable() async {
+    final owner = _owner;
+    final generation = api.store.generation;
+    if (_disposed || owner == null) return;
     try {
       final permission = await messaging.requestPermission(
         alert: true,
@@ -76,6 +79,13 @@ class CommuterNotifications extends ChangeNotifier {
         notifyListeners();
         return;
       }
+      if (_disposed || owner != _owner) return;
+      api.ensureSession(generation);
+      await api.store.storage.write(
+        '${api.store.scope.storageKey}.push-consent.$owner',
+        'enabled',
+      );
+      if (_disposed || owner != _owner) return;
       await sync();
     } catch (_) {
       status = 'Could not enable push alerts. Your inbox is still available.';
@@ -101,6 +111,15 @@ class CommuterNotifications extends ChangeNotifier {
         await api.store.storage.delete(key);
       }
       if (_disposed || owner == null || owner != _owner) return;
+      final consent = await api.store.storage.read(
+        '${api.store.scope.storageKey}.push-consent.$owner',
+      );
+      if (_disposed || owner != _owner) return;
+      if (consent != 'enabled') {
+        enabled = false;
+        status = 'Enable ride alerts on this device.';
+        return;
+      }
       final permission = await messaging.getNotificationSettings();
       if (permission.authorizationStatus != AuthorizationStatus.authorized &&
           permission.authorizationStatus != AuthorizationStatus.provisional) {

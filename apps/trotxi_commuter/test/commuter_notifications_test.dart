@@ -26,6 +26,18 @@ class _Messaging implements FirebaseMessaging {
       _Settings(permission);
 
   @override
+  Future<NotificationSettings> requestPermission({
+    bool alert = true,
+    bool announcement = false,
+    bool badge = true,
+    bool carPlay = false,
+    bool criticalAlert = false,
+    bool provisional = false,
+    bool sound = true,
+    bool providesAppNotificationSettings = false,
+  }) async => _Settings(permission);
+
+  @override
   Future<String?> getToken({
     String? vapidKey,
     String? serviceWorkerScriptPath,
@@ -39,7 +51,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'registration is scoped to the rider and denied permission sends nothing',
+    'registration requires rider consent even when OS permission is granted',
     () async {
       final fixture = Fixture();
       addTearDown(fixture.api.dispose);
@@ -74,6 +86,12 @@ void main() {
       );
       messaging.permission = AuthorizationStatus.authorized;
       await alerts.sync();
+      expect(alerts.enabled, isFalse);
+      expect(
+        fixture.requests.where((r) => r.path == '/v1/me/devices'),
+        isEmpty,
+      );
+      await alerts.enable();
       expect(alerts.enabled, isTrue);
       expect(
         fixture.requests.where((r) => r.path == '/v1/me/devices'),
@@ -82,6 +100,18 @@ void main() {
       alerts.setOwner('rider-b');
       await alerts.sync();
       expect(messaging.deletes, 1);
+      expect(alerts.enabled, isFalse);
+      expect(
+        fixture.requests.where((r) => r.path == '/v1/me/devices'),
+        hasLength(1),
+      );
+      alerts.setOwner('rider-a');
+      await alerts.sync();
+      expect(alerts.enabled, isTrue);
+      expect(
+        fixture.requests.where((r) => r.path == '/v1/me/devices'),
+        hasLength(greaterThan(1)),
+      );
       alerts.setOwner(null);
       await alerts.sync();
       expect(messaging.deletes, 2);
