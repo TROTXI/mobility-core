@@ -62,7 +62,11 @@ test('EMAIL-U03 new passwords require 12 characters, a capital, number and symbo
     'GoodPassword1 ',
     'A1!'.repeat(43),
   ])
-    assert.throws(() => validatePassword(password), { message: /password|capital/ });
+    assert.throws(() => validatePassword(password), {
+      message: /at least 12|capital|too long|less common/,
+    });
+  assert.throws(() => validatePassword('short'), { message: 'Use at least 12 characters.' });
+  assert.throws(() => validatePassword('A1!'.repeat(43)), { message: 'Password is too long.' });
 });
 
 const pair = await generateKeyPair('RS256'),

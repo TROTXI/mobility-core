@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/auth/password_policy.dart';
+import 'package:trotxi_commuter/core/auth/password_requirements.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
@@ -57,6 +58,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
   void initState() {
     super.initState();
     _password.addListener(_refreshPasswordChecklist);
+    _confirm.addListener(_refreshPasswordChecklist);
   }
 
   void _refreshPasswordChecklist() {
@@ -72,6 +74,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
   void dispose() {
     _ticker?.cancel();
     _password.removeListener(_refreshPasswordChecklist);
+    _confirm.removeListener(_refreshPasswordChecklist);
     for (final controller in [
       _first,
       _last,
@@ -424,43 +427,6 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
     );
   }
 
-  Widget _passwordChecklist(BuildContext context) {
-    final value = _password.text;
-    final rules = [
-      ('12 to 128 characters', value.runes.length >= 12 && value.length <= 128),
-      ('Capital letter', RegExp(r'[A-Z]').hasMatch(value)),
-      ('Number', RegExp(r'[0-9]').hasMatch(value)),
-      (
-        'Symbol',
-        RegExp(r'[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]').hasMatch(value),
-      ),
-    ];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 6,
-        children: [
-          for (final (label, valid) in rules)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  valid ? Icons.check_circle : Icons.circle_outlined,
-                  size: 16,
-                  color: valid
-                      ? context.appColors.actionPrimaryDefault
-                      : context.appColors.textSecondary,
-                ),
-                const SizedBox(width: 5),
-                Text(label, style: AppTypography.caption),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _signupProgress(BuildContext context) {
     final colors = context.appColors;
     final current = switch (_step) {
@@ -665,7 +631,9 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                         : validateNewPassword(value),
                                   ),
                                   if (_step != _Step.signIn)
-                                    _passwordChecklist(context),
+                                    PasswordRequirements(
+                                      password: _password.text,
+                                    ),
                                 ],
                                 if (_step == _Step.credentials ||
                                     _step == _Step.finish)
@@ -678,6 +646,22 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                         value == _password.text
                                         ? null
                                         : 'Passwords do not match.',
+                                  ),
+                                if ((_step == _Step.credentials ||
+                                        _step == _Step.finish) &&
+                                    _confirm.text.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Text(
+                                      _confirm.text == _password.text
+                                          ? 'Passwords match'
+                                          : 'Passwords do not match yet',
+                                      style: AppTypography.caption.copyWith(
+                                        color: _confirm.text == _password.text
+                                            ? colors.actionPrimaryDefault
+                                            : colors.error,
+                                      ),
+                                    ),
                                   ),
                                 if (_step == _Step.code)
                                   _input(
@@ -795,7 +779,18 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                               width: double.infinity,
                               height: 56,
                               child: FilledButton(
-                                onPressed: _busy ? null : _submit,
+                                onPressed:
+                                    _busy ||
+                                        ((_step == _Step.credentials ||
+                                                _step == _Step.finish) &&
+                                            (validateNewPassword(
+                                                      _password.text,
+                                                    ) !=
+                                                    null ||
+                                                _confirm.text !=
+                                                    _password.text))
+                                    ? null
+                                    : _submit,
                                 child: Text(_busy ? 'Please wait…' : action),
                               ),
                             ),

@@ -17,9 +17,11 @@ void main() {
       'GoodPassword!',
       'GoodPassword1',
       'GoodPassword1 ',
+      'Password123!',
     ]) {
       expect(validateNewPassword(value), isNotNull);
     }
+    expect(newPasswordGuidance, isNot(contains('128')));
   });
 
   testWidgets('commuter entry shows one phone method with distinct signup', (
@@ -99,6 +101,7 @@ void main() {
       final field = find.widgetWithText(TextFormField, label);
       await tester.ensureVisible(field);
       await tester.enterText(field, value);
+      await tester.pump();
     }
 
     await enter('First name', 'Ama');
@@ -109,14 +112,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Create a password'), findsOneWidget);
     expect(find.text('Confirm password'), findsOneWidget);
-    expect(
-      tester
-          .getBottomRight(
-            find.widgetWithText(FilledButton, 'Send verification code'),
-          )
-          .dy,
-      lessThan(640),
+    expect(find.text('12 to 128 characters'), findsNothing);
+    expect(find.text('At least 12 characters'), findsOneWidget);
+    final sendButton = find.widgetWithText(
+      FilledButton,
+      'Send verification code',
     );
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNull);
+    await enter('Password', 'short');
+    await enter('Confirm password', 'short');
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNull);
+    await enter('Password', 'GoodPass123!');
+    await enter('Confirm password', 'GoodPass123!');
+    expect(find.text('Passwords match'), findsOneWidget);
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNotNull);
+    expect(tester.getBottomRight(sendButton).dy, lessThan(640));
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -207,6 +217,7 @@ void main() {
       final field = find.widgetWithText(TextFormField, label);
       await tester.ensureVisible(field);
       await tester.enterText(field, value);
+      await tester.pump();
     }
 
     await enter('First name', 'Ama');
