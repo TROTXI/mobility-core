@@ -127,6 +127,9 @@ void main() {
       await _pump(tester, auth, location: PermissionStatus.granted);
       await tester.enterText(find.byType(TextField).first, 'DR-TEST');
       await tester.enterText(find.byType(TextField).last, '482913');
+      await tester.pump();
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Yes, link account'));
       await tester.pumpAndSettle();
@@ -151,6 +154,11 @@ void main() {
         expect(find.text('Today test destination'), findsNothing);
         await tester.enterText(find.byType(TextField).first, 'DR-TEST');
         await tester.enterText(find.byType(TextField).last, '482913');
+        await tester.pump();
+        await tester.ensureVisible(
+          find.widgetWithText(FilledButton, 'Sign in'),
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
         await tester.pumpAndSettle();
         expect(auth.signInCalls, 1);
         expect(find.text('Confirm your account'), findsOneWidget);

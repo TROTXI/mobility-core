@@ -176,7 +176,7 @@ class _WorkRequestsPageState extends State<WorkRequestsPage> {
               final requests = snapshot.data ?? [];
               if (requests.isEmpty) {
                 return const _Placeholder(
-                  text: 'You have not asked operations for anything yet.',
+                  text: 'No requests yet.',
                 );
               }
               return Column(
@@ -195,8 +195,8 @@ class _WorkRequestsPageState extends State<WorkRequestsPage> {
             // The control principle, said in the app rather than only in the
             // design file. A driver who assumes an approval moved them would
             // turn up at the wrong corridor.
-            'Submitting a request never changes your current assignment. '
-            'Operations has to approve it and publish the change.',
+            'Sending a request does not change your assignment. Operations '
+            'will review and publish any changes.',
             style: AppTypography.caption.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.space24),

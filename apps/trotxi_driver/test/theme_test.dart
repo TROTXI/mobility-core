@@ -36,7 +36,7 @@ void main() {
       expect(AppTheme.darkTheme.scaffoldBackgroundColor, AppColors.dark.page);
     });
 
-    test('all Material text slots use the bundled Poppins family', () {
+    test('all Material text roles use the commuter app Poppins family', () {
       for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
         for (final text in [theme.textTheme, theme.primaryTextTheme]) {
           for (final style in [
