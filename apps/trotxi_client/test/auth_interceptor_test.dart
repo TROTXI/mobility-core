@@ -335,6 +335,7 @@ void main() {
     '/v1/auth/google',
     '/v1/auth/apple',
     '/v1/auth/phone/password',
+    '/v1/auth/phone/verify',
   ]) {
     test(
       'sign-in rejection at $path never refreshes or clears tokens',
