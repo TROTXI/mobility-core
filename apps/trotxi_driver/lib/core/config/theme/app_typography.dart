@@ -2,21 +2,16 @@ import 'package:flutter/material.dart';
 
 /// The driver type scale.
 ///
-/// Shares the commuter app's brand display face, while supporting text uses
-/// the platform's native face for clarity at small sizes. One difference:
+/// Shares the commuter app's bundled Poppins family. One difference:
 /// [runTitle] and [counter] exist because the active-trip frames lean on two
 /// numbers a driver reads at a glance while moving — seats boarded against
 /// capacity, and stop N of M. Those are not body text and should not inherit
 /// body's line height.
 abstract final class AppTypography {
-  /// A null family lets body text use the platform's native UI face.
-  static const String? fontFamily = null;
-
-  /// Bundled brand face, reserved for short display text and glanceable values.
-  static const String displayFontFamily = 'Poppins';
+  static const String fontFamily = 'Poppins';
 
   static const heading1 = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 32,
     fontWeight: FontWeight.w700,
     height: 40 / 32,
@@ -24,7 +19,7 @@ abstract final class AppTypography {
   );
 
   static const heading2 = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w600,
     height: 36 / 28,
@@ -32,14 +27,14 @@ abstract final class AppTypography {
   );
 
   static const heading3 = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 24,
     fontWeight: FontWeight.w600,
     height: 32 / 24,
   );
 
   static const title = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 28 / 20,
@@ -47,7 +42,7 @@ abstract final class AppTypography {
 
   /// "7:40 Medina · Circle" — the run identity, on every trip screen.
   static const runTitle = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w700,
     height: 26 / 20,
@@ -75,7 +70,7 @@ abstract final class AppTypography {
   /// [title] at the same sort of size, because it is the one word a driver
   /// reads while moving.
   static const stopName = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 18,
     fontWeight: FontWeight.w700,
     height: 27 / 18,
@@ -110,7 +105,7 @@ abstract final class AppTypography {
   /// "11 / 18" and "3 of 11". Tabular so the layout does not jump as riders
   /// board and the digits change width.
   static const counter = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     height: 32 / 28,
@@ -176,7 +171,7 @@ abstract final class AppTypography {
   /// file, deliberately smaller than [heading1]: these screens lead with the
   /// wordmark, so the title sits under a logo rather than carrying the page.
   static const screenTitle = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 26,
     fontWeight: FontWeight.w600,
     height: 39 / 26,
@@ -263,7 +258,7 @@ abstract final class AppTypography {
   /// The boarding code as the rider shows it and the driver retypes it.
   /// Monospaced-by-feature so four characters stay evenly spaced.
   static const boardingCode = TextStyle(
-    fontFamily: displayFontFamily,
+    fontFamily: fontFamily,
     fontSize: 32,
     fontWeight: FontWeight.w700,
     height: 40 / 32,
