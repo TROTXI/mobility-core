@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 
 /// A public route preview. It never requests the live vehicle endpoint.
@@ -95,6 +97,7 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
   @override
   Widget build(BuildContext context) {
     final version = _version;
+    final colors = context.appColors;
     final tiles = widget.client.configuration?.mapTiles;
     String? clean(String? value) =>
         value == null || value.trim().isEmpty ? null : value.trim();
@@ -105,50 +108,63 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
     );
     return Scaffold(
       appBar: AppBar(title: const Text('Route preview')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            widget.routeName,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${widget.trip.direction == wire.TripDirectionEnum.outbound ? 'Outbound' : 'Return'}'
-            ' · ${DateFormat('EEE, d MMM, HH:mm').format(widget.trip.scheduledAt.toUtc())}',
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'This preview shows the planned route, not the live bus. '
-            'Confirm a trip to access live tracking.',
-          ),
-          const SizedBox(height: 16),
-          if (_loading) const LinearProgressIndicator(),
-          if (_error != null) ...[
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-            TextButton(onPressed: _load, child: const Text('Retry')),
-          ],
-          if (version != null) ...[
-            RouteStopsMap(version: version, geometry: _geometry, style: style),
-            if (_warning != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(_warning!),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+            children: [
+              Text(
+                widget.routeName,
+                style: AppTypography.heading2.copyWith(
+                  color: colors.textPrimary,
+                ),
               ),
-            const SizedBox(height: 20),
-            Text('Stops', style: Theme.of(context).textTheme.titleLarge),
-            for (final stop
-                in version.stops.toList()
-                  ..sort((a, b) => a.ordinal.compareTo(b.ordinal)))
-              ListTile(
-                leading: CircleAvatar(child: Text('${stop.ordinal}')),
-                title: Text(stop.name),
+              const SizedBox(height: 8),
+              Text(
+                '${widget.trip.direction == wire.TripDirectionEnum.outbound ? 'Outbound' : 'Return'}'
+                ' · ${DateFormat('EEE, d MMM · HH:mm').format(widget.trip.scheduledAt.toUtc())}',
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
-          ],
-        ],
+              const SizedBox(height: 20),
+              _previewNotice(context),
+              const SizedBox(height: 20),
+              if (_loading)
+                LinearProgressIndicator(color: colors.actionPrimaryDefault),
+              if (_error != null) ...[
+                Text(
+                  _error!,
+                  style: AppTypography.bodySmall.copyWith(color: colors.error),
+                ),
+                TextButton(onPressed: _load, child: const Text('Try again')),
+              ],
+              if (version != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: RouteStopsMap(
+                    version: version,
+                    geometry: _geometry,
+                    style: style,
+                  ),
+                ),
+                if (_warning != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _warning!,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                _stopsList(context, version.stops.toList()),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -190,6 +206,7 @@ class _RouteChoicePreviewPageState extends State<RouteChoicePreviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final tiles = widget.client.configuration?.mapTiles;
     String? clean(String? value) =>
         value == null || value.trim().isEmpty ? null : value.trim();
@@ -200,55 +217,136 @@ class _RouteChoicePreviewPageState extends State<RouteChoicePreviewPage> {
     );
     return Scaffold(
       appBar: AppBar(title: const Text('Preview stops')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            widget.routeName,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(widget.departureLabel),
-          const SizedBox(height: 8),
-          const Text(
-            'Planned route only. A bus position appears after a confirmed trip begins.',
-          ),
-          const SizedBox(height: 16),
-          FutureBuilder<wire.Geometry?>(
-            future: _geometry,
-            builder: (context, snapshot) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (snapshot.connectionState != ConnectionState.done)
-                  const LinearProgressIndicator(),
-                RouteStopsMap(
-                  version: widget.version,
-                  geometry: snapshot.data,
-                  style: style,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+            children: [
+              Text(
+                widget.routeName,
+                style: AppTypography.heading2.copyWith(
+                  color: colors.textPrimary,
                 ),
-                if (snapshot.hasError)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Route line unavailable. Stops are still shown.',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.departureLabel,
+                style: AppTypography.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _previewNotice(context),
+              const SizedBox(height: 20),
+              FutureBuilder<wire.Geometry?>(
+                future: _geometry,
+                builder: (context, snapshot) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (snapshot.connectionState != ConnectionState.done)
+                      LinearProgressIndicator(
+                        color: colors.actionPrimaryDefault,
+                      ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: RouteStopsMap(
+                        version: widget.version,
+                        geometry: snapshot.data,
+                        style: style,
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                    if (snapshot.hasError)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Route line unavailable. Stops are still shown.',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              _stopsList(context, widget.version.stops.toList()),
+            ],
           ),
-          const SizedBox(height: 20),
-          Text('Stops', style: Theme.of(context).textTheme.titleLarge),
-          for (final stop
-              in widget.version.stops.toList()
-                ..sort((a, b) => a.ordinal.compareTo(b.ordinal)))
-            ListTile(
-              leading: CircleAvatar(child: Text('${stop.ordinal}')),
-              title: Text(stop.name),
-            ),
-        ],
+        ),
       ),
     );
   }
+}
+
+Widget _previewNotice(BuildContext context) {
+  final colors = context.appColors;
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: colors.backgroundSubtle,
+      border: Border.all(color: colors.borderSubtle),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline_rounded, color: colors.actionPrimaryDefault),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'This is the planned route, not the live bus. Live tracking is available for a confirmed trip.',
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _stopsList(BuildContext context, List<wire.StopOccurrence> stops) {
+  final colors = context.appColors;
+  stops.sort((a, b) => a.ordinal.compareTo(b.ordinal));
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Stops',
+        style: AppTypography.title.copyWith(color: colors.textPrimary),
+      ),
+      const SizedBox(height: 12),
+      for (var index = 0; index < stops.length; index++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.actionPrimaryDefault.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: AppTypography.label.copyWith(
+                    color: colors.actionPrimaryDefault,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  stops[index].name,
+                  style: AppTypography.body.copyWith(color: colors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
 }
 
 class RouteStopsMap extends StatefulWidget {
@@ -310,7 +408,7 @@ class _RoutePreviewMapState extends State<RouteStopsMap> {
           <LatLng>[];
       if (points.length >= 2) {
         await controller.addLine(
-          LineOptions(geometry: points, lineColor: '#50789A', lineWidth: 5),
+          LineOptions(geometry: points, lineColor: '#058740', lineWidth: 5),
         );
       }
       if (!current()) return;
@@ -323,7 +421,7 @@ class _RoutePreviewMapState extends State<RouteStopsMap> {
             ),
             circleRadius: 7,
             circleColor: '#FFFFFF',
-            circleStrokeColor: '#50789A',
+            circleStrokeColor: '#058740',
             circleStrokeWidth: 2,
           ),
         );
@@ -368,6 +466,7 @@ class _RoutePreviewMapState extends State<RouteStopsMap> {
   @override
   Widget build(BuildContext context) {
     final first = widget.version.stops.firstOrNull?.location;
+    final colors = context.appColors;
     return SizedBox(
       height: 320,
       child: Stack(
@@ -389,11 +488,15 @@ class _RoutePreviewMapState extends State<RouteStopsMap> {
             },
           ),
           if (_failed)
-            const ColoredBox(
-              color: Color(0xFFF4F6F8),
+            ColoredBox(
+              color: colors.backgroundSubtle,
               child: Center(
                 child: Text(
                   'Map could not be drawn. Stop details remain available below.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               ),
             ),

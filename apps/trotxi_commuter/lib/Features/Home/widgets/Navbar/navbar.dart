@@ -5,143 +5,83 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
+  const Navbar({
+    super.key,
+    required this.userData,
+    required this.userName,
+    this.onProfile,
+  });
+
   final Account userData;
   final String userName;
-
-  const Navbar({super.key, required this.userData, required this.userName});
+  final VoidCallback? onProfile;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 32);
+  Size get preferredSize => const Size.fromHeight(64);
 
-  String _getInitials(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return '?';
-
-    final parts = trimmed.split(RegExp(r'\s+'));
-    if (parts.length == 1) {
-      return parts.first.substring(0, 1).toUpperCase();
-    }
-    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
-        .toUpperCase();
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
-    final String? avatarUrl = userData.avatarUrl;
-    final bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
     final colors = context.appColors;
+    final avatarUrl = userData.avatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       bottom: false,
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: ShapeDecoration(
-              color: colors.surfaceElevated,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(width: 1, color: colors.borderSubtle),
-              ),
+      child: Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: colors.surfaceElevated,
+          border: Border(bottom: BorderSide(color: colors.borderSubtle)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Image.asset(
+              isDark ? Appvectors.logodarktheme : Appvectors.logo,
+              width: 86,
+              height: 42,
+              fit: BoxFit.contain,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 70,
-                  height: 47,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(
-                        isDark ? Appvectors.logodarktheme : Appvectors.logo,
-                      ),
-                      fit: BoxFit.contain,
+            Tooltip(
+              message: 'Open profile',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onProfile,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: colors.actionPrimaryDefault,
+                      backgroundImage: hasAvatar
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: hasAvatar
+                          ? null
+                          : Text(
+                              _initials(userName),
+                              style: AppTypography.label.copyWith(
+                                color: colors.actionOnPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  spacing: 16,
-                  children: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              userName,
-                              style: TextStyle(
-                                color: colors.textPrimary,
-                                fontSize: 16,
-                                fontFamily: AppTypography.fontFamily,
-                                fontWeight: FontWeight.w400,
-                                height: 1.50,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Container(
-                      width: 40,
-                      height: 40,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: ShapeDecoration(
-                        color: colors.surfaceElevated,
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                            width: 1,
-                            color: colors.borderSubtle,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: hasAvatar
-                          ? Container(
-                              width: double.infinity,
-                              height: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                image: DecorationImage(
-                                  image: NetworkImage(avatarUrl),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            )
-                          : Container(
-                              width: double.infinity,
-                              height: double.infinity,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: colors.actionPrimaryDefault,
-                              ),
-                              child: Text(
-                                _getInitials(userName),
-                                style: TextStyle(
-                                  color: colors.actionOnPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: AppTypography.fontFamily,
-                                ),
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

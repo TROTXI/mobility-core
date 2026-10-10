@@ -3,6 +3,7 @@ import 'package:trotxi_client/commute_selection.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart'
     show commuteError;
 import 'route_preview_page.dart';
@@ -53,6 +54,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
   CommuteLegChoice? _choice;
   wire.StopOccurrence? _pickup;
   SelectedCommuteLeg? _outbound;
+  String _routeQuery = '';
   bool get _returning => _outbound != null;
 
   @override
@@ -183,6 +185,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final direction = _returning ? 'return' : 'outbound';
     final title = switch (_step) {
       _Step.route => 'Choose a route',
@@ -209,108 +212,388 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
         : _pickup == null
         ? <wire.StopOccurrence>[]
         : _choice!.dropoffsAfter(_pickup!.id);
+    final routes = _routes
+        .where((route) => route.name.toLowerCase().contains(_routeQuery))
+        .toList();
     return Scaffold(
-      backgroundColor: context.appColors.backgroundDefault,
+      backgroundColor: colors.backgroundDefault,
       appBar: AppBar(
         title: Text(title),
         leading: IconButton(
           onPressed: _back,
-          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
       body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(commuteError(_error!)),
-                    ),
-                    TextButton(
-                      onPressed: _route == null
-                          ? _loadRoutes
-                          : () => _selectRoute(_route!),
-                      child: const Text('Try again'),
-                    ),
-                  ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+              children: [
+                _progress(context),
+                const SizedBox(height: 28),
+                Text(
+                  switch (_step) {
+                    _Step.route => 'Where are you travelling?',
+                    _Step.departure =>
+                      _returning
+                          ? 'When will you head back?'
+                          : 'When will you leave?',
+                    _Step.pickup => 'Where should we pick you up?',
+                    _Step.dropoff => 'Where will you get off?',
+                  },
+                  style: AppTypography.heading2.copyWith(
+                    color: colors.textPrimary,
+                  ),
                 ),
-              )
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_step == _Step.route) ...[
-                    if (_routes.isEmpty) const Text('No routes available yet.'),
-                    for (final route in _routes)
-                      _tile(
-                        route.name,
-                        route.description,
-                        () => _selectRoute(route),
+                const SizedBox(height: 8),
+                Text(
+                  switch (_step) {
+                    _Step.route =>
+                      'Choose a route to see its departures and stops.',
+                    _Step.departure =>
+                      'Select the time that works for your ${_returning ? 'return' : 'outbound'} journey.',
+                    _Step.pickup => 'Select the stop where you will board.',
+                    _Step.dropoff => 'Select a stop after your pickup.',
+                  },
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (_route != null && _step != _Step.route) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSubtle,
+                      border: Border.all(color: colors.borderSubtle),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.route_rounded,
+                          color: colors.actionPrimaryDefault,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _route!.name,
+                                style: AppTypography.label.copyWith(
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              if (_outbound != null)
+                                Text(
+                                  'Outbound: ${_outbound!.pickup.name} → ${_outbound!.dropoff.name} · ${_outbound!.choice.schedule.localDeparture}',
+                                  style: AppTypography.caption.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (_loading)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: CircularProgressIndicator(
+                        color: colors.actionPrimaryDefault,
                       ),
-                  ] else if (_step == _Step.departure) ...[
-                    if (departures.isEmpty)
-                      const Text(
-                        'No compatible departures available. Choose another route or contact operations.',
-                      ),
-                    for (final c in departures)
-                      _tile(
-                        '${c.schedule.localDeparture} · Africa/Accra',
-                        'Service days: ${c.schedule.weekdays.map((d) => const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d - 1]).join(', ')}',
-                        () => setState(() {
-                          _choice = c;
-                          _step = _Step.pickup;
-                        }),
-                        onPreview: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => RouteChoicePreviewPage(
-                              client: widget.client,
-                              version: c.version,
-                              routeName: c.route.name,
-                              departureLabel:
-                                  '${_returning ? 'Return' : 'Outbound'} · ${c.schedule.localDeparture}',
-                            ),
+                    ),
+                  )
+                else if (_error != null)
+                  _messageCard(
+                    context,
+                    icon: Icons.wifi_off_rounded,
+                    title: 'Could not load choices',
+                    message: commuteError(_error!),
+                    action: 'Try again',
+                    onAction: _route == null
+                        ? _loadRoutes
+                        : () => _selectRoute(_route!),
+                  )
+                else if (_step == _Step.route) ...[
+                  TextField(
+                    onChanged: (value) => setState(
+                      () => _routeQuery = value.trim().toLowerCase(),
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Search routes',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (routes.isEmpty)
+                    _messageCard(
+                      context,
+                      icon: Icons.route_rounded,
+                      title: _routes.isEmpty
+                          ? 'No routes yet'
+                          : 'No matching routes',
+                      message: _routes.isEmpty
+                          ? 'Routes will appear here when they are available.'
+                          : 'Try a different route name.',
+                    ),
+                  for (final route in routes)
+                    _choiceCard(
+                      context,
+                      icon: Icons.route_rounded,
+                      title: route.name,
+                      subtitle: route.description?.trim().isNotEmpty == true
+                          ? route.description!.trim()
+                          : 'View departures and stops',
+                      onTap: () => _selectRoute(route),
+                    ),
+                ] else if (_step == _Step.departure) ...[
+                  if (departures.isEmpty)
+                    _messageCard(
+                      context,
+                      icon: Icons.schedule_rounded,
+                      title: 'No departures available',
+                      message: 'Go back and choose another route.',
+                    ),
+                  for (final choice in departures)
+                    _choiceCard(
+                      context,
+                      icon: Icons.schedule_rounded,
+                      title: choice.schedule.localDeparture,
+                      subtitle: choice.schedule.weekdays
+                          .map(
+                            (day) => const [
+                              'Mon',
+                              'Tue',
+                              'Wed',
+                              'Thu',
+                              'Fri',
+                              'Sat',
+                              'Sun',
+                            ][day - 1],
+                          )
+                          .join(' · '),
+                      onTap: () => setState(() {
+                        _choice = choice;
+                        _step = _Step.pickup;
+                      }),
+                      onPreview: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => RouteChoicePreviewPage(
+                            client: widget.client,
+                            version: choice.version,
+                            routeName: choice.route.name,
+                            departureLabel:
+                                '${_returning ? 'Return' : 'Outbound'} · ${choice.schedule.localDeparture}',
                           ),
                         ),
                       ),
-                  ] else ...[
-                    for (final stop in stops)
-                      _tile(
-                        stop.name,
-                        'Stop occurrence ${stop.ordinal}',
-                        () => _step == _Step.pickup
-                            ? setState(() {
-                                _pickup = stop;
-                                _step = _Step.dropoff;
-                              })
-                            : _dropoff(stop),
-                      ),
-                  ],
+                    ),
+                ] else ...[
+                  if (stops.isEmpty)
+                    _messageCard(
+                      context,
+                      icon: Icons.location_off_outlined,
+                      title: 'No stops available',
+                      message:
+                          'Go back and choose another departure or pickup.',
+                    ),
+                  for (final stop in stops)
+                    _choiceCard(
+                      context,
+                      icon: _step == _Step.pickup
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.location_on_rounded,
+                      title: stop.name,
+                      subtitle: _step == _Step.pickup
+                          ? 'Board here'
+                          : 'Get off here',
+                      onTap: () => _step == _Step.pickup
+                          ? setState(() {
+                              _pickup = stop;
+                              _step = _Step.dropoff;
+                            })
+                          : _dropoff(stop),
+                    ),
                 ],
-              ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _tile(
-    String title,
-    String? subtitle,
-    VoidCallback onTap, {
+  Widget _progress(BuildContext context) {
+    final colors = context.appColors;
+    final step = _Step.values.indexOf(_step);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _returning ? 'RETURN JOURNEY' : 'OUTBOUND JOURNEY',
+          style: AppTypography.caption.copyWith(
+            color: colors.actionPrimaryDefault,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            for (var index = 0; index < _Step.values.length; index++) ...[
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: index <= step
+                        ? colors.actionPrimaryDefault
+                        : colors.borderSubtle,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              if (index != _Step.values.length - 1) const SizedBox(width: 6),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _choiceCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
     VoidCallback? onPreview,
-  }) => Card(
-    child: ListTile(
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: onPreview == null
-          ? const Icon(Icons.chevron_right)
-          : IconButton(
-              tooltip: 'Preview route and stops',
-              icon: const Icon(Icons.map_outlined),
-              onPressed: onPreview,
+  }) {
+    final colors = context.appColors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: colors.surfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: colors.borderSubtle),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colors.actionPrimaryDefault.withValues(
+                          alpha: 0.10,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(icon, color: colors.actionPrimaryDefault),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: AppTypography.buttonAction.copyWith(
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.chevron_right_rounded, color: colors.iconSubtle),
+                  ],
+                ),
+              ),
             ),
-      onTap: onTap,
-    ),
-  );
+            if (onPreview != null) ...[
+              Divider(height: 1, color: colors.borderSubtle),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onPreview,
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: const Text('Preview route and stops'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _messageCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String message,
+    String? action,
+    VoidCallback? onAction,
+  }) {
+    final colors = context.appColors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.backgroundSubtle,
+        border: Border.all(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: colors.actionPrimaryDefault),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: AppTypography.buttonAction.copyWith(
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          if (action != null && onAction != null) ...[
+            const SizedBox(height: 8),
+            TextButton(onPressed: onAction, child: Text(action)),
+          ],
+        ],
+      ),
+    );
+  }
 }

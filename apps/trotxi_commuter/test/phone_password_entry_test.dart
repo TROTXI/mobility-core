@@ -17,9 +17,11 @@ void main() {
       'GoodPassword!',
       'GoodPassword1',
       'GoodPassword1 ',
+      'Password123!',
     ]) {
       expect(validateNewPassword(value), isNotNull);
     }
+    expect(newPasswordGuidance, isNot(contains('128')));
   });
 
   testWidgets('commuter entry shows one phone method with distinct signup', (
@@ -40,6 +42,7 @@ void main() {
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('Apple'), findsNothing);
     expect(find.textContaining('Continue with email'), findsNothing);
+    expect(find.text('Request account deletion'), findsOneWidget);
 
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
@@ -52,6 +55,30 @@ void main() {
     expect(find.text('Continue'), findsOneWidget);
     expect(tester.getTopLeft(find.text('Continue')).dy, lessThan(1000));
     expect(fixture.requests, isEmpty);
+  });
+
+  testWidgets('entry actions remain visible on a short phone', (tester) async {
+    final fixture = Fixture();
+    addTearDown(fixture.api.dispose);
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: OnBoardPage(client: fixture.api),
+      ),
+    );
+
+    expect(
+      tester
+          .getBottomRight(find.widgetWithText(FilledButton, 'Create account'))
+          .dy,
+      lessThan(640),
+    );
+    expect(
+      tester.getBottomRight(find.widgetWithText(OutlinedButton, 'Sign in')).dy,
+      lessThan(640),
+    );
   });
 
   testWidgets('signup keeps the action visible and preserves details on back', (
@@ -75,6 +102,7 @@ void main() {
       final field = find.widgetWithText(TextFormField, label);
       await tester.ensureVisible(field);
       await tester.enterText(field, value);
+      await tester.pump();
     }
 
     await enter('First name', 'Ama');
@@ -85,20 +113,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Create a password'), findsOneWidget);
     expect(find.text('Confirm password'), findsOneWidget);
-    expect(
-      tester.getBottomRight(
-        find.widgetWithText(FilledButton, 'Send verification code'),
-      ).dy,
-      lessThan(640),
+    expect(find.text('12 to 128 characters'), findsNothing);
+    expect(find.text('At least 12 characters'), findsOneWidget);
+    final sendButton = find.widgetWithText(
+      FilledButton,
+      'Send verification code',
     );
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNull);
+    await enter('Password', 'short');
+    await enter('Confirm password', 'short');
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNull);
+    await enter('Password', 'GoodPass123!');
+    await enter('Confirm password', 'GoodPass123!');
+    expect(find.text('Passwords match'), findsOneWidget);
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNotNull);
+    expect(tester.getBottomRight(sendButton).dy, lessThan(640));
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.text('Your details'), findsAtLeastNWidgets(1));
     expect(
-      tester.widget<TextFormField>(
-        find.widgetWithText(TextFormField, 'First name'),
-      ).controller?.text,
+      tester
+          .widget<TextFormField>(
+            find.widgetWithText(TextFormField, 'First name'),
+          )
+          .controller
+          ?.text,
       'Ama',
     );
     expect(fixture.requests, isEmpty);
@@ -178,6 +218,7 @@ void main() {
       final field = find.widgetWithText(TextFormField, label);
       await tester.ensureVisible(field);
       await tester.enterText(field, value);
+      await tester.pump();
     }
 
     await enter('First name', 'Ama');

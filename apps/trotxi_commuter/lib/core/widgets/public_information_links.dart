@@ -7,9 +7,14 @@ Future<bool> _openExternally(Uri uri) =>
 
 /// Information links also work before authentication and after uninstalling.
 class PublicInformationLinks extends StatelessWidget {
-  const PublicInformationLinks({super.key, this.open = _openExternally});
+  const PublicInformationLinks({
+    super.key,
+    this.open = _openExternally,
+    this.showDeletion = true,
+  });
 
   final Future<bool> Function(Uri) open;
+  final bool showDeletion;
 
   Future<void> _show(BuildContext context, Uri uri) async {
     try {
@@ -51,7 +56,8 @@ class PublicInformationLinks extends StatelessWidget {
       runSpacing: 4,
       children: [
         link('Privacy notice', TrotxiPublicInformation.privacy),
-        link('Request account deletion', TrotxiPublicInformation.deletion),
+        if (showDeletion)
+          link('Request account deletion', TrotxiPublicInformation.deletion),
       ],
     );
   }

@@ -52,8 +52,8 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   List<QuickAction> get _quickActions => [
     QuickAction(
-      icon: Icons.event_seat_rounded,
-      label: 'Track ride',
+      icon: Icons.confirmation_number_outlined,
+      label: 'My trips',
       onTap: widget.onShowTrips,
     ),
     QuickAction(
@@ -82,9 +82,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
   String get _greeting {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   void _onShowBoardingPass() {
@@ -159,7 +159,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     loading: () => [_buildLoadingCard()],
                     error: (err, st) => [_buildErrorCard()],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   _buildQuickActionsRow(),
                 ],
               ),
@@ -176,56 +176,34 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
   Widget _buildGreetingHeader(RideLifecycleState? state) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final subtitle = switch (state) {
       RideReserved() => 'Your seat is confirmed for this departure.',
       RideBoarded() => 'You have boarded this departure.',
-      _ => "Let's get you moving today",
+      _ => 'Your commute at a glance.',
     };
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: colors.textPrimary.withValues(alpha: 0.06),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$_greeting, $_firstName',
-                  style: TextStyle(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.heading3.copyWith(
                     color: colors.textPrimary,
-                    fontSize: 22,
-                    fontFamily: AppTypography.fontFamily,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: AppTypography.bodySmall.copyWith(
                     color: colors.textSecondary,
-                    fontSize: 14,
-                    fontFamily: AppTypography.fontFamily,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
                   ),
                 ),
               ],
@@ -240,7 +218,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   Widget _buildNotificationButton() {
     final colors = context.appColors;
     return Material(
-      color: colors.borderSubtle,
+      color: colors.surfaceElevated,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -297,7 +275,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         _buildStatusCard(
           icon: Icons.airline_seat_recline_normal_rounded,
           title: 'No seat available',
-          message: 'The van filled up before your seat was confirmed.',
+          message: 'All seats were taken before your request was confirmed.',
           accentColor: colors.warning,
         ),
       ],
@@ -417,7 +395,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Reserve a seat to lock in your spot.',
+            'Request a seat for today. We will confirm availability.',
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 14,
@@ -431,7 +409,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             children: [
               Expanded(
                 child: _pillButton(
-                  label: 'Yes',
+                  label: 'Request seat',
                   filled: true,
                   onTap: () => _onEveningPromptResponse(true),
                 ),
@@ -439,7 +417,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               const SizedBox(width: 12),
               Expanded(
                 child: _pillButton(
-                  label: 'Not today',
+                  label: 'Not travelling',
                   filled: false,
                   onTap: () => _onEveningPromptResponse(false),
                 ),
@@ -541,7 +519,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           if (etaPhase.isEstimated) ...[
             const SizedBox(height: 8),
             Text(
-              'Van position not live yet — ETA is estimated',
+              'Live location is unavailable. Arrival time is estimated.',
               style: TextStyle(
                 color: colors.actionOnPrimary.withValues(alpha: 0.85),
                 fontSize: 12,
@@ -758,11 +736,24 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   // Quick Actions
   // ---------------------------------------------------------------------
   Widget _buildQuickActionsRow() {
-    return Row(
+    final colors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < _quickActions.length; i++) ...[
-          if (i != 0) const SizedBox(width: 12),
-          Expanded(child: _buildQuickActionButton(_quickActions[i])),
+        Text(
+          'Quick links',
+          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: 12),
+        for (int i = 0; i < _quickActions.length; i += 2) ...[
+          Row(
+            children: [
+              Expanded(child: _buildQuickActionButton(_quickActions[i])),
+              const SizedBox(width: 10),
+              Expanded(child: _buildQuickActionButton(_quickActions[i + 1])),
+            ],
+          ),
+          if (i + 2 < _quickActions.length) const SizedBox(height: 10),
         ],
       ],
     );
@@ -770,44 +761,31 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
   Widget _buildQuickActionButton(QuickAction action) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: colors.textPrimary.withValues(alpha: 0.05),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+    return Material(
+      color: colors.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colors.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: action.onTap,
+      child: InkWell(
+        onTap: action.onTap,
+        child: SizedBox(
+          height: 64,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
               children: [
-                Icon(action.icon, color: colors.actionPrimaryDefault, size: 24),
-                const SizedBox(height: 8),
-                Text(
-                  action.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 12,
-                    fontFamily: AppTypography.fontFamily,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
+                Icon(action.icon, color: colors.actionPrimaryDefault, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    action.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.label.copyWith(
+                      color: colors.textPrimary,
+                    ),
                   ),
                 ),
               ],

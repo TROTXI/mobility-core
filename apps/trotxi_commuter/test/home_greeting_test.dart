@@ -9,12 +9,45 @@ import 'replacement_fixture.dart';
 
 class FixedLifecycle extends RideLifecycleNotifier {
   FixedLifecycle(this.value);
-  final RideLifecycleState value;
+  final RideLifecycleState? value;
   @override
   Future<RideLifecycleState?> build() async => value;
 }
 
 void main() {
+  testWidgets('home quick links fit a narrow phone', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture = Fixture();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          rideLifecycleProvider.overrideWith(() => FixedLifecycle(null)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: HomeTab(
+            client: fixture.api,
+            userData: wire.Account(
+              (b) => b
+                ..id = 'rider'
+                ..displayName = 'Ama'
+                ..role = wire.AccountRoleEnum.commuter
+                ..createdAt = DateTime.utc(2026, 9, 16),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Quick links'));
+    await tester.pumpAndSettle();
+    expect(find.text('My trips'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    fixture.api.dispose();
+  });
+
   for (final boarded in [false, true]) {
     testWidgets(
       'greeting distinguishes ${boarded ? 'boarded' : 'reserved'} seat',

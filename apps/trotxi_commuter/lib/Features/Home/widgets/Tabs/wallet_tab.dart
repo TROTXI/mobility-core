@@ -272,55 +272,155 @@ class _WalletTabState extends State<WalletTab> {
       ..._buildBalanceSection(context, membership, isWide),
       if (membership.upcomingCoverage case final upcoming?) ...[
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Upcoming coverage paid', style: AppTypography.label),
-                Text(
-                  'Starts ${_formatFullDay(upcoming.startsAt)}${upcoming.endsAt == null ? '' : ' · Ends ${_formatFullDay(upcoming.endsAt!)}'}',
-                ),
-                const Text(
-                  'These rides become available when this coverage starts. Your current ride balance is unchanged.',
-                ),
-              ],
-            ),
-          ),
-        ),
+        _buildUpcomingCoverage(context, upcoming),
       ],
-      const SizedBox(height: 12),
-      Card(
-        child: ListTile(
-          leading: const Icon(Icons.credit_card_outlined),
-          title: const Text('Card auto-renewal'),
-          subtitle: const Text('Optional card renewal and saved-card controls'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => AutoRenewalPage(client: widget.client),
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(height: 8),
-      TextButton(
-        onPressed: () async {
-          await Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => CheckoutPage(client: widget.client),
-            ),
-          );
-          if (mounted) await _load();
-        },
-        child: const Text('Review or recover payment'),
-      ),
+      const SizedBox(height: 20),
+      _buildPaymentActions(context),
       const SizedBox(height: 24),
       _buildSectionTitle(context, 'Recent activity'),
       const SizedBox(height: 12),
       _buildActivitySection(context),
     ];
+  }
+
+  Widget _buildUpcomingCoverage(
+    BuildContext context,
+    MembershipCoverage upcoming,
+  ) {
+    final colors = context.appColors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.actionPrimaryDefault.withValues(alpha: 0.08),
+        border: Border.all(
+          color: colors.actionPrimaryDefault.withValues(alpha: 0.25),
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.event_available_rounded,
+            color: colors.actionPrimaryDefault,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Upcoming coverage paid',
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Starts ${_formatFullDay(upcoming.startsAt)}${upcoming.endsAt == null ? '' : ' · Ends ${_formatFullDay(upcoming.endsAt!)}'}',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'These rides become available when this coverage starts. Your current ride balance is unchanged.',
+                  style: AppTypography.caption.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentActions(BuildContext context) {
+    final colors = context.appColors;
+    return Material(
+      color: colors.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colors.borderSubtle),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _paymentAction(
+            context,
+            icon: Icons.credit_card_outlined,
+            title: 'Card auto-renewal',
+            subtitle: 'Manage renewal and saved cards',
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) => AutoRenewalPage(client: widget.client),
+              ),
+            ),
+          ),
+          Divider(height: 1, indent: 56, color: colors.borderSubtle),
+          _paymentAction(
+            context,
+            icon: Icons.receipt_long_outlined,
+            title: 'Review or recover payment',
+            subtitle: 'Check the latest payment status',
+            onTap: () async {
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => CheckoutPage(client: widget.client),
+                ),
+              );
+              if (mounted) await _load();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentAction(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.appColors;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: colors.actionPrimaryDefault, size: 22),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.label.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: colors.iconSubtle),
+          ],
+        ),
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -739,17 +839,34 @@ class _WalletTabState extends State<WalletTab> {
       decoration: BoxDecoration(
         color: colors.surfaceElevated,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: shown.isEmpty
           ? Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Nothing here yet. Your rides and payments will show up as '
-                'they happen.',
-                style: AppTypography.caption.copyWith(
-                  color: colors.textSecondary,
-                ),
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    color: colors.actionPrimaryDefault,
+                    size: 26,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No activity yet',
+                    style: AppTypography.label.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your rides and payments will appear here.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             )
           : Column(

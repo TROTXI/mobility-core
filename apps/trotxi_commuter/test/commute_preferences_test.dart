@@ -199,7 +199,7 @@ void main() {
     await tester.tap(find.text('New corridor'));
     await tester.pumpAndSettle();
     expect(find.text('Choose outbound departure'), findsOneWidget);
-    await tester.tap(find.text('06:30 · Africa/Accra'));
+    await tester.tap(find.text('06:30'));
     await tester.pumpAndSettle();
     expect(
       find.text('Home'),
@@ -210,7 +210,7 @@ void main() {
     await tester.tap(find.text('Office'));
     await tester.pumpAndSettle();
     expect(find.text('Choose return departure'), findsOneWidget);
-    await tester.tap(find.text('17:30 · Africa/Accra'));
+    await tester.tap(find.text('17:30'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Office'));
     await tester.pumpAndSettle();

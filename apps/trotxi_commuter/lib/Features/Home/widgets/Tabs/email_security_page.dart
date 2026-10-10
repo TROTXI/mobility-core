@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/auth/password_policy.dart';
+import 'package:trotxi_commuter/core/auth/password_requirements.dart';
 
 class EmailSecurityPage extends StatefulWidget {
   const EmailSecurityPage({super.key, required this.client});
@@ -28,7 +29,13 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _password.addListener(_refreshPasswordRequirements);
+    _confirm.addListener(_refreshPasswordRequirements);
     _load();
+  }
+
+  void _refreshPasswordRequirements() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -93,6 +100,8 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _password.removeListener(_refreshPasswordRequirements);
+    _confirm.removeListener(_refreshPasswordRequirements);
     for (final c in [_email, _code, _old, _password, _confirm]) {
       c.dispose();
     }
@@ -231,10 +240,11 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                       maxLength: 128,
                       decoration: const InputDecoration(
                         labelText: 'New password',
-                        helperText: newPasswordGuidance,
+                        counterText: '',
                       ),
                       validator: validateNewPassword,
                     ),
+                    PasswordRequirements(password: _password.text),
                     TextFormField(
                       controller: _confirm,
                       enabled: !_busy,
@@ -247,6 +257,17 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                       validator: (v) =>
                           v != _password.text ? 'Passwords do not match' : null,
                     ),
+                    if (_confirm.text.isNotEmpty)
+                      Text(
+                        _confirm.text == _password.text
+                            ? 'Passwords match'
+                            : 'Passwords do not match yet',
+                        style: TextStyle(
+                          color: _confirm.text == _password.text
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                   ],
                   if (_error != null)
                     Padding(
@@ -255,7 +276,13 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                     ),
                   const SizedBox(height: 24),
                   FilledButton(
-                    onPressed: _busy ? null : _submit,
+                    onPressed:
+                        _busy ||
+                            ((_enabled || _sent) &&
+                                (validateNewPassword(_password.text) != null ||
+                                    _confirm.text != _password.text))
+                        ? null
+                        : _submit,
                     child: Text(
                       _busy
                           ? 'Please wait...'
