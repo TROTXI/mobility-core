@@ -4,6 +4,7 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'checkout_page.dart';
 
 class HelpSupportPage extends StatelessWidget {
   const HelpSupportPage({super.key, required this.client});
@@ -59,28 +60,37 @@ class HelpSupportPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
               Text(
-                'How can we help?',
+                'What do you need help with?',
                 style: AppTypography.heading2.copyWith(
                   color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Contact us about a trip, payment or your account. Have your route and travel date ready for trip help.',
+                'Find your payment details or reach our team when a support channel is available.',
                 style: AppTypography.body.copyWith(color: colors.textSecondary),
               ),
-              if (hours?.isNotEmpty ?? false) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'Support hours: $hours',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
               const SizedBox(height: 28),
               Text(
-                'Contact Trotxi',
+                'Quick help',
+                style: AppTypography.title.copyWith(color: colors.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              _linkTile(
+                context,
+                icon: Icons.receipt_long_outlined,
+                title: 'Payment history',
+                subtitle: 'Check a payment or copy its support reference',
+                external: false,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CheckoutPage(client: client),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Contact us',
                 style: AppTypography.title.copyWith(color: colors.textPrimary),
               ),
               const SizedBox(height: 12),
@@ -91,11 +101,24 @@ class HelpSupportPage extends StatelessWidget {
                     color: colors.backgroundSubtle,
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: Text(
-                    'Support contact details are unavailable right now. Please try again later.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: colors.textSecondary,
+                        size: 21,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'A direct support contact is not available in this app yet. You can still check your payments above.',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               if (phone?.isNotEmpty ?? false)
@@ -123,23 +146,18 @@ class HelpSupportPage extends StatelessWidget {
                   onTap: () =>
                       _open(context, Uri(scheme: 'mailto', path: email)),
                 ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.actionPrimaryDefault.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  'For payment help, copy the reference from Payment details. Never share your password or verification code.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colors.textPrimary,
+              if (hours?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Support hours: $hours',
+                  style: AppTypography.caption.copyWith(
+                    color: colors.textSecondary,
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 28),
               Text(
-                'Your information',
+                'Privacy and account',
                 style: AppTypography.title.copyWith(color: colors.textPrimary),
               ),
               const SizedBox(height: 12),
@@ -155,6 +173,26 @@ class HelpSupportPage extends StatelessWidget {
                 title: 'Request account deletion',
                 onTap: () => _open(context, TrotxiPublicInformation.deletion),
               ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Never share your password or verification code with anyone.',
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -167,6 +205,7 @@ class HelpSupportPage extends StatelessWidget {
     required IconData icon,
     required String title,
     String? subtitle,
+    bool external = true,
     required VoidCallback onTap,
   }) {
     final colors = context.appColors;
@@ -198,7 +237,7 @@ class HelpSupportPage extends StatelessWidget {
                   ),
                 ),
           trailing: Icon(
-            Icons.open_in_new_rounded,
+            external ? Icons.open_in_new_rounded : Icons.chevron_right_rounded,
             size: 18,
             color: colors.iconSubtle,
           ),
