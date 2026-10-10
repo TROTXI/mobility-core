@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
@@ -73,8 +71,8 @@ class _SignInPageState extends State<SignInPage> {
     super.initState();
     // Any edit clears the previous failure, so the driver is not still reading
     // "check your PIN" while typing a different one.
-    _codeController.addListener(_clearFailure);
-    _pinController.addListener(_onPinChanged);
+    _codeController.addListener(_onCredentialsChanged);
+    _pinController.addListener(_onCredentialsChanged);
   }
 
   @override
@@ -84,22 +82,16 @@ class _SignInPageState extends State<SignInPage> {
     super.dispose();
   }
 
-  /// A completed PIN submits itself. The file draws a button, but a driver
-  /// typing one-handed at a depot gate should not then have to find it, and
-  /// this is what the PIN boxes did before this screen matched the frames.
-  void _onPinChanged() {
-    _clearFailure();
-    if (_pinController.text.length == _pinDigits && _canSubmit) {
-      unawaited(_submit());
-    }
-  }
-
-  void _clearFailure() {
-    if (_state.status == SignInStatus.idle || _state.isSubmitting) return;
+  /// Entering a complete PIN enables Sign in; it never starts authentication.
+  void _onCredentialsChanged() {
+    if (!mounted || _state.isSubmitting) return;
     // A lock and a suspension survive editing: they are not about what was
     // typed, and clearing them would suggest another go might work.
-    if (!_state.isRetryable) return;
-    setState(() => _state = SignInState.idle);
+    if (_state.status != SignInStatus.idle && _state.isRetryable) {
+      setState(() => _state = SignInState.idle);
+    } else {
+      setState(() {});
+    }
   }
 
   /// What the API accepts, not what the frames label. See the class doc.
@@ -252,7 +244,7 @@ class _SignInPageState extends State<SignInPage> {
                       keyboardType: TextInputType.number,
                       autocorrect: false,
                       enableSuggestions: false,
-                      onSubmitted: (_) => _submit(),
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
                       style: AppTypography.fieldText.copyWith(
                         fontWeight: FontWeight.w500,
                         color: colors.textPrimary,
