@@ -188,6 +188,7 @@ void main() {
       ); // Label lives with timing, not seat proof.
       expect(find.textContaining('Departs 17 Sep, 00:15'), findsNWidgets(2));
       expect(find.textContaining('Service day 16 Sep'), findsNWidgets(2));
+      expect(find.textContaining('In progress'), findsNWidgets(2));
       final reads = f.requests.where((r) => r.path == '/v1/trips').toList();
       expect(reads, hasLength(2));
       expect(

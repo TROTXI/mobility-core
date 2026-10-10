@@ -265,6 +265,13 @@ class _RoutesTabState extends State<RoutesTab> {
     final direction = trip.direction == wire.TripDirectionEnum.outbound
         ? 'Outbound'
         : 'Return';
+    final status = switch (trip.status) {
+      wire.TripStatusEnum.scheduled => 'Scheduled',
+      wire.TripStatusEnum.active => 'In progress',
+      wire.TripStatusEnum.completed => 'Completed',
+      wire.TripStatusEnum.cancelled => 'Cancelled',
+      _ => 'Status unavailable',
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -317,8 +324,16 @@ class _RoutesTabState extends State<RoutesTab> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '$direction · ${trip.vehicleLabel ?? 'Vehicle to be assigned'}',
+                        '$direction · $status',
                         style: AppTypography.bodySmall.copyWith(
+                          color: trip.status == wire.TripStatusEnum.cancelled
+                              ? colors.error
+                              : colors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        'Vehicle: ${trip.vehicleLabel ?? 'To be assigned'}',
+                        style: AppTypography.caption.copyWith(
                           color: colors.textSecondary,
                         ),
                       ),
