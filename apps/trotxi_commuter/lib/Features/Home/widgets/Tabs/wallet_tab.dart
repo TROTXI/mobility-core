@@ -777,7 +777,7 @@ class _WalletTabState extends State<WalletTab> {
         purchase.offerTerms != null
             ? 'Subscription offer'
             : purchasePlanLabel(purchase.plan),
-        '${purchaseStateLabel(purchase.state)} · ${_formatDay(purchase.createdAt)}',
+        '${purchaseStateLabel(purchase.state, collectionState: purchase.collectionState)} · ${_formatDay(purchase.createdAt)}',
         purchase.price.formatted,
         false,
       ),

@@ -120,10 +120,7 @@ void main() {
         tester,
         () => tester.tap(find.text('Refresh payment status')),
       );
-      expect(
-        find.textContaining('Payment confirmed'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Payment confirmed'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await finish(tester);
     },
@@ -137,6 +134,19 @@ void main() {
     expect(find.textContaining('Could not open Paystack'), findsOneWidget);
     expect(find.textContaining('old-purchase'), findsOneWidget);
     expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
+    await finish(tester);
+  });
+  testWidgets('collected payment needing Ops review is not labelled failed', (
+    tester,
+  ) async {
+    await pump(tester);
+    state = 'failed';
+    collection = 'successful';
+    await drain(tester, () => tester.tap(find.text('Refresh payment status')));
+    expect(find.text('Payment received · Under review'), findsOneWidget);
+    expect(find.text('Payment failed'), findsNothing);
+    expect(find.textContaining('Please do not pay again'), findsOneWidget);
+    expect(find.textContaining('Continue to Paystack'), findsNothing);
     await finish(tester);
   });
   testWidgets(
@@ -157,7 +167,10 @@ void main() {
       unsafeUrl: 'https://checkout.paystack.com.attacker.test/x',
     );
     expect(find.textContaining('Continue to Paystack'), findsNothing);
-    expect(find.textContaining('The payment link is unavailable'), findsOneWidget);
+    expect(
+      find.textContaining('The payment link is unavailable'),
+      findsOneWidget,
+    );
     expect(launched, isEmpty);
     await finish(tester);
   });

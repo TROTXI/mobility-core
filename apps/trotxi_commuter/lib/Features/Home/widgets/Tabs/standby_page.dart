@@ -243,6 +243,18 @@ class _StandbyPageState extends State<StandbyPage> {
               a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
         )
         .toList();
+    final checkoutOpen = active.any(
+      (a) => a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
+    );
+    final offerReady = active.any(
+      (a) =>
+          a.state == wire.StandbyApplicationStateEnum.offered &&
+          a.offer?.terms != null &&
+          (a.offer?.expiresAt.isAfter(DateTime.now()) ?? false),
+    );
+    final offered = active.any(
+      (a) => a.state == wire.StandbyApplicationStateEnum.offered,
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Waitlist')),
       body: ListView(
@@ -251,6 +263,12 @@ class _StandbyPageState extends State<StandbyPage> {
           Text(
             active.isEmpty
                 ? 'Tell us where and when you travel. Joining is free and does not reserve a seat. We will send an offer when we can serve your commute.'
+                : checkoutOpen
+                ? 'Your checkout is open. Review it below to complete payment.'
+                : offerReady
+                ? 'Your offer is ready. Review it below before it expires.'
+                : offered
+                ? 'Your offer needs attention. Check it below for next steps.'
                 : 'Your request is in. We will let you know when an offer is ready to review.',
           ),
           const SizedBox(height: 16),

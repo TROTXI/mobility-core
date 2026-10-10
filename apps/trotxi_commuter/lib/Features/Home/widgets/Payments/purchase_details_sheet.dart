@@ -172,7 +172,11 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
 
   Widget _buildHeader(BuildContext context, Purchase purchase) {
     final colors = context.appColors;
-    final stateColor = purchaseStateColor(context, purchase.state);
+    final stateColor = purchaseStateColor(
+      context,
+      purchase.state,
+      collectionState: purchase.collectionState,
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +211,10 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
             borderRadius: BorderRadius.circular(14),
           ),
           child: Text(
-            purchaseStateLabel(purchase.state),
+            purchaseStateLabel(
+              purchase.state,
+              collectionState: purchase.collectionState,
+            ),
             style: AppTypography.label.copyWith(color: stateColor),
           ),
         ),

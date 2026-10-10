@@ -228,15 +228,26 @@ class _CheckoutPageState extends State<CheckoutPage>
                       Text('Ride Credit applied: ${_money(p.appliedCredit)}'),
                       Text('Cash due: ${_money(p.cashDue)}'),
                       SelectableText('Payment reference: ${p.id}'),
-                      Text(purchaseStateLabel(p.state)),
+                      Text(
+                        purchaseStateLabel(
+                          p.state,
+                          collectionState: p.collectionState,
+                        ),
+                      ),
                       if (p.state == wire.PurchaseStateEnum.fulfilled)
                         const Text(
                           'Payment confirmed. Refresh Wallet to see your rides.',
                         ),
-                      if (p.state == wire.PurchaseStateEnum.processing ||
+                      if (p.state == wire.PurchaseStateEnum.failed &&
+                          p.collectionState ==
+                              wire.PurchaseCollectionStateEnum.successful)
+                        const Text(
+                          'We received your payment, but could not activate this subscription. Operations will review it. Please do not pay again.',
+                        )
+                      else if (p.state == wire.PurchaseStateEnum.processing ||
                           p.collectionState ==
                                   wire.PurchaseCollectionStateEnum.successful &&
-                              p.state != wire.PurchaseStateEnum.fulfilled)
+                              p.state == wire.PurchaseStateEnum.awaitingPayment)
                         const Text(
                           'We are confirming your payment. Please do not pay again.',
                         ),
