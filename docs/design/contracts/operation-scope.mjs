@@ -52,6 +52,12 @@ export const operationScope = [
     'Invite-only Ops onboarding and superadmin-owned access management',
     'A shared social login and generic role editor do not bind invitation ownership or restrict administrator provisioning.',
   ]),
+  [
+    'eraseCommuter',
+    'post-cutover',
+    'A superadmin can fulfil a verified commuter deletion request when the owner cannot sign in',
+    'Self-service deletion requires an active owner session; Ops only had erasure visibility and could not close inaccessible commuter accounts.',
+  ],
   ...[
     'listNotifications',
     'markNotificationRead',

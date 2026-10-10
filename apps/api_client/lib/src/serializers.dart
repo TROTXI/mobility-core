@@ -298,6 +298,7 @@ import 'package:trotxi_api_client/src/model/restriction_response.dart';
 import 'package:trotxi_api_client/src/model/review_decision.dart';
 import 'package:trotxi_api_client/src/model/ride_entry.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
+import 'package:trotxi_api_client/src/model/rider_erasure_input.dart';
 import 'package:trotxi_api_client/src/model/rider_notification.dart';
 import 'package:trotxi_api_client/src/model/rider_notification_page.dart';
 import 'package:trotxi_api_client/src/model/rider_notification_response.dart';
@@ -654,6 +655,7 @@ part 'serializers.g.dart';
   ReviewDecision,
   RideEntry,
   RideEntryPage,
+  RiderErasureInput,
   RiderNotification,
   RiderNotificationPage,
   RiderNotificationResponse,

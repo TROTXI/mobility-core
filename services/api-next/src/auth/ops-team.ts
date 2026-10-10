@@ -12,6 +12,7 @@ export const teamOperations = [
   'resendOperatorInvitation',
   'cancelOperatorInvitation',
   'updateOperatorAccess',
+  'eraseCommuter',
 ] as const;
 export type TeamOperation = (typeof teamOperations)[number];
 export interface OpsInvitationEmail {
@@ -40,7 +41,7 @@ export async function requireSuperadmin(c: PoolClient, actor: Actor) {
       [actor.userId],
     )
   ).rowCount;
-  if (!r) fail(403, 'superadmin_required', 'Only a superadmin can manage operator access.');
+  if (!r) fail(403, 'superadmin_required', 'Only a superadmin can perform this action.');
 }
 /**
  * Changing who can operate needs a passkey check from moments ago, not the
@@ -58,7 +59,7 @@ export async function requireRecentPasskey(c: PoolClient, actor: Actor) {
       [actor.sessionId, actor.userId],
     )
   ).rowCount;
-  if (!fresh) fail(403, 'passkey_required', 'Confirm with your passkey to change operator access.');
+  if (!fresh) fail(403, 'passkey_required', 'Confirm with your passkey to perform this action.');
 }
 export async function finishInvitation(c: PoolClient, userId: string) {
   const pending = (await c.query('SELECT ops_invite_pending FROM app.users WHERE id=$1', [userId]))
@@ -145,6 +146,7 @@ export class OpsTeam {
       email?: OpsInvitationEmail;
       origin?: string;
       eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
+      eraseCommuter?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
     },
   ) {
     this.cursor = cursorCodec(options.cursorSecret);
@@ -219,6 +221,12 @@ export class OpsTeam {
         fail(400, 'invalid_request', 'Invalid account or invitation identifier.');
       target = target?.toLowerCase();
       const reason = requireReason(body);
+      if (
+        name === 'eraseCommuter' &&
+        (typeof body?.confirmAccountId !== 'string' ||
+          body.confirmAccountId.toLowerCase() !== target)
+      )
+        fail(400, 'confirmation_required', 'Confirm the exact commuter account ID.');
       const keyHash = hash(JSON.stringify([actor.userId, name, target, key]));
       const inputHash = hash(JSON.stringify(body ?? {}));
       const prior = (
@@ -312,6 +320,10 @@ export class OpsTeam {
           "UPDATE app.ops_invitations SET state='cancelled',token_hash=NULL,email=NULL,name=NULL WHERE id=$1",
           [target],
         );
+      } else if (name === 'eraseCommuter') {
+        if (!this.options.eraseCommuter)
+          fail(503, 'account_erasure_unavailable', 'Account deletion is temporarily unavailable.');
+        await this.options.eraseCommuter(c, actor, target!);
       } else {
         if (target === actor.userId)
           fail(403, 'self_access_change', 'Another superadmin must change your access.');

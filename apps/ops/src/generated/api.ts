@@ -1959,6 +1959,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/riders/{id}/erase': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** erase Commuter */
+    post: operations['eraseCommuter'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/operators': {
     parameters: {
       query?: never;
@@ -4850,6 +4867,10 @@ export interface components {
       page: {
         nextCursor: string | null;
       };
+    };
+    RiderErasureInput: {
+      reason: string;
+      confirmAccountId: string;
     };
     RiderNotification: {
       id: string;
@@ -11811,6 +11832,56 @@ export interface operations {
       401: components['responses']['Error401'];
       403: components['responses']['Error403'];
       404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  eraseCommuter: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RiderErasureInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorCommandResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
       426: components['responses']['Error426'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];

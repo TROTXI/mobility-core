@@ -21,6 +21,7 @@ const selected = new Set([
   'resendOperatorInvitation',
   'cancelOperatorInvitation',
   'updateOperatorAccess',
+  'eraseCommuter',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
   'signInPhonePassword',
