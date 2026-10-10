@@ -330,7 +330,13 @@ void main() {
     },
   );
 
-  for (final path in ['/v1/auth/driver', '/v1/auth/google', '/v1/auth/apple']) {
+  for (final path in [
+    '/v1/auth/driver',
+    '/v1/auth/google',
+    '/v1/auth/apple',
+    '/v1/auth/phone/password',
+    '/v1/auth/phone/verify',
+  ]) {
     test(
       'sign-in rejection at $path never refreshes or clears tokens',
       () async {

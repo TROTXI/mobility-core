@@ -203,6 +203,52 @@ void main() {
     );
   });
 
+  test(
+      'phone password rejection reports invalid credentials, not an expired session',
+      () {
+    final request = RequestOptions(path: '/v1/auth/phone/password');
+    final error = runOnError(
+      DioException(
+        requestOptions: request,
+        response: Response(
+          requestOptions: request,
+          statusCode: 401,
+          data: {
+            'error': {
+              'code': 'invalid_credentials',
+              'message': 'Phone number or password is incorrect.',
+            },
+          },
+        ),
+      ),
+    );
+    expect(error, isA<InvalidCredentialsException>());
+    expect((error as InvalidCredentialsException).message,
+        'Phone number or password is incorrect.');
+  });
+
+  test('wrong phone code reports the OTP refusal, not a session failure', () {
+    final request = RequestOptions(path: '/v1/auth/phone/verify');
+    final error = runOnError(
+      DioException(
+        requestOptions: request,
+        response: Response(
+          requestOptions: request,
+          statusCode: 401,
+          data: {
+            'error': {
+              'code': 'invalid_otp',
+              'message': 'This code is invalid, expired or already used. Request a new code.',
+            },
+          },
+        ),
+      ),
+    );
+    expect(error, isA<InvalidCredentialsException>());
+    expect((error as InvalidCredentialsException).message,
+        'This code is invalid, expired or already used. Request a new code.');
+  });
+
   test('social sign-in 403 is not assumed to be driver suspension', () {
     final request = RequestOptions(path: '/v1/auth/apple');
     final error = runOnError(
