@@ -14,6 +14,28 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/utils/money_format.dart';
+import 'journey_search_page.dart';
+import 'journey_search.dart';
+
+Future<void> showCommuterSearch(
+  BuildContext context, {
+  required CommuterApi client,
+  required ValueChanged<CommuterDestination> onDestination,
+}) => Navigator.of(context).push<void>(
+  MaterialPageRoute(
+    builder: (pageContext) => JourneySearchPage(
+      client: client,
+      onAppSearch: () => showAppSearch(
+        pageContext,
+        client: client,
+        onDestination: (destination) {
+          Navigator.of(pageContext).pop();
+          onDestination(destination);
+        },
+      ),
+    ),
+  ),
+);
 
 /// One tappable search result. [keywords] are extra words that should find the
 /// entry without being shown (e.g. "money" finds Wallet).
@@ -37,24 +59,29 @@ class SearchEntry {
   String get _haystack => '$title ${subtitle ?? ''} $keywords'.toLowerCase();
 }
 
-/// Every whitespace-separated word of [query] must appear somewhere in an
-/// entry. An empty query matches everything.
+/// Rank matching words and tolerate a single typo in longer words.
+/// An empty query returns shortcuts in their original order.
 List<SearchEntry> searchEntries(List<SearchEntry> entries, String query) {
-  final words = query
-      .toLowerCase()
-      .split(RegExp(r'\s+'))
-      .where((w) => w.isNotEmpty)
-      .toList();
-  if (words.isEmpty) return entries;
-  return entries
-      .where((e) => words.every((w) => e._haystack.contains(w)))
-      .toList();
+  if (query.trim().isEmpty) return entries;
+  final ranked =
+      [
+        for (var i = 0; i < entries.length; i++)
+          (
+            entry: entries[i],
+            index: i,
+            score: searchScore(entries[i]._haystack, query),
+          ),
+      ].where((item) => item.score >= 0).toList()..sort((a, b) {
+        final rank = b.score.compareTo(a.score);
+        return rank == 0 ? a.index.compareTo(b.index) : rank;
+      });
+  return ranked.map((item) => item.entry).toList();
 }
 
 /// Opens the floating search bar. Picking a result closes it first, then runs
 /// the result's action against [context], so navigation never targets the
 /// dismissed dialog.
-Future<void> showCommuterSearch(
+Future<void> showAppSearch(
   BuildContext context, {
   required CommuterApi client,
   required ValueChanged<CommuterDestination> onDestination,
@@ -111,6 +138,7 @@ class _SearchPanelState extends State<_SearchPanel> {
   List<wire.Route> _routes = const [];
   List<wire.Purchase> _purchases = const [];
   int _pendingLoads = 3;
+  bool _lookupFailed = false;
 
   bool get _loading => _pendingLoads > 0;
 
@@ -134,7 +162,7 @@ class _SearchPanelState extends State<_SearchPanel> {
     try {
       await fetch();
     } catch (_) {
-      // Leave that group of results empty.
+      _lookupFailed = true;
     } finally {
       if (mounted) setState(() => _pendingLoads--);
     }
@@ -174,7 +202,7 @@ class _SearchPanelState extends State<_SearchPanel> {
     );
   });
 
-  /// Closes the panel, then lets [showCommuterSearch] run [action].
+  /// Closes the panel, then lets [showAppSearch] run [action].
   void _select(VoidCallback action) => Navigator.of(context).pop(action);
 
   List<SearchEntry> _entries() {
@@ -367,8 +395,10 @@ class _SearchPanelState extends State<_SearchPanel> {
                             textInputAction: TextInputAction.search,
                             onChanged: (_) => setState(() {}),
                             onSubmitted: (_) {
-                              if (results.isNotEmpty) {
+                              if (results.length == 1) {
                                 _select(results.first.onSelected);
+                              } else {
+                                FocusScope.of(context).unfocus();
                               }
                             },
                             style: AppTypography.bodySmall.copyWith(
@@ -424,6 +454,8 @@ class _SearchPanelState extends State<_SearchPanel> {
       child: Text(
         _loading
             ? 'Searching…'
+            : _lookupFailed
+            ? 'Some results couldn’t load. Close search and try again.'
             : 'No results for “$query”. Try a screen, route, date or payment.',
         textAlign: TextAlign.center,
         style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
@@ -481,6 +513,16 @@ class _SearchPanelState extends State<_SearchPanel> {
     }
     if (_loading && !shortcuts) {
       children.add(const LinearProgressIndicator(minHeight: 2));
+    }
+    if (_lookupFailed && !shortcuts) {
+      children.add(
+        const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Some results couldn’t load. Close search and try again.',
+          ),
+        ),
+      );
     }
     return ListView(
       shrinkWrap: true,

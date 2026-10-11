@@ -17,6 +17,39 @@ Trips retain stable departure, service date and run identity across rescheduling
 and cancellation. Launch supports run 1. A delay past midnight does not rewrite
 the service date. Driver/vehicle assignment is an explicit Ops command.
 
+## Commuter journey search
+
+The Home search button opens **Find your commute**. Riders enter pickup and
+destination stop names, choose a travel date and compare matching departures.
+Suggestions use published stop names; exact and prefix matches rank ahead of
+single-character spelling mistakes. Pickup must precede drop-off on the same
+directional pattern version. Schedule weekdays, effective dates and the
+version's effective interval constrain the results.
+
+Results show the route, selected stops, route departure time and operating
+days, with a route-and-stops map preview. The departure time is for the route,
+not an estimated arrival at an intermediate pickup. Results describe scheduled
+service, not live buses or available seats.
+
+**Plan this commute** carries the selected journey into Waitlist & offers.
+The picker re-fetches schedules before completing the other leg. Riders still
+verify their phone, choose travel days and review both legs before submitting.
+Existing requests and offers remain visible; search never submits a request
+or reserves a seat automatically. The commute picker also exposes this search.
+
+Only public catalogue data is loaded for journey search. It is cached in memory
+for five minutes per API instance/session, with at most three route loaders in
+parallel. Failed route loads are explicitly marked as incomplete and can be
+retried. **Search the app** remains a secondary entry for trips, payments and
+settings; private data is loaded only when that separate search opens.
+
+Search does not geocode arbitrary addresses, infer nearby stops, calculate
+transfers or invent local place aliases. Stops and schedules remain Ops-owned.
+
+Sources: `apps/trotxi_commuter/lib/Features/Search/`,
+`apps/trotxi_client/lib/commute_selection.dart`.
+Tests: `apps/trotxi_commuter/test/journey_search_test.dart`.
+
 ## Ops setup
 
 1. Routes & stops → Routes → New route.
