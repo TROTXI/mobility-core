@@ -24,8 +24,9 @@ Physical-device GPS/push and store-signing checks remain release gates.
 
 ## Visual system
 
-The driver app shares the commuter app's bundled Inter typeface, forest-green
-actions, soft neutral surfaces and light/dark themes. Driver-specific controls
+The driver app keeps its original blue-black and muted off-blue palette in
+light and dark themes. It shares the commuter app's bundled Inter typeface
+and improved component patterns, not its green brand colours. Driver-specific controls
 keep large tap targets and explicit start, boarding and completion steps.
 Entering a complete PIN only enables Sign in; it never submits automatically.
 Today opens the trip workflow instead of starting or completing a trip directly.

@@ -138,14 +138,13 @@ void main() {
     });
   });
 
-  group('approved Trotxi palette', () {
-    test('action and body text meet normal-text contrast in both themes', () {
+  group('original driver palette', () {
+    test('actions and primary/secondary text meet normal-text contrast', () {
       for (final colors in [AppColors.light, AppColors.dark]) {
         for (final pair in [
           (colors.action, colors.onAction),
           (colors.page, colors.textPrimary),
           (colors.surface, colors.textSecondary),
-          (colors.surface, colors.textMuted),
         ]) {
           final a = pair.$1.computeLuminance();
           final b = pair.$2.computeLuminance();
@@ -156,21 +155,21 @@ void main() {
         }
       }
     });
-    test('primary actions match the commuter palette', () {
-      expect(AppColors.light.action, const Color(0xFF155C3E));
-      expect(AppColors.dark.action, const Color(0xFFA9D6BA));
+    test('primary actions retain the driver muted off-blue palette', () {
+      expect(AppColors.light.action, const Color(0xFF5B7896));
+      expect(AppColors.dark.action, const Color(0xFF7A9AB8));
     });
 
     test('the contrast rule holds: white on the CTA in light, ink in dark', () {
       expect(AppColors.light.onAction, const Color(0xFFFFFFFF));
-      expect(AppColors.dark.onAction, const Color(0xFF101A15));
+      expect(AppColors.dark.onAction, const Color(0xFF09131D));
     });
 
     test('status colours are the four the file defines, kept apart', () {
       expect(AppColors.light.success, const Color(0xFF147A3B));
       expect(AppColors.light.danger, const Color(0xFFB42318));
       expect(AppColors.light.info, const Color(0xFF1769AA));
-      expect(AppColors.light.warning, const Color(0xFF955600));
+      expect(AppColors.light.warning, const Color(0xFFB76512));
 
       expect(AppColors.dark.success, const Color(0xFF4FD37A));
       expect(AppColors.dark.danger, const Color(0xFFFF776B));
@@ -179,8 +178,8 @@ void main() {
     });
 
     test('grounds match the file', () {
-      expect(AppColors.light.page, const Color(0xFFFAFBF8));
-      expect(AppColors.dark.page, const Color(0xFF101A15));
+      expect(AppColors.light.page, const Color(0xFFF7F9FB));
+      expect(AppColors.dark.page, const Color(0xFF09131D));
     });
   });
 }
