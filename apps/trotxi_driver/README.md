@@ -39,7 +39,7 @@ for readable information before an action, and
 These inform presentation only. Trotxi does not expose ride-hailing earnings,
 ratings or unimplemented dispatch features.
 
-`test/approved_design_test.dart` exercises 14 screen states in both themes at
+`test/approved_design_test.dart` exercises 28 screen states in both themes at
 320px width with enlarged text, plus the active-trip navigation safeguard.
 For review PNGs of the real Flutter widgets using fixture data:
 

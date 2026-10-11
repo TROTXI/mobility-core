@@ -3,8 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:trotxi_driver/data/device_readiness.dart';
+import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
+import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
+import 'package:trotxi_driver/Presentations/Profile/pages/driver_information_page.dart';
+import 'package:trotxi_driver/Presentations/Run/pages/location_connectivity_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/sign_in_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/confirm_account_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/account_linked_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/pin_setup_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/forgot_pin_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/cant_sign_in_page.dart';
+import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/run_summary_page.dart';
 import 'package:trotxi_driver/Presentations/Onboarding/pages/first_launch_page.dart';
@@ -29,6 +40,7 @@ import 'package:trotxi_driver/data/position_publisher.dart';
 import 'package:trotxi_driver/data/route_map_repository.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_driver/data/work_repository.dart';
+import 'package:trotxi_driver/data/incidents_repository.dart';
 
 const _driver = DriverSession(
   driverId: 'preview',
@@ -76,7 +88,31 @@ class _Maps implements RouteMapRepository {
 
 class _Work implements WorkRepository {
   @override
+  Future<List<OpenRoute>> openRoutes() async => const [
+    OpenRoute(id: 'route-preview', name: 'Circle → Madina'),
+  ];
+  @override
   Future<List<WorkRequest>> mine() async => [];
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _Incidents implements IncidentsRepository {
+  @override
+  Future<List<DriverIncident>> mine() async => [];
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _Readiness implements DeviceReadinessService {
+  const _Readiness(this.allowed);
+  final bool allowed;
+  @override
+  Future<DeviceReadiness> check() async => DeviceReadiness(
+    camera: allowed ? PermissionStatus.granted : PermissionStatus.denied,
+    location: allowed ? PermissionStatus.granted : PermissionStatus.denied,
+    locationServices: allowed,
+  );
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -185,6 +221,46 @@ Future<_Trips> _show(
   addTearDown(today.dispose);
   addTearDown(positions.dispose);
   final child = switch (page) {
+    'readiness' => DeviceReadinessPage(
+      service: const _Readiness(true),
+      onContinue: () {},
+    ),
+    'permissions' => DeviceReadinessPage(
+      service: const _Readiness(false),
+      onContinue: () {},
+    ),
+    'scan' => _frame(
+      'Scan',
+      ScanPage(
+        runId: trips.run.id,
+        scannerBuilder: (_, _) =>
+            const Center(child: Text('Camera preview on device')),
+      ),
+    ),
+    'information' => _frame(
+      'Driver information',
+      const DriverInformationPage(showHeading: false),
+    ),
+    'connectivity' => LocationConnectivityPage(run: trips.run),
+    'linked' => AccountLinkedPage(session: _driver, onContinue: () {}),
+    'pin-setup' => PinSetupPage(
+      changePin:
+          ({
+            required currentPin,
+            required newPin,
+            required idempotencyKey,
+          }) async {},
+      onChanged: () async {},
+      onUncertain: () async {},
+      onSignOut: () async {},
+    ),
+    'forgot-pin' => const ForgotPinPage(),
+    'cant-sign-in' => const CantSignInPage(),
+    'end-trip' => const EndRunPage(),
+    'report-incident' => ReportIncidentPage(activeRun: trips.run),
+    'reports' => const MyReportsPage(),
+    'route-request' => const RouteChangeRequestPage(),
+    'leave-request' => const LeaveRequestPage(),
     'welcome' => DriverFirstLaunchPage(onContinue: () async {}),
     'sign-in' => SignInPage(auth: _Auth(), onSignedIn: (_) {}),
     'confirm' => ConfirmAccountPage(
@@ -216,6 +292,7 @@ Future<_Trips> _show(
         Provider<TripsRepository>.value(value: trips),
         Provider<RouteMapRepository>.value(value: _Maps()),
         Provider<WorkRepository>.value(value: _Work()),
+        Provider<IncidentsRepository>.value(value: _Incidents()),
         ChangeNotifierProvider<RunController>.value(value: run),
         ChangeNotifierProvider<TodayController>.value(value: today),
         ChangeNotifierProvider<PositionPublisher>.value(value: positions),
@@ -246,6 +323,20 @@ Future<_Trips> _show(
 
 void main() {
   const pages = [
+    'readiness',
+    'permissions',
+    'scan',
+    'information',
+    'connectivity',
+    'linked',
+    'pin-setup',
+    'forgot-pin',
+    'cant-sign-in',
+    'end-trip',
+    'report-incident',
+    'reports',
+    'route-request',
+    'leave-request',
     'welcome',
     'sign-in',
     'confirm',

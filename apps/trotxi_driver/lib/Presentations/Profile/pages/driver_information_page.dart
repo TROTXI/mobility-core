@@ -33,7 +33,7 @@ class DriverInformationPage extends StatelessWidget {
     final config = context.watch<ConfigController>();
     final colors = context.driverColors;
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.space20),
+      padding: const EdgeInsets.all(AppSpacing.space24),
       children: [
         if (showHeading) ...[
           Text(

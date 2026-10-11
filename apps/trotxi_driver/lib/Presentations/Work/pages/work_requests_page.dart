@@ -384,7 +384,7 @@ class _RouteChangeRequestPageState extends State<RouteChangeRequestPage> {
       appBar: AppBar(title: const Text('Request route change')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.space16),
+          padding: const EdgeInsets.all(AppSpacing.space24),
           children: [
             Text(
               'Which route?',
@@ -430,12 +430,13 @@ class _RouteChangeRequestPageState extends State<RouteChangeRequestPage> {
                         'any route right now.',
                   );
                 }
-                return Container(
-                  decoration: BoxDecoration(
-                    color: colors.surface,
+                return Material(
+                  color: colors.surface,
+                  shape: RoundedRectangleBorder(
                     borderRadius: AppRadii.circular(AppRadii.lg),
-                    border: Border.all(color: colors.border),
+                    side: BorderSide(color: colors.border),
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
                       for (final route in routes) ...[
@@ -606,7 +607,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
       appBar: AppBar(title: const Text('Request leave')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.space16),
+          padding: const EdgeInsets.all(AppSpacing.space24),
           children: [
             Text(
               'Which days?',
@@ -756,12 +757,13 @@ class _DateRow extends StatelessWidget {
     final colors = context.driverColors;
     final today = DateTime.now();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
+    return Material(
+      color: colors.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadii.circular(AppRadii.md),
-        border: Border.all(color: colors.border),
+        side: BorderSide(color: colors.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         enabled: enabled,
         title: Text(
