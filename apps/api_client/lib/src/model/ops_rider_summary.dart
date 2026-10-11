@@ -16,6 +16,8 @@ part 'ops_rider_summary.g.dart';
 /// * [active]
 /// * [paused]
 /// * [lapsed]
+/// * [weekly]
+/// * [biweekly]
 /// * [monthly]
 /// * [annual]
 /// * [creditOutstanding]
@@ -34,6 +36,12 @@ abstract class OpsRiderSummary
 
   @BuiltValueField(wireName: r'lapsed')
   int get lapsed;
+
+  @BuiltValueField(wireName: r'weekly')
+  int get weekly;
+
+  @BuiltValueField(wireName: r'biweekly')
+  int get biweekly;
 
   @BuiltValueField(wireName: r'monthly')
   int get monthly;
@@ -91,6 +99,16 @@ class _$OpsRiderSummarySerializer
     yield r'lapsed';
     yield serializers.serialize(
       object.lapsed,
+      specifiedType: const FullType(int),
+    );
+    yield r'weekly';
+    yield serializers.serialize(
+      object.weekly,
+      specifiedType: const FullType(int),
+    );
+    yield r'biweekly';
+    yield serializers.serialize(
+      object.biweekly,
       specifiedType: const FullType(int),
     );
     yield r'monthly';
@@ -167,6 +185,20 @@ class _$OpsRiderSummarySerializer
             specifiedType: const FullType(int),
           ) as int;
           result.lapsed = valueDes;
+          break;
+        case r'weekly':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.weekly = valueDes;
+          break;
+        case r'biweekly':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.biweekly = valueDes;
           break;
         case r'monthly':
           final valueDes = serializers.deserialize(

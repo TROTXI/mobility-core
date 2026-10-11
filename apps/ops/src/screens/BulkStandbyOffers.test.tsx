@@ -5,7 +5,7 @@ import { trotxiLight } from '../theme';
 import { BulkStandbyOffers } from './BulkStandbyOffers';
 import { Standby } from './Standby';
 import type { StandbyApplication } from './standby-offers';
-import { futureDate } from './standby-offers';
+import { futureDate, suggestedCoverageEnd } from './standby-offers';
 
 const { session } = vi.hoisted(() => ({
   session: { account: { id: 'admin' }, client: { GET: vi.fn(), POST: vi.fn() } },
@@ -93,6 +93,25 @@ async function showBulk() {
   return { onCompleted };
 }
 
+it('does not apply one coverage window to a mix of plan durations', async () => {
+  const weekly = request('Ama');
+  weekly.selection.plan = 'weekly';
+  render(
+    <FluentProvider theme={trotxiLight}>
+      <BulkStandbyOffers
+        applications={[weekly, request('Kojo')]}
+        open
+        onClose={() => {}}
+        onCompleted={() => {}}
+        onDiscard={() => {}}
+      />
+    </FluentProvider>,
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('same plan duration');
+  expect(screen.getByRole('button', { name: 'Send reviewed offers' })).toBeDisabled();
+  expect(session.client.POST).not.toHaveBeenCalled();
+});
+
 it('keeps per-rider prices and retries an uncertain send without resending successful offers', async () => {
   session.client.POST.mockResolvedValueOnce({ data: {} })
     .mockRejectedValueOnce(new Error('Connection lost'))
@@ -161,7 +180,15 @@ it.each([
           data: response.data.data.map((schedule) => ({
             ...schedule,
             effectiveFrom: futureDate(from),
-            effectiveTo: to === null ? null : futureDate(to),
+            effectiveTo:
+              to === null
+                ? null
+                : new Date(
+                    Date.parse(suggestedCoverageEnd(futureDate(3), 'monthly')) -
+                      (33 - to) * 86400000,
+                  )
+                    .toISOString()
+                    .slice(0, 10),
           })),
         },
       };

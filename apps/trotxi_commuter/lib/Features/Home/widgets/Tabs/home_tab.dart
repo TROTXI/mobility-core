@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,11 @@ import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_details_page.da
 import 'package:trotxi_commuter/Features/Home/widgets/home_overview.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/widgets/figma_commuter_icon.dart';
+import '../Trips/ride_rating_card.dart';
+import '../Trips/ride_journey_cards.dart';
+import '../Trips/confirm_ride_page.dart';
+import 'trip_tracking_page.dart';
+import 'pass_tab.dart';
 
 // ---------------------------------------------------------------------
 // Models
@@ -64,7 +70,54 @@ class HomeTab extends ConsumerStatefulWidget {
   ConsumerState<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeTabState extends ConsumerState<HomeTab> {
+class _HomeTabState extends ConsumerState<HomeTab> with WidgetsBindingObserver {
+  Timer? _statusRefresh;
+  bool _foreground = true;
+  bool _covered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _statusRefresh = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          _foreground &&
+          widget.isActive &&
+          !_covered &&
+          (ModalRoute.of(context)?.isCurrent ?? true) &&
+          !ref.read(rideLifecycleProvider).isLoading) {
+        ref.invalidate(homeDetailProvider);
+        ref.invalidate(rideLifecycleProvider);
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground && widget.isActive) refreshHomeOverview(ref, widget.client);
+  }
+
+  @override
+  void dispose() {
+    _statusRefresh?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _openRidePage(Widget page) async {
+    setState(() => _covered = true);
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => page));
+    if (!mounted) return;
+    setState(() => _covered = false);
+    refreshHomeOverview(ref, widget.client);
+  }
+
   @override
   void didUpdateWidget(covariant HomeTab oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -188,10 +241,15 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(rideLifecycleProvider, (previous, next) {
+      final current = next.asData?.value;
+      if ((current is RideBoarded || current is RideCompleted) &&
+          previous?.asData?.value.runtimeType != current.runtimeType) {
+        ref.invalidate(homeMembershipProvider(widget.client));
+      }
+    });
     final lifecycleAsync = ref.watch(rideLifecycleProvider);
-    final detail = lifecycleAsync.asData?.value is RideReserved
-        ? ref.watch(homeReservationDetailProvider).asData?.value
-        : null;
+    final detail = ref.watch(homeReservationDetailProvider).asData?.value;
 
     return Scaffold(
       backgroundColor: context.appColors.backgroundDefault,
@@ -217,16 +275,21 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     error: (err, st) => [_buildErrorCard()],
                   ),
                   const SizedBox(height: 16),
-                  HomePlanSummary(
-                    client: widget.client,
-                    onOpen: widget.onShowWallet,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildQuickActionsRow(detail),
-                  const SizedBox(height: 16),
+                  if (lifecycleAsync.asData?.value is! RideCompleted) ...[
+                    HomePlanSummary(
+                      client: widget.client,
+                      onOpen: widget.onShowWallet,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildQuickActionsRow(detail),
+                    const SizedBox(height: 16),
+                  ],
                   HomeUpcoming(
                     client: widget.client,
                     onSeeAll: widget.onShowTrips,
+                    title: lifecycleAsync.asData?.value is RideCompleted
+                        ? 'Next commute'
+                        : 'Upcoming',
                   ),
                 ],
               ),
@@ -245,7 +308,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     final colors = context.appColors;
     final subtitle = switch (state) {
       RideReserved() => 'Your seat is confirmed for this departure.',
-      RideBoarded() => 'You have boarded this departure.',
+      RideBoarded() => 'You are on your way.',
+      RideCompleted() => 'Your commute is complete.',
       _ => 'Your commute at a glance.',
     };
 
@@ -259,7 +323,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$_greeting, $_firstName',
+                  state is RideCompleted
+                      ? "You've arrived, $_firstName"
+                      : state is RideBoarded
+                      ? 'Trip in progress'
+                      : '$_greeting, $_firstName',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.heading1.copyWith(
@@ -330,18 +398,38 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       // No reservation exists yet for today's direction.
       null => [_buildNoReservationCard()],
 
-      RidePending() => [_buildPendingCard()],
-
-      RideReserved(:final etaPhase, :final reservationId) => [
-        _buildReservedCard(
-          etaPhase,
-          reservationId == null
-              ? null
-              : ref.watch(homeReservationDetailProvider).asData?.value,
-        ),
+      RidePending(:final reservationId) => [
+        if (reservationId == null)
+          _buildPendingCard()
+        else
+          _buildReviewCard(
+            reservationId,
+            ref.watch(homeReservationDetailProvider).asData?.value,
+          ),
       ],
 
-      RideBoarded() => [_buildBoardedCard()],
+      RideReserved(:final etaPhase, :final reservationId) => [
+        if (ref
+                .watch(homeReservationDetailProvider)
+                .asData
+                ?.value
+                ?.trip
+                ?.status ==
+            wire.ReservationDetailTripStatusEnum.active)
+          _buildLiveJourney(state)
+        else
+          _buildReservedCard(
+            etaPhase,
+            reservationId == null
+                ? null
+                : ref.watch(homeReservationDetailProvider).asData?.value,
+          ),
+      ],
+
+      RideBoarded() => [_buildLiveJourney(state)],
+      RideCompleted(:final reservationId) => _buildCompletedSection(
+        reservationId,
+      ),
 
       RideDeclined() => [
         _buildStatusCard(
@@ -439,6 +527,17 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   /// No reservation exists yet for today's direction — invites the user
   /// to reserve a seat. This replaces the old hardcoded "evening prompt".
   Widget _buildNoReservationCard() {
+    final upcoming = ref
+        .watch(homeUpcomingProvider(widget.client))
+        .asData
+        ?.value;
+    if (upcoming != null &&
+        upcoming.status == wire.ReservationStatusEnum.pending) {
+      return _buildReviewCard(
+        upcoming.id,
+        ref.watch(homeUpcomingDetailProvider(widget.client)).asData?.value,
+      );
+    }
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isReturn =
@@ -699,45 +798,137 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     );
   }
 
-  Widget _buildBoardedCard() {
-    final colors = context.appColors;
+  Widget _buildLiveJourney(RideLifecycleState state) {
+    final tripId = switch (state) {
+      RideBoarded(:final tripId) => tripId,
+      RideReserved(:final tripId) => tripId,
+      _ => null,
+    };
+    final detail = ref.watch(homeReservationDetailProvider).asData?.value;
+    if (tripId == null) {
+      return _buildReservedCard(const EtaPhase(isEstimated: true), detail);
+    }
+    return TripTrackingPage(
+      key: ValueKey('home-tracking-$tripId'),
+      client: widget.client,
+      tripId: tripId,
+      isActive: widget.isActive && !_covered,
+      onTripEnded: () {
+        // Re-read the reservation. An ended trip is not necessarily completed.
+        ref.invalidate(homeMembershipProvider(widget.client));
+        ref.invalidate(rideLifecycleProvider);
+        ref.invalidate(homeDetailProvider);
+      },
+      contentBuilder: (snapshot, map, error, loading) => LiveRideJourney(
+        boarded: state is RideBoarded,
+        detail: detail,
+        snapshot: snapshot,
+        map: map,
+        error: error,
+        loading: loading,
+        onExpand: () => _openRidePage(
+          TripTrackingPage(client: widget.client, tripId: tripId),
+        ),
+        onBoardingPass: () => _openRidePage(
+          PassTab(
+            client: widget.client,
+            initialReservationId: detail?.reservation.id,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(
+    String reservationId,
+    wire.ReservationDetail? detail,
+  ) {
+    final c = context.appColors;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceStrong,
-        borderRadius: BorderRadius.circular(28),
+        color: c.surfaceStrong,
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colors.onSurfaceStrong.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.directions_bus_filled_rounded,
-              color: colors.onSurfaceStrong,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              "You're on board — enjoy the ride!",
-              style: TextStyle(
-                color: colors.onSurfaceStrong,
-                fontSize: 16,
-                fontFamily: AppTypography.fontFamily,
-                fontWeight: FontWeight.w600,
-                height: 1.3,
+          if (detail != null)
+            Text(
+              DateFormat(
+                'EEE, d MMM',
+              ).format(detail.reservation.travelDate.toDateTime()),
+              style: AppTypography.caption.copyWith(
+                color: c.onSurfaceStrong.withValues(alpha: .8),
               ),
             ),
+          const SizedBox(height: 12),
+          Text(
+            'Confirm your ride',
+            style: AppTypography.title.copyWith(color: c.onSurfaceStrong),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            rideJourneyName(detail),
+            style: AppTypography.bodySmall.copyWith(color: c.onSurfaceStrong),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: () => _openRidePage(
+              ConfirmRidePage(
+                client: widget.client,
+                reservationId: reservationId,
+              ),
+            ),
+            child: const Text('Review ride'),
           ),
         ],
       ),
     );
+  }
+
+  List<Widget> _buildCompletedSection(String reservationId) {
+    final details = ref.watch(homeReservationDetailProvider);
+    final detail = details.asData?.value;
+    return [
+      CompletedRideSummary(
+        detail: detail,
+        remainingRides: ref
+            .watch(homeMembershipProvider(widget.client))
+            .asData
+            ?.value
+            .entitlements
+            .remainingRides,
+        onDetails: () => _openRidePage(
+          TripDetailsPage(client: widget.client, reservationId: reservationId),
+        ),
+      ),
+      if (detail != null &&
+          detail.reservation.id == reservationId &&
+          detail.reservation.status == wire.ReservationStatusEnum.boarded &&
+          detail.trip?.status ==
+              wire.ReservationDetailTripStatusEnum.completed) ...[
+        const SizedBox(height: 24),
+        RideRatingCard(
+          key: ValueKey(reservationId),
+          client: widget.client,
+          reservationId: reservationId,
+          initialStars: detail.rating?.stars,
+          onSubmitted: () => ref.invalidate(
+            homeDetailProvider((widget.client, reservationId)),
+          ),
+        ),
+      ] else if (details.hasError) ...[
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => ref.invalidate(
+            homeDetailProvider((widget.client, reservationId)),
+          ),
+          child: const Text('Load ride feedback'),
+        ),
+      ],
+    ];
   }
 
   Widget _buildStatusCard({

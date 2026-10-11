@@ -3,6 +3,7 @@ import type { Body } from '../transport/service.js';
 import type { CheckoutInput, PurchaseLeg } from '../payments/foundation.js';
 import { fail } from '../transport/errors.js';
 import { Pricing } from '../payments/pricing.js';
+import { isAvailablePlan } from '../payments/terms.js';
 
 export type Money = { amountMinor: number; currency: 'GHS' };
 export interface OfferLeg extends PurchaseLeg {
@@ -66,6 +67,8 @@ export async function buildOfferTerms(
   input: Body,
   now = new Date(),
 ): Promise<OfferTerms> {
+  if (!isAvailablePlan(selection.plan))
+    fail(409, 'plan_unavailable', 'Ask the rider to request a weekly, biweekly or monthly plan.');
   const start = coverageDate(input.coverageStart),
     end = coverageDate(input.coverageEnd);
   const expiry = new Date(String(input.expiresAt));

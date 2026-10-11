@@ -7,6 +7,8 @@ import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_status.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_tracking_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'ride_rating_card.dart';
+import 'confirm_ride_page.dart';
 
 String _formatWeekdayDay(DateTime date) =>
     DateFormat('EEE · d MMM').format(date).toUpperCase();
@@ -115,10 +117,14 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       return [const SizedBox(height: 24), _buildErrorCard(context)];
     }
 
-    final outcome = tripOutcomeOf(detail.reservation.status);
+    final outcome = tripOutcomeOf(
+      detail.reservation.status,
+      tripStatus: detail.trip?.status.name,
+    );
     final isHappyPath = switch (outcome) {
       TripOutcome.pending ||
       TripOutcome.confirmed ||
+      TripOutcome.boarded ||
       TripOutcome.completed => true,
       _ => false,
     };
@@ -150,6 +156,15 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         _buildVehicleCard(context, detail.trip!),
       ],
       ..._buildActions(context, detail, outcome),
+      if (outcome == TripOutcome.completed) ...[
+        const SizedBox(height: 24),
+        RideRatingCard(
+          key: ValueKey(detail.reservation.id),
+          client: widget.client,
+          reservationId: detail.reservation.id,
+          initialStars: detail.rating?.stars,
+        ),
+      ],
     ];
   }
 
@@ -492,21 +507,43 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     ReservationDetail detail,
     TripOutcome outcome,
   ) {
-    if (outcome != TripOutcome.confirmed) return const [];
+    if (outcome == TripOutcome.pending) {
+      return [
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ConfirmRidePage(
+                  client: widget.client,
+                  reservationId: detail.reservation.id,
+                ),
+              ),
+            );
+            if (mounted) await _load();
+          },
+          child: const Text('Review and confirm ride'),
+        ),
+      ];
+    }
+    if (outcome != TripOutcome.confirmed && outcome != TripOutcome.boarded) {
+      return const [];
+    }
     return [
       const SizedBox(height: 24),
-      FilledButton.icon(
-        icon: const Icon(Icons.qr_code_rounded),
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PassTab(
-              client: widget.client,
-              initialReservationId: detail.reservation.id,
+      if (outcome == TripOutcome.confirmed)
+        FilledButton.icon(
+          icon: const Icon(Icons.qr_code_rounded),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PassTab(
+                client: widget.client,
+                initialReservationId: detail.reservation.id,
+              ),
             ),
           ),
+          label: const Text('Boarding pass'),
         ),
-        label: const Text('Boarding pass'),
-      ),
       if (detail.trip case final trip?) ...[
         const SizedBox(height: 12),
         OutlinedButton.icon(

@@ -248,13 +248,13 @@ test('every current operation maps to an explicitly defined replacement', () => 
     assert.ok(spec.paths[path]?.[method.toLowerCase()], row.current);
   }
 });
-test('all 101 predecessor-free operations have a requirement, scope decision and existing-endpoint assessment', () => {
+test('all 102 predecessor-free operations have a requirement, scope decision and existing-endpoint assessment', () => {
   const predecessors = new Set(inventory.map((r) => r.target));
   const additions = operations.filter(
     (o) => !predecessors.has(`${o.method.toUpperCase()} ${o.path}`),
   );
-  assert.equal(additions.length, 101);
-  assert.equal(operationScope.length, 101);
+  assert.equal(additions.length, 102);
+  assert.equal(operationScope.length, 102);
   for (const o of additions) {
     const api = spec.paths[o.path][o.method];
     // post-cutover is work added after the replacement shipped, and is kept
@@ -393,9 +393,9 @@ test('rider membership cannot carry ops-only identity or provider fields', () =>
   assert.equal(schemas.MembershipResponse.safeParse(sample).success, false);
   assert.equal(validate('MembershipResponse')(sample), false);
 });
-test('monthly/annual plans survive; invented products and caller amounts are refused', () => {
+test('weekly, biweekly and monthly requests are supported; annual is historical only', () => {
   const input = {
-    plan: 'annual',
+    plan: 'monthly',
     routeId: 'route',
     legs: [
       {
@@ -416,7 +416,14 @@ test('monthly/annual plans survive; invented products and caller amounts are ref
     useCredit: true,
   };
   assert.equal(schemas.PurchaseInput.safeParse(input).success, true);
-  assert.equal(schemas.PurchaseInput.safeParse({ ...input, plan: 'weekly' }).success, false);
+  for (const plan of ['weekly', 'biweekly', 'monthly']) {
+    assert.equal(schemas.PurchaseInput.safeParse({ ...input, plan }).success, true);
+    assert.equal(validate('PurchaseInput')({ ...input, plan }), true);
+  }
+  assert.equal(schemas.PurchaseInput.safeParse({ ...input, plan: 'annual' }).success, false);
+  assert.equal(validate('PurchaseInput')({ ...input, plan: 'annual' }), false);
+  assert.equal(schemas.PurchaseSelection.safeParse({ ...input, plan: 'annual' }).success, true);
+  assert.equal(schemas.PurchaseInput.safeParse({ ...input, plan: 'quarterly' }).success, false);
   assert.equal(schemas.PurchaseInput.safeParse({ ...input, amount: 1 }).success, false);
 });
 test('boarding proof is a bounded discriminated union, not optional fields', () => {
@@ -535,7 +542,7 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(withoutCapturedExamples, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 189);
+  assert.equal(count, 190);
   assert.equal(runtime.paths['/v1/me/reservations/{id}'].get.operationId, 'getReservation');
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);

@@ -403,16 +403,74 @@ test('OFFER-03 invalid credits, dates, changed replays and late payment cannot s
 test('OFFER-08 future published services can be requested and paid before coverage starts', async (t) => {
   const f = await offeredFixture(t, true);
   await f.verify();
-  // Annual remains a supported request, with calendar dates set in the offer.
-  f.request.selection.plan = 'annual';
+  // Biweekly is a supported request, with exact dates reviewed in the offer.
+  f.request.selection.plan = 'biweekly';
   const application = await f.join();
-  assert.equal(application.selection.plan, 'annual');
+  assert.equal(application.selection.plan, 'biweekly');
   await f.offer(application.id);
   const purchase = expectStatus(await f.accept(application.id), 201);
-  assert.equal(purchase.plan, 'annual');
+  assert.equal(purchase.plan, 'biweekly');
   assert.equal(purchase.offerTerms.coverageStart, f.start);
   assert.equal(purchase.price.amountMinor, 7000);
   assert.equal(f.initialized(), 1);
+});
+
+for (const plan of ['weekly', 'biweekly', 'monthly'] as const) {
+  test(`PLAN-01 ${plan} request, offer, checkout and fulfilment preserve agreed dates`, async (t) => {
+    const f = await offeredFixture(t);
+    await f.verify();
+    f.request.selection.plan = plan;
+    const application = await f.join();
+    assert.equal(application.selection.plan, plan);
+    await f.offer(application.id);
+    const purchase = expectStatus(await f.accept(application.id), 201);
+    assert.equal(purchase.plan, plan);
+    const attempt = (
+      await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+    ).rows[0];
+    assert.equal(
+      await f.financial.fulfill({
+        reference: attempt.reference,
+        environment: 'test',
+        amountPesewas: purchase.cashDue.amountMinor,
+        currency: 'GHS',
+        transactionId: randomUUID(),
+        paidAt: new Date(),
+        channel: null,
+        feesPesewas: 0,
+      }),
+      'fulfilled',
+    );
+    const period = await f.period(purchase.id);
+    assert.equal(period.starts_at.toISOString().slice(0, 10), f.start);
+    assert.equal(period.original_ends_at.toISOString().slice(0, 10), f.end);
+  });
+}
+
+test('PLAN-02 annual cannot be requested, offered, or checked out, but history is readable', async (t) => {
+  const f = await offeredFixture(t);
+  await f.verify();
+  const annual = { ...f.request.selection, plan: 'annual' };
+  assert.equal(
+    (await f.call('POST', '/v1/me/standby', { payload: { ...f.request, selection: annual } }))
+      .statusCode,
+    400,
+  );
+  assert.equal((await f.call('POST', '/v1/me/purchases', { payload: annual })).statusCode, 400);
+  const application = await f.join();
+  await f.owner.query(
+    `UPDATE app.standby_applications SET selection=jsonb_set(selection,'{plan}','"annual"') WHERE id=$1`,
+    [application.id],
+  );
+  const history = expectStatus(await f.call('GET', '/v1/me/standby'), 200);
+  assert.equal(history[0].selection.plan, 'annual');
+  const offer = await f.call('POST', `/v1/ops/standby/${application.id}/offers`, {
+    who: 'ops',
+    payload: f.offerInput,
+  });
+  assert.equal(offer.statusCode, 409, offer.body);
+  assert.equal(offer.json().error.code, 'plan_unavailable');
+  assert.equal(f.initialized(), 0);
 });
 
 test('RENEW-01 prepaid coverage switches at the boundary without early rides, projected credit or double fulfilment; refund isolates the renewal', async (t) => {

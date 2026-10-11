@@ -65,8 +65,10 @@ export function Riders() {
         <Stat label="Active" value={summary?.active} />
         <Stat label="Paused" value={summary?.paused} />
         <Stat
-          label="Monthly / annual"
-          value={summary ? `${summary.monthly} / ${summary.annual}` : undefined}
+          label="Weekly / biweekly / monthly"
+          value={
+            summary ? `${summary.weekly} / ${summary.biweekly} / ${summary.monthly}` : undefined
+          }
         />
         <Stat
           label="Credit outstanding"

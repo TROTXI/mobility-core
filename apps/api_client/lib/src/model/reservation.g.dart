@@ -6,6 +6,38 @@ part of 'reservation.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const ReservationTripStatusEnum _$reservationTripStatusEnum_scheduled =
+    const ReservationTripStatusEnum._('scheduled');
+const ReservationTripStatusEnum _$reservationTripStatusEnum_active =
+    const ReservationTripStatusEnum._('active');
+const ReservationTripStatusEnum _$reservationTripStatusEnum_completed =
+    const ReservationTripStatusEnum._('completed');
+const ReservationTripStatusEnum _$reservationTripStatusEnum_cancelled =
+    const ReservationTripStatusEnum._('cancelled');
+
+ReservationTripStatusEnum _$reservationTripStatusEnumValueOf(String name) {
+  switch (name) {
+    case 'scheduled':
+      return _$reservationTripStatusEnum_scheduled;
+    case 'active':
+      return _$reservationTripStatusEnum_active;
+    case 'completed':
+      return _$reservationTripStatusEnum_completed;
+    case 'cancelled':
+      return _$reservationTripStatusEnum_cancelled;
+    default:
+      throw ArgumentError(name);
+  }
+}
+
+final BuiltSet<ReservationTripStatusEnum> _$reservationTripStatusEnumValues =
+    BuiltSet<ReservationTripStatusEnum>(const <ReservationTripStatusEnum>[
+  _$reservationTripStatusEnum_scheduled,
+  _$reservationTripStatusEnum_active,
+  _$reservationTripStatusEnum_completed,
+  _$reservationTripStatusEnum_cancelled,
+]);
+
 const ReservationDirectionEnum _$reservationDirectionEnum_outbound =
     const ReservationDirectionEnum._('outbound');
 const ReservationDirectionEnum _$reservationDirectionEnum_return_ =
@@ -97,12 +129,47 @@ final BuiltSet<ReservationSource_Enum> _$reservationSourceEnumValues =
   _$reservationSourceEnum_default_,
 ]);
 
+Serializer<ReservationTripStatusEnum> _$reservationTripStatusEnumSerializer =
+    _$ReservationTripStatusEnumSerializer();
 Serializer<ReservationDirectionEnum> _$reservationDirectionEnumSerializer =
     _$ReservationDirectionEnumSerializer();
 Serializer<ReservationStatusEnum> _$reservationStatusEnumSerializer =
     _$ReservationStatusEnumSerializer();
 Serializer<ReservationSource_Enum> _$reservationSourceEnumSerializer =
     _$ReservationSource_EnumSerializer();
+
+class _$ReservationTripStatusEnumSerializer
+    implements PrimitiveSerializer<ReservationTripStatusEnum> {
+  static const Map<String, Object> _toWire = const <String, Object>{
+    'scheduled': 'scheduled',
+    'active': 'active',
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+  };
+  static const Map<Object, String> _fromWire = const <Object, String>{
+    'scheduled': 'scheduled',
+    'active': 'active',
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+  };
+
+  @override
+  final Iterable<Type> types = const <Type>[ReservationTripStatusEnum];
+  @override
+  final String wireName = 'ReservationTripStatusEnum';
+
+  @override
+  Object serialize(Serializers serializers, ReservationTripStatusEnum object,
+          {FullType specifiedType = FullType.unspecified}) =>
+      _toWire[object.name] ?? object.name;
+
+  @override
+  ReservationTripStatusEnum deserialize(
+          Serializers serializers, Object serialized,
+          {FullType specifiedType = FullType.unspecified}) =>
+      ReservationTripStatusEnum.valueOf(
+          _fromWire[serialized] ?? (serialized is String ? serialized : ''));
+}
 
 class _$ReservationDirectionEnumSerializer
     implements PrimitiveSerializer<ReservationDirectionEnum> {
@@ -207,6 +274,8 @@ class _$Reservation extends Reservation {
   @override
   final Date travelDate;
   @override
+  final ReservationTripStatusEnum? tripStatus;
+  @override
   final ReservationDirectionEnum direction;
   @override
   final ReservationStatusEnum status;
@@ -230,6 +299,7 @@ class _$Reservation extends Reservation {
       {required this.id,
       this.tripId,
       required this.travelDate,
+      this.tripStatus,
       required this.direction,
       required this.status,
       this.pickupOccurrenceId,
@@ -253,6 +323,7 @@ class _$Reservation extends Reservation {
         id == other.id &&
         tripId == other.tripId &&
         travelDate == other.travelDate &&
+        tripStatus == other.tripStatus &&
         direction == other.direction &&
         status == other.status &&
         pickupOccurrenceId == other.pickupOccurrenceId &&
@@ -269,6 +340,7 @@ class _$Reservation extends Reservation {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, tripId.hashCode);
     _$hash = $jc(_$hash, travelDate.hashCode);
+    _$hash = $jc(_$hash, tripStatus.hashCode);
     _$hash = $jc(_$hash, direction.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, pickupOccurrenceId.hashCode);
@@ -287,6 +359,7 @@ class _$Reservation extends Reservation {
           ..add('id', id)
           ..add('tripId', tripId)
           ..add('travelDate', travelDate)
+          ..add('tripStatus', tripStatus)
           ..add('direction', direction)
           ..add('status', status)
           ..add('pickupOccurrenceId', pickupOccurrenceId)
@@ -313,6 +386,11 @@ class ReservationBuilder implements Builder<Reservation, ReservationBuilder> {
   Date? _travelDate;
   Date? get travelDate => _$this._travelDate;
   set travelDate(Date? travelDate) => _$this._travelDate = travelDate;
+
+  ReservationTripStatusEnum? _tripStatus;
+  ReservationTripStatusEnum? get tripStatus => _$this._tripStatus;
+  set tripStatus(ReservationTripStatusEnum? tripStatus) =>
+      _$this._tripStatus = tripStatus;
 
   ReservationDirectionEnum? _direction;
   ReservationDirectionEnum? get direction => _$this._direction;
@@ -359,6 +437,7 @@ class ReservationBuilder implements Builder<Reservation, ReservationBuilder> {
       _id = $v.id;
       _tripId = $v.tripId;
       _travelDate = $v.travelDate;
+      _tripStatus = $v.tripStatus;
       _direction = $v.direction;
       _status = $v.status;
       _pickupOccurrenceId = $v.pickupOccurrenceId;
@@ -392,6 +471,7 @@ class ReservationBuilder implements Builder<Reservation, ReservationBuilder> {
           tripId: tripId,
           travelDate: BuiltValueNullFieldError.checkNotNull(
               travelDate, r'Reservation', 'travelDate'),
+          tripStatus: tripStatus,
           direction: BuiltValueNullFieldError.checkNotNull(
               direction, r'Reservation', 'direction'),
           status: BuiltValueNullFieldError.checkNotNull(

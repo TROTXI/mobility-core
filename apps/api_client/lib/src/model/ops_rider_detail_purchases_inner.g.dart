@@ -7,6 +7,12 @@ part of 'ops_rider_detail_purchases_inner.dart';
 // **************************************************************************
 
 const OpsRiderDetailPurchasesInnerPlanEnum
+    _$opsRiderDetailPurchasesInnerPlanEnum_weekly =
+    const OpsRiderDetailPurchasesInnerPlanEnum._('weekly');
+const OpsRiderDetailPurchasesInnerPlanEnum
+    _$opsRiderDetailPurchasesInnerPlanEnum_biweekly =
+    const OpsRiderDetailPurchasesInnerPlanEnum._('biweekly');
+const OpsRiderDetailPurchasesInnerPlanEnum
     _$opsRiderDetailPurchasesInnerPlanEnum_monthly =
     const OpsRiderDetailPurchasesInnerPlanEnum._('monthly');
 const OpsRiderDetailPurchasesInnerPlanEnum
@@ -16,6 +22,10 @@ const OpsRiderDetailPurchasesInnerPlanEnum
 OpsRiderDetailPurchasesInnerPlanEnum
     _$opsRiderDetailPurchasesInnerPlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$opsRiderDetailPurchasesInnerPlanEnum_weekly;
+    case 'biweekly':
+      return _$opsRiderDetailPurchasesInnerPlanEnum_biweekly;
     case 'monthly':
       return _$opsRiderDetailPurchasesInnerPlanEnum_monthly;
     case 'annual':
@@ -28,6 +38,8 @@ OpsRiderDetailPurchasesInnerPlanEnum
 final BuiltSet<OpsRiderDetailPurchasesInnerPlanEnum>
     _$opsRiderDetailPurchasesInnerPlanEnumValues = BuiltSet<
         OpsRiderDetailPurchasesInnerPlanEnum>(const <OpsRiderDetailPurchasesInnerPlanEnum>[
+  _$opsRiderDetailPurchasesInnerPlanEnum_weekly,
+  _$opsRiderDetailPurchasesInnerPlanEnum_biweekly,
   _$opsRiderDetailPurchasesInnerPlanEnum_monthly,
   _$opsRiderDetailPurchasesInnerPlanEnum_annual,
 ]);
@@ -39,10 +51,14 @@ Serializer<OpsRiderDetailPurchasesInnerPlanEnum>
 class _$OpsRiderDetailPurchasesInnerPlanEnumSerializer
     implements PrimitiveSerializer<OpsRiderDetailPurchasesInnerPlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };

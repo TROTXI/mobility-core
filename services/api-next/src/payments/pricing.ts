@@ -7,7 +7,7 @@ import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
 import type { PricedTerms } from './terms.js';
 import type { PurchaseLeg } from './foundation.js';
-import { appliedCredit, MIN_CHARGE_PESEWAS, priceTerms } from './terms.js';
+import { appliedCredit, availablePlans, MIN_CHARGE_PESEWAS, priceTerms } from './terms.js';
 
 export const pricingOperations = [
   'previewPurchase',
@@ -33,7 +33,7 @@ const id = (value: unknown): string => {
   if (typeof value !== 'string' || !uuid.test(value)) fail(404, 'not_found', 'Resource not found.');
   return (value as string).toLowerCase();
 };
-const plans = ['monthly', 'annual'];
+const plans: readonly string[] = availablePlans;
 /** The contract carries money as an amount and its currency, never a bare int. */
 const money = (amountMinor: number) => ({ amountMinor, currency: 'GHS' });
 function minor(value: unknown, field: string): number {
@@ -279,9 +279,12 @@ export class Pricing {
       )
         fail(400, 'invalid_query', 'Invalid page size.');
       if (operation === 'listPlanPricing') {
-        // Two plans exist and neither is created or removed at runtime, so the
-        // page is the table and a cursor would only be ceremony.
-        const rows = (await c.query('SELECT * FROM app.plan_pricing ORDER BY plan')).rows;
+        // Historical annual pricing is retained for audit, not offered again.
+        const rows = (
+          await c.query('SELECT * FROM app.plan_pricing WHERE plan=ANY($1::text[]) ORDER BY plan', [
+            plans,
+          ])
+        ).rows;
         return {
           status: 200,
           body: { data: rows.map((r) => this.planView(r)), page: { nextCursor: null } },

@@ -1,6 +1,12 @@
 // Stage-1 review follow-up: predecessor absence is not proof of feature expansion.
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
+  [
+    'rateReservation',
+    'post-cutover',
+    'Riders can submit one private one-to-five-star rating for a boarded, completed trip',
+    'Reservation decisions and boarding proofs cannot store rider feedback after a trip.',
+  ],
   ...[
     'signInPhonePassword',
     'completePhoneRegistration',

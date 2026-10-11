@@ -6,6 +6,10 @@ part of 'purchase.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const PurchasePlanEnum _$purchasePlanEnum_weekly =
+    const PurchasePlanEnum._('weekly');
+const PurchasePlanEnum _$purchasePlanEnum_biweekly =
+    const PurchasePlanEnum._('biweekly');
 const PurchasePlanEnum _$purchasePlanEnum_monthly =
     const PurchasePlanEnum._('monthly');
 const PurchasePlanEnum _$purchasePlanEnum_annual =
@@ -13,6 +17,10 @@ const PurchasePlanEnum _$purchasePlanEnum_annual =
 
 PurchasePlanEnum _$purchasePlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$purchasePlanEnum_weekly;
+    case 'biweekly':
+      return _$purchasePlanEnum_biweekly;
     case 'monthly':
       return _$purchasePlanEnum_monthly;
     case 'annual':
@@ -24,6 +32,8 @@ PurchasePlanEnum _$purchasePlanEnumValueOf(String name) {
 
 final BuiltSet<PurchasePlanEnum> _$purchasePlanEnumValues =
     BuiltSet<PurchasePlanEnum>(const <PurchasePlanEnum>[
+  _$purchasePlanEnum_weekly,
+  _$purchasePlanEnum_biweekly,
   _$purchasePlanEnum_monthly,
   _$purchasePlanEnum_annual,
 ]);
@@ -114,10 +124,14 @@ Serializer<PurchaseCollectionStateEnum>
 class _$PurchasePlanEnumSerializer
     implements PrimitiveSerializer<PurchasePlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };

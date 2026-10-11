@@ -79,7 +79,10 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
               .where(
                 (r) =>
                     r.status == ReservationStatusEnum.pending ||
-                    r.status == ReservationStatusEnum.reserved,
+                    r.status == ReservationStatusEnum.reserved ||
+                    (r.status == ReservationStatusEnum.boarded &&
+                        r.tripStatus != ReservationTripStatusEnum.completed &&
+                        r.tripStatus != ReservationTripStatusEnum.cancelled),
               )
               .toList()
             ..sort((a, b) {
@@ -93,7 +96,12 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
                 (r) =>
                     r.travelDate.compareTo(today) < 0 ||
                     (r.status != ReservationStatusEnum.pending &&
-                        r.status != ReservationStatusEnum.reserved),
+                        r.status != ReservationStatusEnum.reserved &&
+                        !(r.status == ReservationStatusEnum.boarded &&
+                            r.tripStatus !=
+                                ReservationTripStatusEnum.completed &&
+                            r.tripStatus !=
+                                ReservationTripStatusEnum.cancelled)),
               )
               .toList()
             ..sort((a, b) => b.travelDate.compareTo(a.travelDate));
@@ -373,7 +381,10 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
 
   Widget _buildHeroCard(BuildContext context, Reservation reservation) {
     final colors = context.appColors;
-    final outcome = tripOutcomeOf(reservation.status);
+    final outcome = tripOutcomeOf(
+      reservation.status,
+      tripStatus: reservation.tripStatus?.name,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -511,7 +522,10 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
 
   Widget _buildTripListTile(BuildContext context, Reservation reservation) {
     final colors = context.appColors;
-    final outcome = tripOutcomeOf(reservation.status);
+    final outcome = tripOutcomeOf(
+      reservation.status,
+      tripStatus: reservation.tripStatus?.name,
+    );
     final date = reservation.travelDate.toDateTime();
 
     return Material(

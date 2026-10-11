@@ -35,6 +35,7 @@ Method | HTTP request | Description
 [**markNotificationRead**](RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [**previewPersonalPause**](RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [**previewPurchase**](RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
+[**rateReservation**](RiderOwnApi.md#ratereservation) | **POST** /v1/me/reservations/{id}/rating | rate Reservation
 [**removeAutoRenewalCard**](RiderOwnApi.md#removeautorenewalcard) | **DELETE** /v1/me/auto-renewal/card | remove Auto Renewal Card
 [**resumePersonalPause**](RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
 [**setAutoRenewal**](RiderOwnApi.md#setautorenewal) | **PUT** /v1/me/auto-renewal | set Auto Renewal
@@ -1635,3 +1636,10 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+## rateReservation
+
+Submit a private 1 to 5 star rating for your boarded reservation after its trip completes.
+`POST /v1/me/reservations/{id}/rating` accepts `RideRatingInput` and an idempotency key,
+and returns `RideRatingResponse`. A saved rating is read-only. Only the reservation
+owner can submit; missed, cancelled and incomplete rides are not eligible.

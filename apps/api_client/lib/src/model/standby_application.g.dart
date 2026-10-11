@@ -95,7 +95,7 @@ class _$StandbyApplication extends StandbyApplication {
   @override
   final StandbyApplicationStateEnum state;
   @override
-  final PurchaseInput selection;
+  final PurchaseSelection selection;
   @override
   final BuiltList<int> travelDays;
   @override
@@ -198,10 +198,10 @@ class StandbyApplicationBuilder
   StandbyApplicationStateEnum? get state => _$this._state;
   set state(StandbyApplicationStateEnum? state) => _$this._state = state;
 
-  PurchaseInputBuilder? _selection;
-  PurchaseInputBuilder get selection =>
-      _$this._selection ??= PurchaseInputBuilder();
-  set selection(PurchaseInputBuilder? selection) =>
+  PurchaseSelectionBuilder? _selection;
+  PurchaseSelectionBuilder get selection =>
+      _$this._selection ??= PurchaseSelectionBuilder();
+  set selection(PurchaseSelectionBuilder? selection) =>
       _$this._selection = selection;
 
   ListBuilder<int>? _travelDays;

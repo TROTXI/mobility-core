@@ -706,6 +706,11 @@ export class AccountService {
       [user.id],
     );
     await cancelCredentialSms(c, user.id);
+    await c.query(
+      `UPDATE app.ride_ratings SET stars=NULL,rated_at=NULL
+        WHERE reservation_id IN (SELECT id FROM app.reservations WHERE user_id=$1)`,
+      [user.id],
+    );
     if (!recovery) await this.options.erasureRequested?.(c, user.id, user.email ?? null);
     const sessions = await c.query(
       'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',

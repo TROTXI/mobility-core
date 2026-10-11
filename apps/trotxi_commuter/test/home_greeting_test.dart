@@ -81,7 +81,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(
-          find.text('You have boarded this departure.'),
+          find.text('You are on your way.'),
           boarded ? findsOneWidget : findsNothing,
         );
         expect(

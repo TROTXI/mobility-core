@@ -7,6 +7,7 @@ import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 enum TripOutcome {
   pending,
   confirmed,
+  boarded,
   completed,
   missed,
   declined,
@@ -17,10 +18,14 @@ enum TripOutcome {
 // ReservationStatusEnum is a built_value EnumClass, not a Dart enum, so a
 // switch on it can't be exhaustive — same reasoning as
 // home_page_provider.dart's `_mapStatus`.
-TripOutcome tripOutcomeOf(ReservationStatusEnum status) {
+TripOutcome tripOutcomeOf(ReservationStatusEnum status, {String? tripStatus}) {
   if (status == ReservationStatusEnum.pending) return TripOutcome.pending;
   if (status == ReservationStatusEnum.reserved) return TripOutcome.confirmed;
-  if (status == ReservationStatusEnum.boarded) return TripOutcome.completed;
+  if (status == ReservationStatusEnum.boarded) {
+    if (tripStatus == 'completed') return TripOutcome.completed;
+    if (tripStatus == 'cancelled') return TripOutcome.operatorCancelled;
+    return TripOutcome.boarded;
+  }
   if (status == ReservationStatusEnum.declined) return TripOutcome.declined;
   if (status == ReservationStatusEnum.unseated) return TripOutcome.unseated;
   if (status == ReservationStatusEnum.noShow) return TripOutcome.missed;
@@ -33,6 +38,7 @@ TripOutcome tripOutcomeOf(ReservationStatusEnum status) {
 String tripOutcomeLabel(TripOutcome outcome) => switch (outcome) {
   TripOutcome.pending => 'Awaiting confirmation',
   TripOutcome.confirmed => 'Confirmed',
+  TripOutcome.boarded => 'On board',
   TripOutcome.completed => 'Completed',
   TripOutcome.missed => 'Missed',
   TripOutcome.declined => 'Cancelled',
@@ -45,6 +51,7 @@ Color tripOutcomeColor(BuildContext context, TripOutcome outcome) {
   return switch (outcome) {
     TripOutcome.pending => colors.warning,
     TripOutcome.confirmed => colors.success,
+    TripOutcome.boarded => colors.success,
     TripOutcome.completed => colors.success,
     TripOutcome.missed => colors.error,
     TripOutcome.declined => colors.warning,
@@ -62,6 +69,7 @@ bool tripOutcomeNeedsExplanation(TripOutcome outcome) => switch (outcome) {
   TripOutcome.unseated => true,
   TripOutcome.pending ||
   TripOutcome.confirmed ||
+  TripOutcome.boarded ||
   TripOutcome.completed => false,
 };
 
@@ -75,7 +83,10 @@ String tripOutcomeExplanation(TripOutcome outcome) => switch (outcome) {
   TripOutcome.operatorCancelled => 'This trip was cancelled by the operator.',
   TripOutcome.unseated =>
     "Your seat wasn't confirmed in time and was released.",
-  TripOutcome.pending || TripOutcome.confirmed || TripOutcome.completed => '',
+  TripOutcome.pending ||
+  TripOutcome.confirmed ||
+  TripOutcome.boarded ||
+  TripOutcome.completed => '',
 };
 
 /// outbound = morning leg, return = evening leg — same assumption

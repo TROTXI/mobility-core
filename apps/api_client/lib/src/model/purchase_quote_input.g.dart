@@ -6,17 +6,21 @@ part of 'purchase_quote_input.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const PurchaseQuoteInputPlanEnum _$purchaseQuoteInputPlanEnum_weekly =
+    const PurchaseQuoteInputPlanEnum._('weekly');
+const PurchaseQuoteInputPlanEnum _$purchaseQuoteInputPlanEnum_biweekly =
+    const PurchaseQuoteInputPlanEnum._('biweekly');
 const PurchaseQuoteInputPlanEnum _$purchaseQuoteInputPlanEnum_monthly =
     const PurchaseQuoteInputPlanEnum._('monthly');
-const PurchaseQuoteInputPlanEnum _$purchaseQuoteInputPlanEnum_annual =
-    const PurchaseQuoteInputPlanEnum._('annual');
 
 PurchaseQuoteInputPlanEnum _$purchaseQuoteInputPlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$purchaseQuoteInputPlanEnum_weekly;
+    case 'biweekly':
+      return _$purchaseQuoteInputPlanEnum_biweekly;
     case 'monthly':
       return _$purchaseQuoteInputPlanEnum_monthly;
-    case 'annual':
-      return _$purchaseQuoteInputPlanEnum_annual;
     default:
       throw ArgumentError(name);
   }
@@ -24,8 +28,9 @@ PurchaseQuoteInputPlanEnum _$purchaseQuoteInputPlanEnumValueOf(String name) {
 
 final BuiltSet<PurchaseQuoteInputPlanEnum> _$purchaseQuoteInputPlanEnumValues =
     BuiltSet<PurchaseQuoteInputPlanEnum>(const <PurchaseQuoteInputPlanEnum>[
+  _$purchaseQuoteInputPlanEnum_weekly,
+  _$purchaseQuoteInputPlanEnum_biweekly,
   _$purchaseQuoteInputPlanEnum_monthly,
-  _$purchaseQuoteInputPlanEnum_annual,
 ]);
 
 Serializer<PurchaseQuoteInputPlanEnum> _$purchaseQuoteInputPlanEnumSerializer =
@@ -34,12 +39,14 @@ Serializer<PurchaseQuoteInputPlanEnum> _$purchaseQuoteInputPlanEnumSerializer =
 class _$PurchaseQuoteInputPlanEnumSerializer
     implements PrimitiveSerializer<PurchaseQuoteInputPlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
-    'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
-    'annual': 'annual',
   };
 
   @override

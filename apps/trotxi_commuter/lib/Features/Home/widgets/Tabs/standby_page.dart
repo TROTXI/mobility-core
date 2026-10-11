@@ -10,6 +10,7 @@ import 'checkout_page.dart';
 import 'commute_picker.dart';
 import 'phone_verification_page.dart';
 import '../../../Search/journey_search.dart';
+import '../Payments/purchase_labels.dart';
 
 class StandbyPage extends StatefulWidget {
   const StandbyPage({super.key, required this.client, this.initialJourney});
@@ -133,9 +134,7 @@ class _StandbyPageState extends State<StandbyPage> {
                       ),
                       AppDetailRow(
                         label: 'Plan',
-                        value: _plan == wire.PurchaseInputPlanEnum.annual
-                            ? 'Annual'
-                            : 'Monthly',
+                        value: commutePlanLabel(_plan.name),
                       ),
                       AppDetailRow(
                         label: 'Use ride credit',
@@ -853,29 +852,28 @@ class _StandbyPageState extends State<StandbyPage> {
             ),
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<wire.PurchaseInputPlanEnum>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(
-                  value: wire.PurchaseInputPlanEnum.monthly,
-                  label: Text('Monthly'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final plan in [
+                wire.PurchaseInputPlanEnum.weekly,
+                wire.PurchaseInputPlanEnum.biweekly,
+                wire.PurchaseInputPlanEnum.monthly,
+              ])
+                ChoiceChip(
+                  label: Text(commutePlanLabel(plan.name)),
+                  selected: _plan == plan,
+                  showCheckmark: false,
+                  onSelected: _busy
+                      ? null
+                      : (_) => setState(() => _plan = plan),
                 ),
-                ButtonSegment(
-                  value: wire.PurchaseInputPlanEnum.annual,
-                  label: Text('Annual'),
-                ),
-              ],
-              selected: {_plan},
-              onSelectionChanged: _busy
-                  ? null
-                  : (selection) => setState(() => _plan = selection.first),
-            ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            'We will show the exact dates, rides and price in your offer.',
+            'Biweekly means every two weeks. Your offer will show the exact dates, rides and price.',
             style: AppTypography.caption.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 20),
@@ -959,7 +957,7 @@ class _StandbyPageState extends State<StandbyPage> {
             children: [
               _metadataPill(
                 Icons.event_outlined,
-                '${application.selection.plan.name == 'annual' ? 'Annual' : 'Monthly'} plan',
+                '${commutePlanLabel(application.selection.plan.name)} plan',
               ),
               _metadataPill(
                 Icons.calendar_today_outlined,

@@ -3,7 +3,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 /// Original Figma vectors at their exported dimensions. Rectangle portions
 /// of dock icons use the native geometry specified by the same component.
-enum CommuterIcon { home, trips, wallet, profile, search, info, sun, moon }
+enum CommuterIcon {
+  home,
+  trips,
+  wallet,
+  profile,
+  search,
+  info,
+  sun,
+  moon,
+  boardingCode,
+}
 
 class FigmaCommuterIcon extends StatelessWidget {
   const FigmaCommuterIcon(this.icon, {super.key, this.color, this.cutout});
@@ -33,6 +43,7 @@ class FigmaCommuterIcon extends StatelessWidget {
         width: 24,
         height: 24,
         child: switch (icon) {
+          CommuterIcon.boardingCode => asset('boarding-code'),
           CommuterIcon.search => asset('search-${dark ? 'dark' : 'light'}'),
           CommuterIcon.info => asset('info-${dark ? 'dark' : 'light'}'),
           CommuterIcon.sun => Center(child: asset('sun', tint: false)),

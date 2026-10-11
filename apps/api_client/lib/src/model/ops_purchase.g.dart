@@ -6,6 +6,10 @@ part of 'ops_purchase.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const OpsPurchasePlanEnum _$opsPurchasePlanEnum_weekly =
+    const OpsPurchasePlanEnum._('weekly');
+const OpsPurchasePlanEnum _$opsPurchasePlanEnum_biweekly =
+    const OpsPurchasePlanEnum._('biweekly');
 const OpsPurchasePlanEnum _$opsPurchasePlanEnum_monthly =
     const OpsPurchasePlanEnum._('monthly');
 const OpsPurchasePlanEnum _$opsPurchasePlanEnum_annual =
@@ -13,6 +17,10 @@ const OpsPurchasePlanEnum _$opsPurchasePlanEnum_annual =
 
 OpsPurchasePlanEnum _$opsPurchasePlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$opsPurchasePlanEnum_weekly;
+    case 'biweekly':
+      return _$opsPurchasePlanEnum_biweekly;
     case 'monthly':
       return _$opsPurchasePlanEnum_monthly;
     case 'annual':
@@ -24,6 +32,8 @@ OpsPurchasePlanEnum _$opsPurchasePlanEnumValueOf(String name) {
 
 final BuiltSet<OpsPurchasePlanEnum> _$opsPurchasePlanEnumValues =
     BuiltSet<OpsPurchasePlanEnum>(const <OpsPurchasePlanEnum>[
+  _$opsPurchasePlanEnum_weekly,
+  _$opsPurchasePlanEnum_biweekly,
   _$opsPurchasePlanEnum_monthly,
   _$opsPurchasePlanEnum_annual,
 ]);
@@ -116,10 +126,14 @@ Serializer<OpsPurchaseCollectionStateEnum>
 class _$OpsPurchasePlanEnumSerializer
     implements PrimitiveSerializer<OpsPurchasePlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };

@@ -6,17 +6,21 @@ part of 'plan_pricing.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const PlanPricingPlanEnum _$planPricingPlanEnum_weekly =
+    const PlanPricingPlanEnum._('weekly');
+const PlanPricingPlanEnum _$planPricingPlanEnum_biweekly =
+    const PlanPricingPlanEnum._('biweekly');
 const PlanPricingPlanEnum _$planPricingPlanEnum_monthly =
     const PlanPricingPlanEnum._('monthly');
-const PlanPricingPlanEnum _$planPricingPlanEnum_annual =
-    const PlanPricingPlanEnum._('annual');
 
 PlanPricingPlanEnum _$planPricingPlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$planPricingPlanEnum_weekly;
+    case 'biweekly':
+      return _$planPricingPlanEnum_biweekly;
     case 'monthly':
       return _$planPricingPlanEnum_monthly;
-    case 'annual':
-      return _$planPricingPlanEnum_annual;
     default:
       throw ArgumentError(name);
   }
@@ -24,8 +28,9 @@ PlanPricingPlanEnum _$planPricingPlanEnumValueOf(String name) {
 
 final BuiltSet<PlanPricingPlanEnum> _$planPricingPlanEnumValues =
     BuiltSet<PlanPricingPlanEnum>(const <PlanPricingPlanEnum>[
+  _$planPricingPlanEnum_weekly,
+  _$planPricingPlanEnum_biweekly,
   _$planPricingPlanEnum_monthly,
-  _$planPricingPlanEnum_annual,
 ]);
 
 Serializer<PlanPricingPlanEnum> _$planPricingPlanEnumSerializer =
@@ -34,12 +39,14 @@ Serializer<PlanPricingPlanEnum> _$planPricingPlanEnumSerializer =
 class _$PlanPricingPlanEnumSerializer
     implements PrimitiveSerializer<PlanPricingPlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
-    'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
-    'annual': 'annual',
   };
 
   @override

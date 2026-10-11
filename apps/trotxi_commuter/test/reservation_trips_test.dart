@@ -153,7 +153,10 @@ void main() {
       }
       return jsonResponse(
         page([
-          seat('completed', todayText, 'outbound', 'boarded'),
+          {
+            ...seat('completed', todayText, 'outbound', 'boarded'),
+            'tripStatus': 'completed',
+          },
           seat('past', yesterdayText, 'return', 'reserved'),
         ]),
       );

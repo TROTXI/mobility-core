@@ -4,7 +4,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
 import { canonical } from '../transport/service.js';
 import { fail, mapDatabaseError } from '../transport/errors.js';
-import { appliedCredit, billingEnd, priceTerms, whole } from './terms.js';
+import { appliedCredit, billingEnd, isAvailablePlan, priceTerms, whole } from './terms.js';
 import type { Plan, PricedTerms } from './terms.js';
 import type { OfferTerms } from '../membership/offer-terms.js';
 import { expireUnpaidOffers } from './offer-expiry.js';
@@ -183,7 +183,7 @@ export class FinancialFoundation {
     const input = normalized(raw),
       hash = digest(canonical({ ...input, legs: input.legs.map((leg) => ({ ...leg })) }));
     if (
-      !['monthly', 'annual'].includes(input.plan) ||
+      !isAvailablePlan(input.plan) ||
       typeof input.useCredit !== 'boolean' ||
       input.legs.length !== 2
     )

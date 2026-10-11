@@ -267,6 +267,7 @@ doc/PurchaseQuote.md
 doc/PurchaseQuoteInput.md
 doc/PurchaseQuoteResponse.md
 doc/PurchaseResponse.md
+doc/PurchaseSelection.md
 doc/ReasonInput.md
 doc/ReceivePaystackWebhookRequest.md
 doc/RefreshInput.md
@@ -282,6 +283,7 @@ doc/ReservationDecisionResultPass.md
 doc/ReservationDecisionResultResponse.md
 doc/ReservationDetail.md
 doc/ReservationDetailPickupStop.md
+doc/ReservationDetailRating.md
 doc/ReservationDetailResponse.md
 doc/ReservationDetailRoute.md
 doc/ReservationDetailTrip.md
@@ -292,6 +294,9 @@ doc/RestrictionResponse.md
 doc/ReviewDecision.md
 doc/RideEntry.md
 doc/RideEntryPage.md
+doc/RideRating.md
+doc/RideRatingInput.md
+doc/RideRatingResponse.md
 doc/RiderErasureInput.md
 doc/RiderNotification.md
 doc/RiderNotificationPage.md
@@ -642,6 +647,7 @@ lib/src/model/purchase_quote.dart
 lib/src/model/purchase_quote_input.dart
 lib/src/model/purchase_quote_response.dart
 lib/src/model/purchase_response.dart
+lib/src/model/purchase_selection.dart
 lib/src/model/reason_input.dart
 lib/src/model/receive_paystack_webhook_request.dart
 lib/src/model/refresh_input.dart
@@ -657,6 +663,7 @@ lib/src/model/reservation_decision_result_pass.dart
 lib/src/model/reservation_decision_result_response.dart
 lib/src/model/reservation_detail.dart
 lib/src/model/reservation_detail_pickup_stop.dart
+lib/src/model/reservation_detail_rating.dart
 lib/src/model/reservation_detail_response.dart
 lib/src/model/reservation_detail_route.dart
 lib/src/model/reservation_detail_trip.dart
@@ -667,6 +674,9 @@ lib/src/model/restriction_response.dart
 lib/src/model/review_decision.dart
 lib/src/model/ride_entry.dart
 lib/src/model/ride_entry_page.dart
+lib/src/model/ride_rating.dart
+lib/src/model/ride_rating_input.dart
+lib/src/model/ride_rating_response.dart
 lib/src/model/rider_erasure_input.dart
 lib/src/model/rider_notification.dart
 lib/src/model/rider_notification_page.dart

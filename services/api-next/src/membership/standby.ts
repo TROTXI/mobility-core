@@ -8,6 +8,7 @@ import { Pricing } from '../payments/pricing.js';
 import type { CheckoutInput } from '../payments/foundation.js';
 import { buildOfferTerms, travelDays } from './offer-terms.js';
 import { expireUnpaidOffers } from '../payments/offer-expiry.js';
+import { isAvailablePlan } from '../payments/terms.js';
 
 export const standbyOperations = [
   'listMyStandby',
@@ -138,7 +139,7 @@ export class StandbyService {
         !['submitted', 'offered', 'checkout_open', 'completed', 'withdrawn'].includes(
           filter.state,
         )) ||
-      (filter.plan && !['monthly', 'annual'].includes(filter.plan)) ||
+      (filter.plan && !isAvailablePlan(filter.plan)) ||
       (filter.day !== null &&
         (!Number.isInteger(filter.day) || filter.day < 1 || filter.day > 7)) ||
       (filter.q && filter.q.length > 100)
@@ -225,7 +226,7 @@ export class StandbyService {
       const days = travelDays(input.travelDays);
       if (
         !selection ||
-        !['monthly', 'annual'].includes(String(selection.plan)) ||
+        !isAvailablePlan(selection.plan) ||
         typeof selection.useCredit !== 'boolean'
       )
         fail(400, 'invalid_selection', 'Select a commute and credit preference.');

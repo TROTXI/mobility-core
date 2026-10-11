@@ -6,17 +6,21 @@ part of 'purchase_input.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const PurchaseInputPlanEnum _$purchaseInputPlanEnum_weekly =
+    const PurchaseInputPlanEnum._('weekly');
+const PurchaseInputPlanEnum _$purchaseInputPlanEnum_biweekly =
+    const PurchaseInputPlanEnum._('biweekly');
 const PurchaseInputPlanEnum _$purchaseInputPlanEnum_monthly =
     const PurchaseInputPlanEnum._('monthly');
-const PurchaseInputPlanEnum _$purchaseInputPlanEnum_annual =
-    const PurchaseInputPlanEnum._('annual');
 
 PurchaseInputPlanEnum _$purchaseInputPlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$purchaseInputPlanEnum_weekly;
+    case 'biweekly':
+      return _$purchaseInputPlanEnum_biweekly;
     case 'monthly':
       return _$purchaseInputPlanEnum_monthly;
-    case 'annual':
-      return _$purchaseInputPlanEnum_annual;
     default:
       throw ArgumentError(name);
   }
@@ -24,8 +28,9 @@ PurchaseInputPlanEnum _$purchaseInputPlanEnumValueOf(String name) {
 
 final BuiltSet<PurchaseInputPlanEnum> _$purchaseInputPlanEnumValues =
     BuiltSet<PurchaseInputPlanEnum>(const <PurchaseInputPlanEnum>[
+  _$purchaseInputPlanEnum_weekly,
+  _$purchaseInputPlanEnum_biweekly,
   _$purchaseInputPlanEnum_monthly,
-  _$purchaseInputPlanEnum_annual,
 ]);
 
 Serializer<PurchaseInputPlanEnum> _$purchaseInputPlanEnumSerializer =
@@ -34,12 +39,14 @@ Serializer<PurchaseInputPlanEnum> _$purchaseInputPlanEnumSerializer =
 class _$PurchaseInputPlanEnumSerializer
     implements PrimitiveSerializer<PurchaseInputPlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
-    'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
-    'annual': 'annual',
   };
 
   @override

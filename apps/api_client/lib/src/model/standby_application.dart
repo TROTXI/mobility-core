@@ -5,7 +5,7 @@
 // ignore_for_file: unused_element
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/standby_application_offer.dart';
-import 'package:trotxi_api_client/src/model/purchase_input.dart';
+import 'package:trotxi_api_client/src/model/purchase_selection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -43,7 +43,7 @@ abstract class StandbyApplication
   // enum stateEnum {  submitted,  offered,  withdrawn,  checkout_open,  completed,  };
 
   @BuiltValueField(wireName: r'selection')
-  PurchaseInput get selection;
+  PurchaseSelection get selection;
 
   @BuiltValueField(wireName: r'travelDays')
   BuiltList<int> get travelDays;
@@ -108,7 +108,7 @@ class _$StandbyApplicationSerializer
     yield r'selection';
     yield serializers.serialize(
       object.selection,
-      specifiedType: const FullType(PurchaseInput),
+      specifiedType: const FullType(PurchaseSelection),
     );
     yield r'travelDays';
     yield serializers.serialize(
@@ -190,8 +190,8 @@ class _$StandbyApplicationSerializer
         case r'selection':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(PurchaseInput),
-          ) as PurchaseInput;
+            specifiedType: const FullType(PurchaseSelection),
+          ) as PurchaseSelection;
           result.selection.replace(valueDes);
           break;
         case r'travelDays':

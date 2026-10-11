@@ -5,6 +5,7 @@
 // ignore_for_file: unused_element
 import 'package:trotxi_api_client/src/model/reservation_detail_pickup_stop.dart';
 import 'package:trotxi_api_client/src/model/reservation.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_rating.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail_route.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail_trip.dart';
 import 'package:built_value/built_value.dart';
@@ -16,6 +17,7 @@ part 'reservation_detail.g.dart';
 ///
 /// Properties:
 /// * [reservation]
+/// * [rating]
 /// * [route]
 /// * [trip]
 /// * [pickupStop]
@@ -25,6 +27,9 @@ abstract class ReservationDetail
     implements Built<ReservationDetail, ReservationDetailBuilder> {
   @BuiltValueField(wireName: r'reservation')
   Reservation get reservation;
+
+  @BuiltValueField(wireName: r'rating')
+  ReservationDetailRating? get rating;
 
   @BuiltValueField(wireName: r'route')
   ReservationDetailRoute? get route;
@@ -69,6 +74,13 @@ class _$ReservationDetailSerializer
       object.reservation,
       specifiedType: const FullType(Reservation),
     );
+    if (object.rating != null) {
+      yield r'rating';
+      yield serializers.serialize(
+        object.rating,
+        specifiedType: const FullType.nullable(ReservationDetailRating),
+      );
+    }
     yield r'route';
     yield object.route == null
         ? null
@@ -128,6 +140,14 @@ class _$ReservationDetailSerializer
             specifiedType: const FullType(Reservation),
           ) as Reservation;
           result.reservation.replace(valueDes);
+          break;
+        case r'rating':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(ReservationDetailRating),
+          ) as ReservationDetailRating?;
+          if (valueDes == null) continue;
+          result.rating.replace(valueDes);
           break;
         case r'route':
           final valueDes = serializers.deserialize(

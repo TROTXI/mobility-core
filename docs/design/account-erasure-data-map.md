@@ -25,6 +25,14 @@ been removed. This document does not set a new statutory retention period.
 | Firebase Cloud Messaging, Crashlytics and Performance                                                                                      | Device/installation IDs, push receipt IDs, crash/performance telemetry                                                                              | Token is removed locally and no further Trotxi push is eligible. There is no server-side deletion of installation/diagnostic data. The apps do not set a Trotxi user ID in Crashlytics in the inspected code, but installation data still exists.                                                                                                          | `notifications/push.ts`, app `main.dart`; [Firebase data management guidance](https://firebase.google.com/support/privacy/manage-iids). A provider deletion path would require installation identifiers and app-side coordination.           |
 | Resend and mNotify                                                                                                                         | Sent recipient and message/provider logs                                                                                                            | Trotxi clears queued message contents locally at terminal state or account closure. A sent email/SMS cannot be recalled. No provider-specific deletion endpoint is wired and its remote retention is not verified by local tests.                                                                                                                          | `notifications/resend.ts`, `mnotify.ts`; Resend [data-processing terms](https://resend.com/legal/dpa). Treat an operator/provider response as separate evidence, not an automatic result of `204`.                                           |
 
+### Ride ratings
+
+Migration 049 adds `ride_ratings`, linked to a reservation. Account closure
+clears the star score and rating timestamp in the same transaction, including
+on recovery replay. Reservation identifiers and the existing membership
+command/audit records remain restricted. Ratings contain no review text or
+copied driver identity.
+
 ### Commuter email credentials and name parts
 
 Migration 047 adds `users.first_name`, `last_name`, `other_names`,
