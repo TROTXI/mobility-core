@@ -8,6 +8,7 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_tracking_page.da
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'ride_rating_card.dart';
+import 'confirm_ride_page.dart';
 
 String _formatWeekdayDay(DateTime date) =>
     DateFormat('EEE · d MMM').format(date).toUpperCase();
@@ -506,6 +507,25 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     ReservationDetail detail,
     TripOutcome outcome,
   ) {
+    if (outcome == TripOutcome.pending) {
+      return [
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ConfirmRidePage(
+                  client: widget.client,
+                  reservationId: detail.reservation.id,
+                ),
+              ),
+            );
+            if (mounted) await _load();
+          },
+          child: const Text('Review and confirm ride'),
+        ),
+      ];
+    }
     if (outcome != TripOutcome.confirmed && outcome != TripOutcome.boarded) {
       return const [];
     }

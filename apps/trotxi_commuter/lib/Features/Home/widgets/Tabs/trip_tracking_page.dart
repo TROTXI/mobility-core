@@ -15,6 +15,14 @@ typedef TripMapBuilder =
 Widget buildTripMap(CommuterTripSnapshot snapshot, TrotxiMapStyle style) =>
     TripMapCanvas(snapshot: snapshot, style: style);
 
+typedef TripTrackingContentBuilder =
+    Widget Function(
+      CommuterTripSnapshot? snapshot,
+      Widget? map,
+      String? error,
+      bool loading,
+    );
+
 class TripTrackingPage extends StatefulWidget {
   const TripTrackingPage({
     super.key,
@@ -22,10 +30,16 @@ class TripTrackingPage extends StatefulWidget {
     required this.tripId,
     this.mapBuilder = buildTripMap,
     this.pollInterval = const Duration(seconds: 5),
+    this.contentBuilder,
+    this.isActive = true,
+    this.onTripEnded,
   });
   final CommuterApi client;
   final String tripId;
   final TripMapBuilder mapBuilder;
+  final TripTrackingContentBuilder? contentBuilder;
+  final bool isActive;
+  final VoidCallback? onTripEnded;
 
   /// Injectable scheduler interval for lifecycle tests; app callers use 5s.
   final Duration pollInterval;
@@ -45,6 +59,8 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       _resumePending = false;
   int _epoch = 0;
   Duration _delay = const Duration(seconds: 5);
+  bool _routeCurrent = true;
+  bool get _visible => _foreground && widget.isActive && _routeCurrent;
   @override
   void initState() {
     super.initState();
@@ -54,7 +70,50 @@ class _TripTrackingPageState extends State<TripTrackingPage>
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
-    if (_foreground) _refresh();
+    if (_visible) _refresh();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final current = ModalRoute.of(context)?.isCurrent ?? true;
+    if (current == _routeCurrent) return;
+    _routeCurrent = current;
+    _stop();
+    _snapshot = null;
+    _error = null;
+    if (_visible) {
+      if (_inFlight) {
+        _resumePending = true;
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _visible) _refresh();
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TripTrackingPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final identityChanged =
+        oldWidget.client != widget.client || oldWidget.tripId != widget.tripId;
+    if (identityChanged || oldWidget.isActive != widget.isActive) {
+      _stop();
+      _snapshot = null;
+      _error = null;
+      if (identityChanged) {
+        _tracking.dispose();
+        _tracking = CommuterTripTracking(widget.client, widget.tripId);
+      }
+      if (_visible) {
+        if (_inFlight) {
+          _resumePending = true;
+        } else {
+          _refresh();
+        }
+      }
+    }
   }
 
   @override
@@ -81,7 +140,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       _snapshot = null;
       _error = null;
     });
-    if (_foreground) {
+    if (_visible) {
       if (_inFlight) {
         _resumePending = true;
       } else {
@@ -91,7 +150,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
   }
 
   Future<void> _refresh() async {
-    if (!_foreground || _inFlight) return;
+    if (!_visible || _inFlight) return;
     _poll?.cancel();
     final epoch = _epoch;
     _inFlight = true;
@@ -102,20 +161,21 @@ class _TripTrackingPageState extends State<TripTrackingPage>
     var again = true;
     try {
       final snapshot = await _tracking.load();
-      if (!mounted || epoch != _epoch || !_foreground) return;
+      if (!mounted || epoch != _epoch || !_visible) return;
       setState(() {
         _snapshot = snapshot;
         _delay = widget.pollInterval;
       });
       again = snapshot.live.state != wire.LiveTripStateEnum.ended;
+      if (!again) widget.onTripEnded?.call();
       _age?.cancel();
       if (snapshot.hasPosition) {
         _age = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (mounted && _foreground && _snapshot != null) setState(() {});
+          if (mounted && _visible && _snapshot != null) setState(() {});
         });
       }
     } catch (e) {
-      if (!mounted || epoch != _epoch || !_foreground) return;
+      if (!mounted || epoch != _epoch || !_visible) return;
       _age?.cancel();
       setState(() {
         _snapshot = null;
@@ -142,10 +202,10 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       _inFlight = false;
       if (mounted) {
         setState(() => _loading = false);
-        if (_foreground && _resumePending) {
+        if (_visible && _resumePending) {
           _resumePending = false;
           unawaited(_refresh());
-        } else if (_foreground && epoch == _epoch && again) {
+        } else if (_visible && epoch == _epoch && again) {
           _poll = Timer(_delay, _refresh);
         }
       }
@@ -163,6 +223,14 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       attribution: clean(tiles?.attribution) ?? TrotxiMapStyle.none.attribution,
     );
     final colors = context.appColors;
+    if (widget.contentBuilder case final builder?) {
+      return builder(
+        snapshot,
+        snapshot == null ? null : widget.mapBuilder(snapshot, style),
+        _error,
+        _loading,
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Track your bus')),
       body: SafeArea(

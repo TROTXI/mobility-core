@@ -17,3 +17,9 @@ are defined separately to match the frames.
 
 The implementation retains bundled Inter, minimum 44px touch targets, scalable
 labels and dynamic card heights instead of the fixed screenshot dimensions.
+
+The 24 × 24 boarding-code icon is the original `2965:68` artwork used by
+the approaching-vehicle frame `2444:836`. Ride layouts also reference
+confirmation `2444:694`, in-trip `2444:1014`, and completion `2444:1115`.
+Maps, routes, stop markers and boarding credentials use API data, never the
+prototype's example map or code. System status bars remain OS-owned.

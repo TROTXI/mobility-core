@@ -30,7 +30,8 @@ sealed class RideLifecycleState {
 }
 
 class RidePending extends RideLifecycleState {
-  const RidePending();
+  const RidePending({this.reservationId});
+  final String? reservationId;
 }
 
 class RideReserved extends RideLifecycleState {
@@ -46,7 +47,8 @@ class RideReserved extends RideLifecycleState {
 
 class RideBoarded extends RideLifecycleState {
   final String tripId;
-  const RideBoarded({required this.tripId});
+  final String? reservationId;
+  const RideBoarded({required this.tripId, this.reservationId});
 }
 
 class RideCompleted extends RideLifecycleState {
@@ -125,7 +127,7 @@ class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
       throw const ApiException(502, 'Boarded reservation has no departure.');
     }
     if (r.status == wire.ReservationStatusEnum.pending) {
-      return const RidePending();
+      return RidePending(reservationId: r.id);
     }
     if (r.status == wire.ReservationStatusEnum.reserved) {
       return RideReserved(
@@ -141,7 +143,7 @@ class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
       if (r.tripStatus == wire.ReservationTripStatusEnum.cancelled) {
         return const RideOperatorCancelled();
       }
-      return RideBoarded(tripId: r.tripId!);
+      return RideBoarded(tripId: r.tripId!, reservationId: r.id);
     }
     if (r.status == wire.ReservationStatusEnum.declined) {
       return const RideDeclined();
@@ -173,6 +175,8 @@ final homeReservationDetailProvider =
       final lifecycle = await ref.watch(rideLifecycleProvider.future);
       final reservationId = switch (lifecycle) {
         RideReserved(:final reservationId) => reservationId,
+        RidePending(:final reservationId) => reservationId,
+        RideBoarded(:final reservationId) => reservationId,
         RideCompleted(:final reservationId) => reservationId,
         _ => null,
       };

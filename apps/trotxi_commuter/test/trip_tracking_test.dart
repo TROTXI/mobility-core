@@ -333,6 +333,60 @@ void main() {
       await finish(tester);
     },
   );
+  testWidgets('hidden Home tracking stops reads and reauthorizes on return', (
+    tester,
+  ) async {
+    await pump(tester, interval: const Duration(milliseconds: 100));
+    Widget screen(bool active) => MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: TripTrackingPage(
+        client: f.api,
+        tripId: 'trip',
+        isActive: active,
+        pollInterval: const Duration(milliseconds: 100),
+      ),
+    );
+    await tester.pumpWidget(screen(false));
+    await tester.pump();
+    expect(find.textContaining('Live bus'), findsNothing);
+    final before = f.requests.length;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    expect(f.requests.length, before);
+    status = 404;
+    await drain(tester, () => tester.pumpWidget(screen(true)));
+    expect(f.requests.length, greaterThan(before));
+    expect(find.textContaining('Live bus'), findsNothing);
+    await finish(tester);
+  });
+
+  testWidgets(
+    'a pushed screen pauses tracking until the route is visible again',
+    (tester) async {
+      await pump(tester, interval: const Duration(milliseconds: 100));
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('Another screen')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final before = f.requests.length;
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      expect(f.requests.length, before);
+      status = 404;
+      await drain(tester, () async {
+        navigator.pop();
+        await tester.pump(const Duration(milliseconds: 400));
+      });
+      expect(f.requests.length, greaterThan(before));
+      expect(find.textContaining('Live bus'), findsNothing);
+      await finish(tester);
+    },
+  );
   testWidgets(
     'a pending response across background cannot redraw or trigger overlapping reads',
     (tester) async {

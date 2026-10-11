@@ -6,6 +6,7 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'Trips/trip_details_page.dart';
+import 'Trips/confirm_ride_page.dart';
 import '../pages/home_page_provider.dart';
 
 void refreshHomeOverview(WidgetRef ref, CommuterApi client) {
@@ -163,9 +164,15 @@ class HomePlanSummary extends ConsumerWidget {
 }
 
 class HomeUpcoming extends ConsumerWidget {
-  const HomeUpcoming({super.key, required this.client, this.onSeeAll});
+  const HomeUpcoming({
+    super.key,
+    required this.client,
+    this.onSeeAll,
+    this.title = 'Upcoming',
+  });
   final CommuterApi client;
   final VoidCallback? onSeeAll;
+  final String title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -198,7 +205,7 @@ class HomeUpcoming extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                'Upcoming',
+                title,
                 style: AppTypography.label.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -227,10 +234,15 @@ class HomeUpcoming extends ConsumerWidget {
                 : () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => TripDetailsPage(
-                          client: client,
-                          reservationId: reservation.id,
-                        ),
+                        builder: (_) => pending && !cancelled
+                            ? ConfirmRidePage(
+                                client: client,
+                                reservationId: reservation.id,
+                              )
+                            : TripDetailsPage(
+                                client: client,
+                                reservationId: reservation.id,
+                              ),
                       ),
                     );
                     if (context.mounted) refreshHomeOverview(ref, client);
