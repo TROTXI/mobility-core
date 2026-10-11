@@ -36,7 +36,7 @@ void main() {
       expect(AppTheme.darkTheme.scaffoldBackgroundColor, AppColors.dark.page);
     });
 
-    test('all Material text roles use the commuter app Poppins family', () {
+    test('all Material text roles use the commuter app Inter family', () {
       for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
         for (final text in [theme.textTheme, theme.primaryTextTheme]) {
           for (final style in [
@@ -56,7 +56,7 @@ void main() {
             text.labelMedium,
             text.labelSmall,
           ]) {
-            expect(style?.fontFamily, 'Poppins');
+            expect(style?.fontFamily, 'Inter');
           }
         }
       }
@@ -66,7 +66,7 @@ void main() {
       for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
         final colors = theme.extension<AppColors>()!;
         expect(theme.dialogTheme.backgroundColor, colors.surface);
-        expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'Poppins');
+        expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'Inter');
         expect(theme.bottomSheetTheme.backgroundColor, colors.surface);
         expect(
           theme.listTileTheme.subtitleTextStyle?.color,
@@ -138,25 +138,39 @@ void main() {
     });
   });
 
-  group('values come from the file, not from guesswork', () {
-    // Read from "02 — Driver Colour System" via the Figma API. Pinned because
-    // the first pass at this app invented a navy/periwinkle palette that looked
-    // plausible and was wrong in every role.
-    test('the action colour is the muted off-blue, in both modes', () {
-      expect(AppColors.light.action, const Color(0xFF5B7896));
-      expect(AppColors.dark.action, const Color(0xFF7A9AB8));
+  group('approved Trotxi palette', () {
+    test('action and body text meet normal-text contrast in both themes', () {
+      for (final colors in [AppColors.light, AppColors.dark]) {
+        for (final pair in [
+          (colors.action, colors.onAction),
+          (colors.page, colors.textPrimary),
+          (colors.surface, colors.textSecondary),
+          (colors.surface, colors.textMuted),
+        ]) {
+          final a = pair.$1.computeLuminance();
+          final b = pair.$2.computeLuminance();
+          final contrast = a > b
+              ? (a + .05) / (b + .05)
+              : (b + .05) / (a + .05);
+          expect(contrast, greaterThanOrEqualTo(4.5));
+        }
+      }
+    });
+    test('primary actions match the commuter palette', () {
+      expect(AppColors.light.action, const Color(0xFF155C3E));
+      expect(AppColors.dark.action, const Color(0xFFA9D6BA));
     });
 
     test('the contrast rule holds: white on the CTA in light, ink in dark', () {
       expect(AppColors.light.onAction, const Color(0xFFFFFFFF));
-      expect(AppColors.dark.onAction, const Color(0xFF09131D));
+      expect(AppColors.dark.onAction, const Color(0xFF101A15));
     });
 
     test('status colours are the four the file defines, kept apart', () {
       expect(AppColors.light.success, const Color(0xFF147A3B));
       expect(AppColors.light.danger, const Color(0xFFB42318));
       expect(AppColors.light.info, const Color(0xFF1769AA));
-      expect(AppColors.light.warning, const Color(0xFFB76512));
+      expect(AppColors.light.warning, const Color(0xFF955600));
 
       expect(AppColors.dark.success, const Color(0xFF4FD37A));
       expect(AppColors.dark.danger, const Color(0xFFFF776B));
@@ -165,8 +179,8 @@ void main() {
     });
 
     test('grounds match the file', () {
-      expect(AppColors.light.page, const Color(0xFFF7F9FB));
-      expect(AppColors.dark.page, const Color(0xFF09131D));
+      expect(AppColors.light.page, const Color(0xFFFAFBF8));
+      expect(AppColors.dark.page, const Color(0xFF101A15));
     });
   });
 }

@@ -52,8 +52,8 @@ class _WorkRequestsPageState extends State<WorkRequestsPage> {
       onRefresh: () async => _reload(),
       child: ListView(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space8,
+          horizontal: AppSpacing.space24,
+          vertical: AppSpacing.space20,
         ),
         children: [
           if (widget.showHeading) ...[
@@ -100,12 +100,13 @@ class _WorkRequestsPageState extends State<WorkRequestsPage> {
             const SizedBox(height: AppSpacing.space16),
           ],
 
-          Container(
-            decoration: BoxDecoration(
-              color: colors.surface,
+          Material(
+            color: colors.surface,
+            shape: RoundedRectangleBorder(
               borderRadius: AppRadii.circular(AppRadii.lg),
-              border: Border.all(color: colors.border),
+              side: BorderSide(color: colors.border),
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 ListTile(
@@ -175,9 +176,7 @@ class _WorkRequestsPageState extends State<WorkRequestsPage> {
               }
               final requests = snapshot.data ?? [];
               if (requests.isEmpty) {
-                return const _Placeholder(
-                  text: 'No requests yet.',
-                );
+                return const _Placeholder(text: 'No requests yet.');
               }
               return Column(
                 children: [
@@ -324,7 +323,7 @@ class _RequestCardState extends State<_RequestCard> {
           ? 'On ${request.fromDate}'
           : '${request.fromDate} to ${request.toDate}';
     }
-    final route = request.routeName ?? 'another corridor';
+    final route = request.routeName ?? 'another route';
     return request.fromDate == null
         ? 'Move to $route'
         : 'Move to $route from ${request.fromDate}';
@@ -388,7 +387,7 @@ class _RouteChangeRequestPageState extends State<RouteChangeRequestPage> {
           padding: const EdgeInsets.all(AppSpacing.space16),
           children: [
             Text(
-              'Which corridor?',
+              'Which route?',
               style: AppTypography.title.copyWith(color: colors.textPrimary),
             ),
             const SizedBox(height: AppSpacing.space4),
@@ -428,7 +427,7 @@ class _RouteChangeRequestPageState extends State<RouteChangeRequestPage> {
                   return const _Placeholder(
                     text:
                         'Operations is not accepting reassignment requests for '
-                        'any corridor right now.',
+                        'any route right now.',
                   );
                 }
                 return Container(

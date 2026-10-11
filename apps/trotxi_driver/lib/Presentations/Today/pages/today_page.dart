@@ -128,7 +128,7 @@ class _TodayPageState extends State<TodayPage> {
 
     return ListView(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space20,
+        horizontal: AppSpacing.space24,
         vertical: AppSpacing.space8,
       ),
       children: [
@@ -175,13 +175,7 @@ class _TodayPageState extends State<TodayPage> {
               isBusy: controller.busyRunId == (data.active ?? data.next)!.id,
               // Starting belongs to pre-trip, including required location
               // checks and the publisher. Do not bypass it from the Today card.
-              onPrimary: () {
-                if (data.active != null) {
-                  controller.complete(data.active!.id);
-                } else {
-                  _openRun(context, data.next!);
-                }
-              },
+              onPrimary: () => _openRun(context, (data.active ?? data.next)!),
               onTap: () => _openRun(context, (data.active ?? data.next)!),
             ),
             const SizedBox(height: AppSpacing.space24),
@@ -196,7 +190,7 @@ class _TodayPageState extends State<TodayPage> {
             const SizedBox(height: AppSpacing.space16),
           ],
           if (data.completed.isNotEmpty) ...[
-            _SectionLabel(text: 'Done', colors: colors),
+            _SectionLabel(text: 'Completed', colors: colors),
             const SizedBox(height: AppSpacing.space8),
             for (final run in data.completed) ...[
               RunCard(run: run),
@@ -224,8 +218,8 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      text.toUpperCase(),
-      style: AppTypography.caption.copyWith(color: colors.textSecondary),
+      text,
+      style: AppTypography.title.copyWith(color: colors.textSecondary),
     );
   }
 }

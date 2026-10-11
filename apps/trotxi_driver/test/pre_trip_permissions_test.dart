@@ -98,7 +98,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Start trip'));
+      await tester.tap(find.text('Review trip'));
       await tester.pumpAndSettle();
       expect(find.byType(RunPage), findsOneWidget);
       expect(trips.starts, 0);

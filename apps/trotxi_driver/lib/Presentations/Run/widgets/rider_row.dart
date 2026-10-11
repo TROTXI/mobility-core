@@ -60,11 +60,11 @@ class RiderRow extends StatelessWidget {
     // dividers, which reads as a table rather than as a list of people.
     return Semantics(
       label: 'Number $position of $total',
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.surfaceSelected,
+      child: Material(
+        color: colors.surface,
+        shape: RoundedRectangleBorder(
           borderRadius: AppRadii.circular(AppRadii.button),
-          border: Border.all(color: colors.border),
+          side: BorderSide(color: colors.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -75,6 +75,7 @@ class RiderRow extends StatelessWidget {
               vertical: AppSpacing.space12,
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Avatar(url: rider.avatarUrl, name: name, colors: colors),
                 const SizedBox(width: AppSpacing.space10),
@@ -91,7 +92,6 @@ class RiderRow extends StatelessWidget {
                               style: AppTypography.label.copyWith(
                                 color: colors.textPrimary,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.space8),
@@ -114,13 +114,16 @@ class RiderRow extends StatelessWidget {
                         style: AppTypography.caption.copyWith(
                           color: colors.textSecondary,
                         ),
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+                      _ActionPill(
+                        rider: rider,
+                        onAction: onAction,
+                        colors: colors,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.space12),
-                _ActionPill(rider: rider, onAction: onAction, colors: colors),
               ],
             ),
           ),
@@ -159,6 +162,22 @@ class _ActionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final boarded = rider.boarded;
+    if (boarded) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Wrap(
+          spacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Icon(Icons.check_circle_rounded, size: 18, color: colors.success),
+            Text(
+              'BOARDED',
+              style: AppTypography.caption.copyWith(color: colors.success),
+            ),
+          ],
+        ),
+      );
+    }
     // A no-show still offers BOARD: the mark is reversible on purpose, because
     // a rider who catches up at the next stop should not be stuck for it, and
     // the shared ledger key means boarding them costs nothing extra.

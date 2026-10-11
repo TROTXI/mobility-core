@@ -1,62 +1,46 @@
 import 'package:flutter/material.dart';
 
-/// Raw palette for the driver app, read from the "Blue Black" prototype.
-///
-/// Deliberately NOT shared with the commuter app. That app is built on a dark
-/// green identity; this one is navy, and the two sets of frames disagree on
-/// almost every role. Sharing values would mean one app silently restyling the
-/// other every time a token moved.
-///
-/// Naming is `role + weight`, so a designer changing "the 700 navy" changes one
-/// line here rather than a search across screens.
+/// Shared Trotxi visual language with driver-specific semantic roles.
 abstract final class AppPrimitiveColors {
-  // Read from the file's own "02 — Driver Colour System" page via the Figma
-  // API, not eyedropped. Its stated intent: "Muted off-blue signals brand and
-  // action. Semantic status colours remain distinct and are used only for
-  // operational meaning."
+  // Green-tinted neutrals shared with the approved commuter design.
+  static const ink900 = Color(0xFF101A15); // dark page
+  static const ink800 = Color(0xFF19271F); // dark surface
+  static const ink700 = Color(0xFF172E24); // light text primary
+  static const ink600 = Color(0xFF61786A); // footnote / muted
+  static const ink500 = Color(0xFF56675D); // light text secondary
 
-  // Blue-black — navigation, structure, text hierarchy, dark surfaces.
-  static const ink900 = Color(0xFF09131D); // dark page
-  static const ink800 = Color(0xFF0E1B28); // dark surface
-  static const ink700 = Color(0xFF152235); // light text primary
-  static const ink600 = Color(0xFF466681); // footnote / muted
-  static const ink500 = Color(0xFF46596D); // light text secondary
-
-  // Muted off-blue — the primary action, in BOTH themes. Not navy in light and
-  // something else in dark: the file's rule is one action colour per mode of
-  // the same hue, so a driver learns one shape of "this is the button".
-  static const action = Color(0xFF5B7896);
-  static const actionDark = Color(0xFF7A9AB8);
+  // Forest green in light mode; a contrasting mint action in dark mode.
+  static const action = Color(0xFF155C3E);
+  static const actionDark = Color(0xFFA9D6BA);
 
   // Surfaces and text on the light side.
-  static const paper = Color(0xFFF7F9FB); // light page
-  static const paperRaised = Color(0xFFEDF2F6); // light surface
-  /// The stronger off-blue the file uses where a surface has to carry weight:
-  /// the next-stop card, and the selected pill in the phone nav.
-  static const paperStrong = Color(0xFFDCE6EF);
+  static const paper = Color(0xFFFAFBF8); // light page
+  static const paperRaised = Color(0xFFF0F4ED); // light surface
+  /// Selected navigation and next-stop surfaces.
+  static const paperStrong = Color(0xFFE1ECD9);
+
   /// Hairlines. Previously borders were drawn in `paperRaised`, which is the
   /// surface colour — so every border in light mode was invisible against the
   /// thing it was meant to bound.
   /// The placeholder and the security note under the sign-in button. Lighter
   /// than [ink500] without dropping to a tint of the border, and the only pair
   /// on the auth frames that no existing role covered.
-  static const slate500 = Color(0xFF6B7C8D); // light muted
-  static const slate400 = Color(0xFF8795A3); // dark muted
+  static const slate500 = Color(0xFF626F65); // light muted
+  static const slate400 = Color(0xFFA5B6AB); // dark muted
 
-  static const line = Color(0xFFD4DEE7);
-  static const lineDark = Color(0xFF2D4053);
-  static const mist = Color(0xFFBAC5D0); // dark text secondary
-  static const frost = Color(0xFFF2F5F8); // dark text primary
+  static const line = Color(0xFFDFE6DC);
+  static const lineDark = Color(0xFF33493C);
+  static const mist = Color(0xFFB7C7BD); // dark text secondary
+  static const frost = Color(0xFFF5F8F2); // dark text primary
 
-  // Status. Reserved for operational meaning, never decoration: green is
-  // "verified success, live connectivity and completed boarding".
+  // Status always includes a label or icon, never colour alone.
   static const successLight = Color(0xFF147A3B);
   static const successDark = Color(0xFF4FD37A);
   static const errorLight = Color(0xFFB42318);
   static const errorDark = Color(0xFFFF776B);
   static const infoLight = Color(0xFF1769AA);
   static const infoDark = Color(0xFF64B5F6);
-  static const warningLight = Color(0xFFB76512);
+  static const warningLight = Color(0xFF955600);
   static const warningDark = Color(0xFFFF9D3D);
 
   static const white = Color(0xFFFFFFFF);
@@ -156,7 +140,7 @@ class AppColors extends ThemeExtension<AppColors> {
     surfaceElevated: AppPrimitiveColors.white,
     surfaceSelected: AppPrimitiveColors.paperRaised,
     surfaceStrong: AppPrimitiveColors.paperStrong,
-    field: AppPrimitiveColors.paperRaised,
+    field: AppPrimitiveColors.white,
     border: AppPrimitiveColors.line,
     borderStrong: AppPrimitiveColors.mist,
     textPrimary: AppPrimitiveColors.ink700,

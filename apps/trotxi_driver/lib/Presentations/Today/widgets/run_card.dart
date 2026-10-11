@@ -57,6 +57,7 @@ class RunCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       CorridorTime.hhmm(run.scheduledAt),
@@ -68,10 +69,9 @@ class RunCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         run.routeName,
-                        style: AppTypography.runTitle.copyWith(
+                        style: AppTypography.label.copyWith(
                           color: colors.textPrimary,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (emphasis == RunCardEmphasis.active)

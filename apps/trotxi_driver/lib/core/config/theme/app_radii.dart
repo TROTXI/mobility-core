@@ -6,16 +6,13 @@ abstract final class AppRadii {
   static const double xs = 4;
   static const double sm = 8;
   static const double md = 12;
-  static const double lg = 16;
+  static const double lg = 20;
 
-  /// Buttons other than the primary, and the manifest passenger row. The file
-  /// is specific: only the primary action is a pill; secondary, quiet and
-  /// destructive are rounded rectangles.
+  /// Supporting buttons and passenger rows.
   static const double button = 14;
 
-  /// An input field on the auth frames. 18 on a 58-high field, which is not
-  /// the 12 the rest of the app used before the file was read.
-  static const double field = 18;
+  /// Shared input corners.
+  static const double field = 16;
 
   /// The quiet note card that carries a single explanatory line — the operator
   /// linking note under sign-in. 20 in the file.
@@ -32,12 +29,11 @@ abstract final class AppRadii {
   /// hero is the largest surface on the screen.
   static const double hero = 22;
 
-  /// The phone nav bar. 38 in the file — a stadium at its 76 height.
-  static const double navBar = 38;
+  /// Rounded phone navigation surface.
+  static const double navBar = 20;
 
-  /// The primary action's corner. 28 on a 56-high button is a stadium, which is
-  /// what the file draws — and it draws it for the primary alone.
-  static const double pill = 28;
+  /// Primary actions use the commuter app's rounded rectangle shape.
+  static const double pill = 16;
 
   /// Fully round, for things whose height varies: the small status pills inside
   /// the GPS indicator and the hero's paired actions.

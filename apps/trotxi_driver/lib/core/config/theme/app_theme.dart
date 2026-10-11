@@ -96,7 +96,12 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.title.copyWith(color: colors.textPrimary),
+        scrolledUnderElevation: 0,
+        titleSpacing: 16,
+        titleTextStyle: AppTypography.label.copyWith(
+          fontSize: 18,
+          color: colors.textPrimary,
+        ),
       ),
       cardTheme: CardThemeData(
         color: colors.surface,
@@ -113,10 +118,7 @@ abstract final class AppTheme {
         space: 1,
         thickness: 1,
       ),
-      // Secondary, in the file's terms: the supporting task. Radius 14 and the
-      // soft surface, not a pill — the file reserves the pill for the primary
-      // action alone, and making everything a pill is what flattened the
-      // hierarchy in the earlier build.
+      // Existing elevated actions share the primary action treatment.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.action,
@@ -135,8 +137,7 @@ abstract final class AppTheme {
           ),
         ),
       ),
-      // Primary: the next required task, and the only pill. 56 high, radius 28,
-      // 20 of horizontal padding.
+      // A minimum height, not a fixed height: labels can wrap at larger scales.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: colors.action,
@@ -144,7 +145,10 @@ abstract final class AppTheme {
           disabledBackgroundColor: colors.border,
           disabledForegroundColor: colors.textSecondary,
           textStyle: AppTypography.label.copyWith(fontSize: 16),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space20),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space20,
+            vertical: 16,
+          ),
           minimumSize: const Size.fromHeight(minTapTarget),
           shape: RoundedRectangleBorder(
             borderRadius: AppRadii.circular(AppRadii.pill),
@@ -166,10 +170,7 @@ abstract final class AppTheme {
           ),
         ),
       ),
-      // The auth frames draw the field precisely: 58 high, 18 radius, a 1px
-      // border that thickens to 2 in danger, and a fill that is raised in
-      // light but sunken in dark. Set here rather than per screen so the one
-      // field style reaches every screen that has ever used a TextField.
+      // One field style for authentication, boarding and work requests.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colors.field,
@@ -243,7 +244,7 @@ abstract final class AppTheme {
   static TextTheme _textTheme(AppColors colors, TextTheme base) {
     final primary = colors.textPrimary;
     final secondary = colors.textSecondary;
-    // Match the commuter app: every Material text role uses bundled Poppins.
+    // Match the commuter app: every Material text role uses bundled Inter.
     return base
         .apply(fontFamily: AppTypography.fontFamily)
         .copyWith(

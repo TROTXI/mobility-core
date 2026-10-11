@@ -30,7 +30,7 @@ void main() {
         size,
         DriverFirstLaunchPage(onContinue: () async {}),
       );
-      expect(find.text('Welcome to Trotxi Driver'), findsOneWidget);
+      expect(find.text('Ready for the road.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

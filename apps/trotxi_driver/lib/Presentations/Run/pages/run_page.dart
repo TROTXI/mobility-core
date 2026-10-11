@@ -231,8 +231,8 @@ class _RunPageState extends State<RunPage> {
     final run = data.run;
     return ListView(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space20,
-        vertical: AppSpacing.space16,
+        horizontal: AppSpacing.space24,
+        vertical: AppSpacing.space20,
       ),
       children: [
         if (detail is Failure<RunDetail>) ...[
@@ -288,7 +288,7 @@ class _RunPageState extends State<RunPage> {
           // earlier build spread these parts down a flat list, which is the same
           // information and a different screen.
           Container(
-            padding: const EdgeInsets.all(AppSpacing.space20),
+            padding: const EdgeInsets.all(AppSpacing.space24),
             decoration: BoxDecoration(
               color: colors.surface,
               borderRadius: AppRadii.circular(AppRadii.hero),
@@ -342,8 +342,19 @@ class _RunPageState extends State<RunPage> {
                     ),
                   ],
                 ),
+                // The corridor (#237). Above the next-stop card rather than
+                // below it: the design leads the active-trip frame with the map,
+                // and a driver glancing down wants where they are before what is
+                // next.
                 const SizedBox(height: AppSpacing.space16),
+                RunMap(
+                  routeId: run.routeId,
+                  runId: run.id,
+                  isActive: run.isActive,
+                  onExpand: () => _openMap(context, run),
+                ),
 
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
@@ -374,18 +385,6 @@ class _RunPageState extends State<RunPage> {
                       ),
                     ),
                   ],
-                ),
-
-                // The corridor (#237). Above the next-stop card rather than
-                // below it: the design leads the active-trip frame with the map,
-                // and a driver glancing down wants where they are before what is
-                // next.
-                const SizedBox(height: AppSpacing.space16),
-                RunMap(
-                  routeId: run.routeId,
-                  runId: run.id,
-                  isActive: run.isActive,
-                  onExpand: () => _openMap(context, run),
                 ),
 
                 if (data.stops.isNotEmpty) ...[
@@ -542,15 +541,14 @@ class _RunPageState extends State<RunPage> {
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.space10,
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        'Stop sequence',
-                        style: AppTypography.label.copyWith(
-                          fontSize: 15,
-                          color: colors.textPrimary,
-                        ),
+                    Text(
+                      'Stop sequence',
+                      style: AppTypography.label.copyWith(
+                        fontSize: 15,
+                        color: colors.textPrimary,
                       ),
                     ),
                     if (run.isActive && data.stops.isNotEmpty)
@@ -571,7 +569,7 @@ class _RunPageState extends State<RunPage> {
                 Padding(
                   padding: const EdgeInsets.all(AppSpacing.space10),
                   child: Text(
-                    'This corridor has no stops recorded yet.',
+                    'Stops have not been added to this route yet.',
                     style: AppTypography.bodySmall.copyWith(
                       color: colors.textSecondary,
                     ),

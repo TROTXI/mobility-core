@@ -66,7 +66,7 @@ class DriverNav extends StatelessWidget {
           // stretching five targets across the full windscreen width.
           constraints: const BoxConstraints(maxWidth: 760),
           child: Container(
-            margin: const EdgeInsets.all(AppSpacing.space12),
+            margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.space8,
               vertical: AppSpacing.space8,
@@ -75,7 +75,7 @@ class DriverNav extends StatelessWidget {
               // Surface plus a hairline, at radius 38 (Components / Driver phone
               // navigation). White with no border was the earlier build's guess and
               // left the bar floating with no edge against a near-white page.
-              color: colors.surfaceSelected,
+              color: colors.surface,
               borderRadius: AppRadii.circular(AppRadii.navBar),
               border: Border.all(color: colors.border),
             ),
@@ -121,7 +121,7 @@ class DriverNav extends StatelessWidget {
                 _Item(
                   tab: DriverTab.me,
                   icon: Icons.person_outline,
-                  label: 'Me',
+                  label: 'Profile',
                   current: current,
                   onSelect: onSelect,
                   colors: colors,
@@ -160,9 +160,9 @@ class _Item extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected = tab == current;
     final tone = !enabled
-        ? colors.textSecondary.withValues(alpha: 0.4)
+        ? colors.textMuted
         : selected
-        ? colors.textPrimary
+        ? colors.action
         : colors.textSecondary;
 
     return Expanded(

@@ -50,8 +50,8 @@ class _ManifestPageState extends State<ManifestPage> {
       onRefresh: controller.refreshManifest,
       child: ListView(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space8,
+          horizontal: AppSpacing.space24,
+          vertical: AppSpacing.space20,
         ),
         children: [
           Text(
