@@ -316,7 +316,7 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
   const [running, setRunning] = useState<string | null>(null);
   const [result, setResult] = useState<{
     label: string;
-    message: string;
+    messages: string[];
     details?: string;
     error?: boolean;
   } | null>(null);
@@ -373,15 +373,25 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
       const counts = ['considered', 'succeeded', 'blocked', 'failed']
         .filter((key) => typeof data[key] === 'number')
         .map((key) => `${key}: ${data[key]}`);
+      const messages =
+        path === '/v1/ops/maintenance/payments'
+          ? (['inbox', 'reconciliation', 'periods'] as const).map((stage) => {
+              const outcome = data[stage] as Record<string, unknown>;
+              const stageCounts = ['considered', 'succeeded', 'blocked', 'failed']
+                .filter((key) => typeof outcome[key] === 'number')
+                .map((key) => `${key}: ${outcome[key]}`);
+              return `${stage === 'periods' ? 'Period close' : stage === 'inbox' ? 'Inbox' : 'Reconciliation'}: ${stageCounts.join(' · ')}`;
+            })
+          : [counts.length ? counts.join(' · ') : 'Completed. See details for the result.'];
       setResult({
         label,
-        message: counts.length ? counts.join(' · ') : 'Completed. See details for the result.',
+        messages,
         details: JSON.stringify(data, null, 2),
       });
     } catch (error) {
       setResult({
         label,
-        message: error instanceof Error ? error.message : 'The job could not be completed.',
+        messages: [error instanceof Error ? error.message : 'The job could not be completed.'],
         error: true,
       });
     } finally {
@@ -458,7 +468,9 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
         {result && (
           <div className="job-result" role={result.error ? 'alert' : 'status'}>
             <strong>{result.label}</strong>
-            <p>{result.message}</p>
+            {result.messages.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
             {result.details && (
               <details>
                 <summary>Technical result</summary>

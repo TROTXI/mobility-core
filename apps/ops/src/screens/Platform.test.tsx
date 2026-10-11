@@ -45,4 +45,35 @@ describe('Manual maintenance', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('considered: 0');
     expect(screen.getByRole('status')).not.toHaveTextContent('/v1/ops/maintenance/');
   });
+
+  it('shows every payment-maintenance stage, including blocked and failed counts', async () => {
+    post.mockResolvedValueOnce({
+      data: {
+        data: {
+          inbox: { considered: 3, succeeded: 2, blocked: 1, failed: 0, failures: [] },
+          reconciliation: { considered: 2, succeeded: 1, blocked: 0, failed: 1, failures: [] },
+          periods: { considered: 1, succeeded: 1, blocked: 0, failed: 0, failures: [] },
+        },
+      },
+    });
+    render(
+      <FluentProvider theme={trotxiLight} data-theme="light">
+        <Platform />
+      </FluentProvider>,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Manual jobs' }));
+    const paymentRow = screen.getByText('Run payment maintenance').closest('.maintenance-job');
+    fireEvent.click(within(paymentRow as HTMLElement).getByRole('button', { name: 'Run' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Run job' }));
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(
+      'Inbox: considered: 3 · succeeded: 2 · blocked: 1 · failed: 0',
+    );
+    expect(status).toHaveTextContent(
+      'Reconciliation: considered: 2 · succeeded: 1 · blocked: 0 · failed: 1',
+    );
+    expect(status).toHaveTextContent('Period close: considered: 1 · succeeded: 1');
+    expect(status).not.toHaveTextContent('Completed. See details');
+  });
 });
