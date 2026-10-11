@@ -82,4 +82,16 @@ describe('useQuery', () => {
       visibility.mockRestore();
     }
   });
+
+  it('does not fetch an inactive panel until it is opened', async () => {
+    const loader = vi.fn().mockResolvedValue('ready');
+    const { result, rerender } = renderHook(({ enabled }) => useQuery(loader, [], enabled), {
+      initialProps: { enabled: false },
+    });
+    expect(loader).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(false);
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.data).toBe('ready'));
+    expect(loader).toHaveBeenCalledOnce();
+  });
 });

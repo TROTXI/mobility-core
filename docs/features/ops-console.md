@@ -18,6 +18,8 @@ not mixed into Platform's release controls.
 The interface presents filters beside the list they change and reveals technical evidence
 only when requested. New screens should use the shared Page,
 Panel, status and confirmation components, rather than introducing a separate visual language.
+Payments and Support fetch the selected queue, not every tab at once. Live maps load when
+there is live activity or when an operator chooses **Show map** in Routes & schedules.
 
 ## Route to offer
 

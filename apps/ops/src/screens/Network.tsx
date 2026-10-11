@@ -1,6 +1,6 @@
 import { Button, Input } from '@fluentui/react-components';
 import { AddRegular, ArrowClockwiseRegular } from '@fluentui/react-icons';
-import { useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
@@ -8,7 +8,6 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
-import { LiveMap } from '../components/LiveMap';
 import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
 import { FareJourneyFields, type FareJourney } from './FareJourneyFields';
 import { ReasonField } from '../components/ReasonField';
@@ -22,6 +21,9 @@ type CommuteSlot = components['schemas']['CommuteSlot'];
 type Fare = components['schemas']['Fare'];
 type PlanPricing = components['schemas']['PlanPricing'];
 type TabName = 'routes' | 'stops' | 'patterns' | 'schedules' | 'fares' | 'pricing' | 'slots';
+const LiveMap = lazy(() =>
+  import('../components/LiveMap').then((module) => ({ default: module.LiveMap })),
+);
 const networkSections: { title: string; tabs: { value: TabName; label: string }[] }[] = [
   {
     title: 'Build the route',
@@ -1550,13 +1552,23 @@ function TableState({
 }
 
 function NetworkMap({ stops, routes }: { stops: Stop[]; routes: number }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Panel title="Network map">
-      <LiveMap
-        markers={stops
-          .filter((stop) => !stop.archived)
-          .map((stop) => ({ id: stop.id, ...stop.location, label: stop.name, state: 'stop' }))}
-      />
+    <Panel
+      title="Network map"
+      action={
+        <Button onClick={() => setOpen((value) => !value)}>{open ? 'Hide map' : 'Show map'}</Button>
+      }
+    >
+      {open && (
+        <Suspense fallback={<div className="map-loading">Opening network map…</div>}>
+          <LiveMap
+            markers={stops
+              .filter((stop) => !stop.archived)
+              .map((stop) => ({ id: stop.id, ...stop.location, label: stop.name, state: 'stop' }))}
+          />
+        </Suspense>
+      )}
       <div className="map-meta">
         {routes} corridors · {stops.length} stops
       </div>
