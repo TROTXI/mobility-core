@@ -7,13 +7,13 @@ import { Shell } from './Shell';
 
 vi.mock('../auth/AuthContext', () => ({
   useAuth: () => ({
-    account: { displayName: 'Test Operator', avatarUrl: null },
+    account: { displayName: 'Test Operator', avatarUrl: null, isSuperadmin: true },
     session: { logout: vi.fn() },
   }),
 }));
 
 describe('Ops navigation', () => {
-  it('keeps secondary sections in More and account actions in one menu', async () => {
+  it('groups work without hiding payment or access pages in More', async () => {
     const toggleAppearance = vi.fn();
     render(
       <FluentProvider theme={trotxiLight} data-theme="light">
@@ -33,12 +33,24 @@ describe('Ops navigation', () => {
     expect(home.querySelector('img')).toHaveAttribute('alt', '');
     expect(screen.getByRole('link', { name: 'Live operations' })).toBeInTheDocument();
     expect(screen.queryByRole('search')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Payments' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Payments' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Team & access' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Fleet & drivers' })).toHaveLength(1);
+    expect(screen.queryByRole('link', { name: 'Drivers' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Account menu for Test Operator' }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Dark appearance' }));
     expect(toggleAppearance).toHaveBeenCalledOnce();
-    fireEvent.click(screen.getByRole('button', { name: 'More sections' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Payments' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Payments' }));
     expect(await screen.findByText('Payments screen')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));
+    expect(screen.getByRole('button', { name: 'Open navigation' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close navigation' })[0]);
+    expect(screen.getByRole('button', { name: 'Open navigation' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 });

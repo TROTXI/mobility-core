@@ -1,6 +1,6 @@
 import { Button, Input, Tab, TabList } from '@fluentui/react-components';
 import { AddRegular, ArrowClockwiseRegular } from '@fluentui/react-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
@@ -9,7 +9,6 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
-import { LiveMap } from '../components/LiveMap';
 import { dispatchDate } from './dispatch-context';
 
 type Trip = components['schemas']['OpsTrip'];
@@ -20,6 +19,9 @@ type Route = components['schemas']['Route'];
 type Pattern = components['schemas']['Pattern'];
 type OverviewData = components['schemas']['OpsOverview'];
 type Manifest = components['schemas']['Manifest'];
+const LiveMap = lazy(() =>
+  import('../components/LiveMap').then((module) => ({ default: module.LiveMap })),
+);
 
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -204,7 +206,7 @@ export function Trips() {
   return (
     <Page
       title="Dispatch & trips"
-      description="Plan departures, match drivers and buses, and resolve assignment exceptions."
+      description="Assign buses and drivers, monitor departures and resolve exceptions."
       actions={
         <>
           <Button icon={<ArrowClockwiseRegular />} onClick={query.retry}>
@@ -305,7 +307,9 @@ export function Trips() {
                 </Button>
               </div>
               {liveQuery.error && <p className="muted">Live positions could not be loaded.</p>}
-              <LiveMap markers={liveMarkers} />
+              <Suspense fallback={<div className="map-loading">Opening dispatch map…</div>}>
+                <LiveMap markers={liveMarkers} />
+              </Suspense>
               <p className="dispatch-map-note">
                 Showing the latest reported driver positions. Planned routes are listed in the
                 departure board.

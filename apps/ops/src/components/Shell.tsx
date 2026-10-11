@@ -2,16 +2,17 @@ import {
   BoardRegular,
   CalendarRegular,
   DataTrendingRegular,
+  DismissRegular,
   HomeRegular,
-  MoreHorizontalRegular,
   MoneyRegular,
+  NavigationRegular,
   PeopleRegular,
   PersonSupportRegular,
   SettingsRegular,
   SignOutRegular,
+  VehicleTruckRegular,
   WeatherMoonRegular,
   WeatherSunnyRegular,
-  VehicleTruckRegular,
 } from '@fluentui/react-icons';
 import {
   Avatar,
@@ -22,27 +23,48 @@ import {
   MenuTrigger,
   Tooltip,
 } from '@fluentui/react-components';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
-const primaryItems = [
-  ['/', 'Live operations', HomeRegular],
-  ['/trips', 'Trips', CalendarRegular],
-  ['/network', 'Routes & stops', DataTrendingRegular],
-  ['/standby', 'Standby', CalendarRegular],
-  ['/fleet', 'Fleet', VehicleTruckRegular],
-  ['/drivers', 'Drivers', PeopleRegular],
-  ['/riders', 'Riders', PeopleRegular],
-  ['/support', 'Support', PersonSupportRegular],
+const sections = [
+  {
+    label: 'Run service',
+    items: [
+      ['/', 'Live operations', HomeRegular],
+      ['/trips', 'Dispatch & trips', CalendarRegular],
+      ['/standby', 'Standby & offers', BoardRegular],
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      ['/network', 'Routes & schedules', DataTrendingRegular],
+      ['/fleet', 'Fleet & drivers', VehicleTruckRegular],
+      ['/riders', 'Riders', PeopleRegular],
+    ],
+  },
+  {
+    label: 'Resolve',
+    items: [
+      ['/support', 'Support', PersonSupportRegular],
+      ['/payments', 'Payments', MoneyRegular],
+    ],
+  },
+  {
+    label: 'Monitor & control',
+    items: [
+      ['/reports', 'Reports', DataTrendingRegular],
+      ['/delivery', 'Message delivery', PeopleRegular],
+      ['/audit', 'Audit log', BoardRegular],
+      ['/platform', 'Platform', SettingsRegular],
+    ],
+  },
 ] as const;
 
-const secondaryItems = [
-  ['/payments', 'Payments', MoneyRegular],
-  ['/reports', 'Reports', DataTrendingRegular],
-  ['/delivery', 'Delivery status', PeopleRegular],
-  ['/audit', 'Audit log', BoardRegular],
-  ['/platform', 'Platform', SettingsRegular],
-] as const;
+const sectionTitles: Record<string, string> = Object.fromEntries(
+  sections.flatMap((section) => section.items.map(([path, title]) => [path, title])),
+);
 
 export function Shell({
   appearance,
@@ -54,9 +76,39 @@ export function Shell({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { account, session } = useAuth();
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  useEffect(() => setNavigationOpen(false), [pathname]);
+  useEffect(() => {
+    if (!navigationOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavigationOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [navigationOpen]);
+  const currentTitle =
+    pathname === '/drivers'
+      ? 'Fleet & drivers'
+      : pathname === '/team'
+        ? 'Team & access'
+        : pathname === '/profile'
+          ? 'My profile'
+          : (sectionTitles[pathname] ?? 'Operations');
+
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Operations navigation">
+      {navigationOpen && (
+        <button
+          type="button"
+          className="navigation-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setNavigationOpen(false)}
+        />
+      )}
+      <aside
+        className={`sidebar${navigationOpen ? ' sidebar-open' : ''}`}
+        aria-label="Operations navigation"
+      >
         <div className="sidebar-brand">
           <NavLink to="/" className="brand-mark" aria-label="Trotxi operations home">
             <img
@@ -74,54 +126,64 @@ export function Shell({
               height={208}
             />
           </NavLink>
+          <button
+            type="button"
+            className="sidebar-close"
+            aria-label="Close navigation"
+            onClick={() => setNavigationOpen(false)}
+          >
+            <DismissRegular aria-hidden="true" />
+          </button>
         </div>
         <nav className="nav-list" aria-label="Operations">
-          <span className="nav-section-label">Workspace</span>
-          {primaryItems.map(([path, label, Icon]) => (
-            <Tooltip key={path} content={label} relationship="label">
-              <NavLink
-                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-                to={path}
-                end={path === '/'}
-                aria-label={label}
-              >
-                <Icon aria-hidden="true" />
-                <span className="nav-label">{label}</span>
-              </NavLink>
-            </Tooltip>
+          {sections.map((section) => (
+            <div className="nav-group" key={section.label}>
+              <span className="nav-section-label">{section.label}</span>
+              {section.items.map(([path, label, Icon]) => (
+                <Tooltip key={path} content={label} relationship="label">
+                  <NavLink
+                    className={({ isActive }) =>
+                      `nav-link${isActive || (path === '/fleet' && pathname === '/drivers') ? ' active' : ''}`
+                    }
+                    to={path}
+                    end={path === '/'}
+                    aria-label={label}
+                  >
+                    <Icon aria-hidden="true" />
+                    <span className="nav-label">{label}</span>
+                  </NavLink>
+                </Tooltip>
+              ))}
+              {section.label === 'Monitor & control' && account?.isSuperadmin && (
+                <Tooltip content="Team & access" relationship="label">
+                  <NavLink
+                    className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                    to="/team"
+                    aria-label="Team & access"
+                  >
+                    <PeopleRegular aria-hidden="true" />
+                    <span className="nav-label">Team & access</span>
+                  </NavLink>
+                </Tooltip>
+              )}
+            </div>
           ))}
-          <Menu positioning="after">
-            <MenuTrigger disableButtonEnhancement>
-              <button
-                type="button"
-                className={`nav-link sidebar-more-trigger${pathname === '/team' || secondaryItems.some(([path]) => pathname === path) ? ' active' : ''}`}
-                aria-label="More sections"
-                title="More sections"
-              >
-                <MoreHorizontalRegular aria-hidden="true" />
-                <span className="nav-label">More</span>
-              </button>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                {account?.isSuperadmin && (
-                  <MenuItem icon={<PeopleRegular />} onClick={() => navigate('/team')}>
-                    Team & access
-                  </MenuItem>
-                )}
-                {secondaryItems.map(([path, label, Icon]) => (
-                  <MenuItem key={path} icon={<Icon />} onClick={() => navigate(path)}>
-                    {label}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </MenuPopover>
-          </Menu>
         </nav>
       </aside>
       <section className="workspace">
         <header className="topbar">
-          <span className="topbar-context">Trotxi Operations</span>
+          <div className="topbar-location">
+            <button
+              type="button"
+              className="mobile-navigation-trigger"
+              aria-label="Open navigation"
+              aria-expanded={navigationOpen}
+              onClick={() => setNavigationOpen(true)}
+            >
+              <NavigationRegular aria-hidden="true" />
+            </button>
+            <span className="topbar-context">{currentTitle}</span>
+          </div>
           <Menu positioning="below-end">
             <MenuTrigger disableButtonEnhancement>
               <button

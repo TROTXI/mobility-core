@@ -1,6 +1,6 @@
-import { Button, Input, Tab, TabList } from '@fluentui/react-components';
+import { Button, Input } from '@fluentui/react-components';
 import { AddRegular, ArrowClockwiseRegular } from '@fluentui/react-icons';
-import { useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
@@ -8,7 +8,6 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
-import { LiveMap } from '../components/LiveMap';
 import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
 import { FareJourneyFields, type FareJourney } from './FareJourneyFields';
 import { ReasonField } from '../components/ReasonField';
@@ -22,6 +21,38 @@ type CommuteSlot = components['schemas']['CommuteSlot'];
 type Fare = components['schemas']['Fare'];
 type PlanPricing = components['schemas']['PlanPricing'];
 type TabName = 'routes' | 'stops' | 'patterns' | 'schedules' | 'fares' | 'pricing' | 'slots';
+const LiveMap = lazy(() =>
+  import('../components/LiveMap').then((module) => ({ default: module.LiveMap })),
+);
+const networkSections: { title: string; tabs: { value: TabName; label: string }[] }[] = [
+  {
+    title: 'Build the route',
+    tabs: [
+      { value: 'routes', label: 'Routes' },
+      { value: 'stops', label: 'Stops' },
+      { value: 'patterns', label: 'Directions & stops' },
+      { value: 'schedules', label: 'Departures' },
+    ],
+  },
+  {
+    title: 'Set the offer',
+    tabs: [
+      { value: 'fares', label: 'Fares' },
+      { value: 'slots', label: 'Capacity' },
+      { value: 'pricing', label: 'Legacy plan pricing' },
+    ],
+  },
+];
+const networkHelp: Record<TabName, string> = {
+  routes: 'Start with a corridor. A route alone does not create bookable service.',
+  stops: 'Add pickup and drop-off points before building each direction.',
+  patterns: 'Publish the stop order and route shape for outbound and return travel.',
+  schedules: 'Set effective dates, weekdays and departure times for each direction.',
+  fares: 'Publish fares for the exact pickup and drop-off pairs used in offers.',
+  slots: 'Set commute capacity before promising a recurring place.',
+  pricing:
+    'Older plan settings remain available here; current subscriptions are priced in each offer.',
+};
 type DialogKind =
   | 'route-create'
   | 'route-edit'
@@ -322,7 +353,7 @@ export function Network() {
   return (
     <Page
       title="Routes & network"
-      description="Manage corridors, boarding points, immutable route versions, departures, fares and capacity."
+      description="Set up routes, departures, fares and capacity before sending offers."
       actions={
         <>
           <Button icon={<ArrowClockwiseRegular />} onClick={refreshAll}>
@@ -340,15 +371,27 @@ export function Network() {
         </>
       }
     >
-      <TabList selectedValue={tab} onTabSelect={(_, data) => setTab(data.value as TabName)}>
-        <Tab value="routes">Routes</Tab>
-        <Tab value="stops">Stops</Tab>
-        <Tab value="patterns">Patterns & versions</Tab>
-        <Tab value="schedules">Schedules</Tab>
-        <Tab value="fares">Fares</Tab>
-        <Tab value="pricing">Plan pricing</Tab>
-        <Tab value="slots">Commute slots</Tab>
-      </TabList>
+      <nav className="network-workflow" aria-label="Route setup">
+        {networkSections.map((section) => (
+          <div className="network-workflow-group" key={section.title}>
+            <span>{section.title}</span>
+            <div>
+              {section.tabs.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={tab === item.value ? 'active' : ''}
+                  aria-current={tab === item.value ? 'step' : undefined}
+                  onClick={() => setTab(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <p className="network-workflow-help">{networkHelp[tab]}</p>
 
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
       {tab === 'routes' && (
@@ -1509,13 +1552,23 @@ function TableState({
 }
 
 function NetworkMap({ stops, routes }: { stops: Stop[]; routes: number }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Panel title="Network map">
-      <LiveMap
-        markers={stops
-          .filter((stop) => !stop.archived)
-          .map((stop) => ({ id: stop.id, ...stop.location, label: stop.name, state: 'stop' }))}
-      />
+    <Panel
+      title="Network map"
+      action={
+        <Button onClick={() => setOpen((value) => !value)}>{open ? 'Hide map' : 'Show map'}</Button>
+      }
+    >
+      {open && (
+        <Suspense fallback={<div className="map-loading">Opening network map…</div>}>
+          <LiveMap
+            markers={stops
+              .filter((stop) => !stop.archived)
+              .map((stop) => ({ id: stop.id, ...stop.location, label: stop.name, state: 'stop' }))}
+          />
+        </Suspense>
+      )}
       <div className="map-meta">
         {routes} corridors · {stops.length} stops
       </div>

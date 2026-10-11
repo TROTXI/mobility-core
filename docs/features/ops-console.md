@@ -1,27 +1,30 @@
 # Ops workflows
 
-Source audit: 2026-10-08. Sign in with an invited or existing approved Google account, then complete
+Source audit: 2026-10-10. Sign in with an invited or existing approved Google account, then complete
 the passkey check. Role checks are enforced by the server, not only navigation.
 
-| Navigation                 | Implemented work                                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Live operations            | Aggregate trip/boarding counts, attention states, map and dispatch links                                            |
-| Trips                      | Create/generate, inspect manifests, assign drivers/vehicles, reschedule, cancel                                     |
-| Routes & stops             | Routes, physical stops, directional patterns/versions, geometry, schedules, fares, plan settings and transfer slots |
-| Fleet / Drivers            | Fleet records, driver provisioning, credential issue/reset/status and delivery choice                               |
-| Riders                     | Membership, reservations, financial history, restrictions and support context                                       |
-| Support                    | Commute requests, driver requests, incidents and decisions                                                          |
-| More → Payments            | Purchases, recovery/review, TEST refund initiation and card-renewal status/attention list                           |
-| More → People & messages   | Operators, access controls, delivery and erasure visibility                                                         |
-| Standby                    | Group route demand, filter requests and send individually priced offers in batches                                  |
-| More → Delivery status     | Paginated email and push delivery evidence                                                                          |
-| More → Team & access       | Superadmin-only invitations, administrator account deletion, superadmin capability and passkey recovery             |
-| More → Audit log / Reports | Attributable events and operational summaries                                                                       |
-| More → Platform            | Flags, minimum builds and exposed manual maintenance controls                                                       |
+| Navigation group  | Pages and work                                                                    |
+| ----------------- | --------------------------------------------------------------------------------- |
+| Run service       | Live operations, Dispatch & trips, Standby & offers                               |
+| Manage            | Routes & schedules, Fleet & drivers, Riders                                       |
+| Resolve           | Support, Payments                                                                 |
+| Monitor & control | Reports, Message delivery, Audit log, Platform, and superadmin-only Team & access |
+
+All sections are directly visible in desktop navigation. On small screens, open the navigation drawer
+from the top bar. Fleet and Drivers are tabs of one workspace, not separate navigation destinations.
+Your own passkeys and signed-in devices are in **My profile** from the account menu. They are
+not mixed into Platform's release controls.
+
+The interface presents filters beside the list they change and reveals technical evidence
+only when requested. New screens should use the shared Page,
+Panel, status and confirmation components, rather than introducing a separate visual language.
+Payments and Support fetch the selected queue, not every tab at once. Live maps load when
+there is live activity or when an operator chooses **Show map** in Routes & schedules.
 
 ## Route to offer
 
-Create the route and stops, publish both directional versions and schedules,
+In **Routes & schedules**, follow **Build the route** from Routes through Departures, then
+**Set the offer** with Fares and Capacity. Create the route and stops, publish both directional versions and schedules,
 then publish exact pickup/drop-off fares. Generate trips and assign fleet
 separately. A route record alone creates neither bookable service nor capacity.
 
@@ -86,6 +89,18 @@ An offer is not a guaranteed vehicle seat. Ops must review real recurring supply
 Work-request approval is not trip reassignment. Refund acceptance is not settled
 cash. Erasure visibility is not certification of provider/back-up deletion.
 
+### Manual maintenance
+
+**Platform → Manual jobs** is for recovery and investigation, not the normal daily workflow.
+Service-day controls use the selected date; only Ask riders, Apply reservation defaults and
+Resolve no-shows also use the selected direction. Generate trips uses the date only.
+Payment maintenance, pause resumes and system upkeep ignore both filters. Confirm the scope
+before running. **Run payment maintenance** combines payment inbox processing,
+reconciliation and period close. The individual payment steps live under **System upkeep
+and individual recovery steps** for diagnosis; do not run all three after the combined job
+just because their buttons exist. The result summarizes counts, with raw details available
+only when needed. A zero-count result means no eligible work was found, not a failure.
+
 ### Account deletion requested through Support
 
 When a commuter cannot complete self-service deletion, Support must verify the
@@ -139,7 +154,7 @@ Tests: [offers](../../apps/ops/src/screens/Standby.test.tsx),
 ## Administrator onboarding
 
 The public front page contains only the Trotxi sign-in card. There is no public
-administrator registration form. A superadmin opens **More → Team & access**,
+administrator registration form. A superadmin opens **Monitor & control → Team & access**,
 enters a name and Google account email, then sends an invitation. The recipient
 opens the emailed link, signs in with that exact Google account, and registers
 or verifies a passkey before entering the workspace.

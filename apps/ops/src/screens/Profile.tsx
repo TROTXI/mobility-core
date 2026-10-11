@@ -1,10 +1,10 @@
 import { Avatar, Button } from '@fluentui/react-components';
-import { Link } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
+import { AdminPasskeys } from '../components/AdminPasskeys';
 
 type Session = components['schemas']['Session'];
 
@@ -41,13 +41,7 @@ export function Profile() {
       </section>
 
       <div className="profile-sections">
-        <Panel title="Security">
-          <div className="panel-body profile-security">
-            <p>Google sign-in and a passkey protect Ops access.</p>
-            <p className="muted">Passkey elevation lasts for one eight-hour shift.</p>
-            <Link to="/platform">Manage passkeys</Link>
-          </div>
-        </Panel>
+        <AdminPasskeys />
         <div>
           <Panel title="Sessions">
             {query.error ? (

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export function useQuery<T>(
   load: (signal: AbortSignal) => Promise<T>,
   dependencies: unknown[] = [],
+  enabled = true,
 ) {
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -28,6 +29,10 @@ export function useQuery<T>(
 
   useEffect(() => {
     const controller = new AbortController();
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     if (document.visibilityState === 'hidden') {
       // A deferred first read is not a successful empty result.
       setLoading(true);
@@ -56,7 +61,7 @@ export function useQuery<T>(
     };
     // Dependency values are intentionally supplied by each screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generation, ...dependencies]);
+  }, [generation, enabled, ...dependencies]);
 
   return { data, error, loading, retry, setData };
 }

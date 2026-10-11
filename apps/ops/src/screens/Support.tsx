@@ -37,15 +37,23 @@ export function Support() {
     slots: CommuteSlot[];
   }>(
     async (signal) => {
-      const [incidents, driver, commute, slots] = await Promise.all([
-        session.client.GET('/v1/ops/incidents', {
+      if (tab === 'incidents') {
+        const response = await session.client.GET('/v1/ops/incidents', {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
-        }),
-        session.client.GET('/v1/ops/driver-requests', {
+        });
+        if (response.error) throw new Error(response.error.error.message);
+        return { incidents: response.data.data, driver: [], commute: [], slots: [] };
+      }
+      if (tab === 'driver') {
+        const response = await session.client.GET('/v1/ops/driver-requests', {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
-        }),
+        });
+        if (response.error) throw new Error(response.error.error.message);
+        return { incidents: [], driver: response.data.data, commute: [], slots: [] };
+      }
+      const [commute, slots] = await Promise.all([
         session.client.GET('/v1/ops/commute-requests', {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
@@ -55,18 +63,17 @@ export function Support() {
           signal,
         }),
       ]);
-      if (incidents.error) throw new Error(incidents.error.error.message);
-      if (driver.error) throw new Error(driver.error.error.message);
       if (commute.error) throw new Error(commute.error.error.message);
       if (slots.error) throw new Error(slots.error.error.message);
       return {
-        incidents: incidents.data.data,
-        driver: driver.data.data,
+        incidents: [],
+        driver: [],
         commute: commute.data.data,
         slots: slots.data.data,
       };
     },
-    [session],
+    [session, tab],
+    tab !== 'deletions',
   );
   const history = useQuery<DecisionEvent[]>(
     async (signal) => {
@@ -83,10 +90,10 @@ export function Support() {
       return response.data.data;
     },
     [session, selected?.kind === 'commute' ? selected.row.id : null],
+    selected?.kind === 'commute',
   );
   const deletions = useQuery<{ items: AccountErasure[]; nextCursor: string | null }>(
     async (signal) => {
-      if (tab !== 'deletions') return { items: [], nextCursor: null };
       const response = await session.client.GET('/v1/ops/account-erasures', {
         params: {
           query: { limit: 50, ...(deletionCursor ? { cursor: deletionCursor } : {}) },
@@ -98,6 +105,7 @@ export function Support() {
       return { items: response.data.data, nextCursor: response.data.page.nextCursor ?? null };
     },
     [session, tab, deletionCursor],
+    tab === 'deletions',
   );
   const availableSlots =
     selected?.kind === 'commute'
@@ -108,7 +116,7 @@ export function Support() {
   return (
     <Page
       title="Support & requests"
-      description="Exceptions find the dispatcher and every decision keeps its actor and reason."
+      description="Review incidents, driver requests, commute changes and account deletion progress."
     >
       <TabList
         selectedValue={tab}

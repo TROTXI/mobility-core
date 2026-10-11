@@ -46,12 +46,12 @@ describe('Payments lists', () => {
     show();
     expect(await screen.findByText('monthly')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalledWith('/v1/ops/payments/reviews', expect.anything());
+    fireEvent.click(screen.getByRole('tab', { name: 'Manual reviews' }));
     expect(get).toHaveBeenCalledWith(
       '/v1/ops/payments/reviews',
       expect.objectContaining({ params: expect.objectContaining({ query: { limit: 200 } }) }),
     );
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Manual reviews' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Review queue unavailable');
     expect(screen.queryByText('No payment reviews need a decision.')).not.toBeInTheDocument();
   });

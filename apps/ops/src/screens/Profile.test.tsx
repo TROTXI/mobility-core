@@ -34,10 +34,8 @@ describe('operator profile', () => {
 
     expect(screen.getByRole('heading', { name: 'My profile' })).toBeInTheDocument();
     expect(screen.getByText('Test Operator')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Manage passkeys' })).toHaveAttribute(
-      'href',
-      '/platform',
-    );
+    expect(screen.getByRole('heading', { name: 'My passkeys' })).toBeInTheDocument();
+    expect(screen.getByText('0 passkeys registered')).toBeInTheDocument();
     const details = screen.getByText('Account details').closest('details');
     expect(details).not.toHaveAttribute('open');
     fireEvent.click(screen.getByText('Account details'));
@@ -55,7 +53,7 @@ describe('operator profile', () => {
       </FluentProvider>,
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Sessions unavailable');
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent('Sessions unavailable');
     expect(screen.queryByText('No active sessions.')).not.toBeInTheDocument();
   });
 });

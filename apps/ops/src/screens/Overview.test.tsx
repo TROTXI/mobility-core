@@ -106,9 +106,9 @@ describe('live operations density', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows the map and Ghana time once a driver reports on an active run', () => {
+  it('shows the map and Ghana time once a driver reports on an active run', async () => {
     show(data('active', true));
-    expect(screen.getByText('Map mounted')).toBeInTheDocument();
+    expect(await screen.findByText('Map mounted')).toBeInTheDocument();
     expect(screen.getByText('Boarded / confirmed')).toBeInTheDocument();
     expect(screen.queryByText('Seats confirmed')).not.toBeInTheDocument();
     expect(screen.getByText(/06:30 am GMT/)).toBeInTheDocument();

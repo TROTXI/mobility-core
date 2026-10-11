@@ -48,3 +48,20 @@ it('labels deletion status as local only and does not present provider erasure a
   expect(screen.getByText(/does not certify deletion from payment/)).toBeInTheDocument();
   expect(client.GET).toHaveBeenCalledWith('/v1/ops/account-erasures', expect.anything());
 });
+
+it('loads only the selected support queue', async () => {
+  render(
+    <FluentProvider theme={trotxiLight}>
+      <Support />
+    </FluentProvider>,
+  );
+  expect(await screen.findByRole('tab', { name: 'Incidents' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(client.GET).toHaveBeenCalledWith('/v1/ops/incidents', expect.anything());
+  expect(client.GET).not.toHaveBeenCalledWith('/v1/ops/driver-requests', expect.anything());
+  expect(client.GET).not.toHaveBeenCalledWith('/v1/ops/commute-requests', expect.anything());
+  fireEvent.click(screen.getByRole('tab', { name: 'Driver requests' }));
+  expect(client.GET).toHaveBeenCalledWith('/v1/ops/driver-requests', expect.anything());
+});

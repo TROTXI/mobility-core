@@ -44,6 +44,7 @@ export function Payments() {
       return response.data.data;
     },
     [session],
+    tab === 'purchases',
   );
   const reviewsQuery = useQuery<Review[]>(
     async (signal) => {
@@ -55,6 +56,7 @@ export function Payments() {
       return response.data.data;
     },
     [session],
+    tab === 'reviews',
   );
   const renewalsQuery = useQuery<Renewal[]>(
     async (signal) => {
@@ -66,22 +68,16 @@ export function Payments() {
       return response.data.data;
     },
     [session, renewalFilter],
+    tab === 'renewals',
   );
   const activeQuery =
     tab === 'purchases' ? purchasesQuery : tab === 'reviews' ? reviewsQuery : renewalsQuery;
   return (
     <Page
       title="Payments & credits"
-      description="Provider facts, rider value and human decisions stay separate."
+      description="Check purchases, resolve payment reviews and monitor card renewals."
       actions={
-        <Button
-          icon={<ArrowClockwiseRegular />}
-          onClick={() => {
-            purchasesQuery.retry();
-            reviewsQuery.retry();
-            renewalsQuery.retry();
-          }}
-        >
+        <Button icon={<ArrowClockwiseRegular />} onClick={activeQuery.retry}>
           Refresh
         </Button>
       }

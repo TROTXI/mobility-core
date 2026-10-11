@@ -93,7 +93,7 @@ export function Standby() {
     <Page
       className="standby-page"
       title="Standby"
-      description="Review new subscriptions and renewals. Agree the journeys, dates, price and unused-ride credits before the rider pays."
+      description="See demand by route and send individually priced subscription offers."
     >
       {notice && <p role="status">{notice}</p>}
       <div className="filter-bar">
