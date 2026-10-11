@@ -5,8 +5,15 @@ import 'package:trotxi_commuter/core/auth/password_requirements.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
+enum EmailSecuritySection { all, email, password }
+
 class EmailSecurityPage extends StatefulWidget {
-  const EmailSecurityPage({super.key, required this.client});
+  const EmailSecurityPage({
+    super.key,
+    required this.client,
+    this.section = EmailSecuritySection.all,
+  });
+  final EmailSecuritySection section;
   final CommuterApi client;
   @override
   State<EmailSecurityPage> createState() => _EmailSecurityPageState();
@@ -27,6 +34,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
       _checking = false,
       _busy = false;
   String? _error;
+  final _visiblePasswords = <String>{};
   @override
   void initState() {
     super.initState();
@@ -141,9 +149,19 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final showEmail =
+        widget.section != EmailSecuritySection.password || !_enabled;
+    final showPassword =
+        widget.section != EmailSecuritySection.email || !_enabled;
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
-      appBar: AppBar(title: const Text('Security & recovery')),
+      appBar: AppBar(
+        title: Text(switch (widget.section) {
+          EmailSecuritySection.email => 'Recovery email',
+          EmailSecuritySection.password => 'Change password',
+          EmailSecuritySection.all => 'Security & recovery',
+        }),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -153,10 +171,12 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                   child: Form(
                     key: _form,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
                       children: [
                         Text(
-                          'Protect your account',
+                          widget.section == EmailSecuritySection.email
+                              ? 'A way back in.'
+                              : 'Keep your account yours.',
                           style: AppTypography.heading2.copyWith(
                             color: colors.textPrimary,
                           ),
@@ -164,14 +184,16 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                         const SizedBox(height: 8),
                         Text(
                           _enabled
-                              ? 'Manage your recovery email and password in one place.'
+                              ? (widget.section == EmailSecuritySection.email
+                                    ? 'Verify your email to recover your account when you need it.'
+                                    : 'Choose a password you don’t use anywhere else.')
                               : 'Add an email and password to this account.',
                           style: AppTypography.body.copyWith(
                             color: colors.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 24),
-                        if (_enabled)
+                        if (_enabled && showEmail)
                           Container(
                             padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
@@ -221,7 +243,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                               ],
                             ),
                           ),
-                        if (_enabled && !_verified) ...[
+                        if (_enabled && !_verified && showEmail) ...[
                           const SizedBox(height: 16),
                           const Text(
                             'Your email is not verified yet. Verify it to use password recovery and receive important updates.',
@@ -239,7 +261,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                             ),
                           ),
                         ],
-                        if (_enabled && _verified) ...[
+                        if (_enabled && _verified && showEmail) ...[
                           const SizedBox(height: 12),
                           Text(
                             'Contact email verified. You can use it for account recovery.',
@@ -247,105 +269,6 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                               color: colors.textSecondary,
                             ),
                           ),
-                        ],
-                        const SizedBox(height: 32),
-                        Text(
-                          _enabled ? 'Change password' : 'Set up email access',
-                          style: AppTypography.title.copyWith(
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _enabled
-                              ? 'For security, sign in again if it has been more than 15 minutes. Changing your password signs out all devices.'
-                              : 'You’ll receive a code by email. It works for 30 minutes in this session.',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (!_enabled)
-                          TextFormField(
-                            controller: _email,
-                            enabled: !_busy && !_enabled && !_sent,
-                            keyboardType: TextInputType.emailAddress,
-                            autocorrect: false,
-                            decoration: _fieldDecoration('Email address'),
-                            validator: (v) => v == null || !v.contains('@')
-                                ? 'Enter a valid email'
-                                : null,
-                          ),
-                        if (_sent) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Paste the verification code from your email. The code works only in this sign-in session.',
-                          ),
-                          TextFormField(
-                            controller: _code,
-                            enabled: !_busy,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            decoration: _fieldDecoration('Verification code'),
-                            validator: (v) => v == null || v.trim().length != 43
-                                ? 'Paste the complete code'
-                                : null,
-                          ),
-                        ],
-                        if (_enabled) ...[
-                          TextFormField(
-                            controller: _old,
-                            enabled: !_busy,
-                            obscureText: true,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            autofillHints: const [AutofillHints.password],
-                            decoration: _fieldDecoration('Current password'),
-                            validator: (v) => v == null || v.isEmpty
-                                ? 'Enter your current password'
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        if (_enabled || _sent) ...[
-                          TextFormField(
-                            controller: _password,
-                            enabled: !_busy,
-                            obscureText: true,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            autofillHints: const [AutofillHints.newPassword],
-                            maxLength: 128,
-                            decoration: _fieldDecoration(
-                              'New password',
-                            ).copyWith(counterText: ''),
-                            validator: validateNewPassword,
-                          ),
-                          const SizedBox(height: 12),
-                          PasswordRequirements(password: _password.text),
-                          const SizedBox(height: 20),
-                          TextFormField(
-                            controller: _confirm,
-                            enabled: !_busy,
-                            obscureText: true,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            decoration: _fieldDecoration('Confirm password'),
-                            validator: (v) => v != _password.text
-                                ? 'Passwords do not match'
-                                : null,
-                          ),
-                          if (_confirm.text.isNotEmpty)
-                            Text(
-                              _confirm.text == _password.text
-                                  ? 'Passwords match'
-                                  : 'Passwords do not match yet',
-                              style: TextStyle(
-                                color: _confirm.text == _password.text
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.error,
-                              ),
-                            ),
                         ],
                         if (_error != null)
                           Padding(
@@ -357,36 +280,148 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                               ),
                             ),
                           ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed:
-                                _busy ||
-                                    ((_enabled || _sent) &&
-                                        (validateNewPassword(_password.text) !=
-                                                null ||
-                                            _confirm.text != _password.text))
-                                ? null
-                                : _submit,
-                            child: Text(
-                              _busy
-                                  ? 'Please wait...'
-                                  : _enabled || _sent
-                                  ? 'Save password and sign out'
-                                  : 'Send verification email',
+                        if (showPassword) ...[
+                          const SizedBox(height: 32),
+                          Text(
+                            _enabled
+                                ? 'Change password'
+                                : 'Set up email access',
+                            style: AppTypography.title.copyWith(
+                              color: colors.textPrimary,
                             ),
                           ),
-                        ),
-                        if (_sent)
-                          TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () async {
-                                    setState(() => _sent = false);
-                                  },
-                            child: const Text('Request another code'),
+                          const SizedBox(height: 8),
+                          Text(
+                            _enabled
+                                ? 'For security, sign in again if it has been more than 15 minutes. Changing your password signs out all devices.'
+                                : 'You’ll receive a code by email. It works for 30 minutes in this session.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
                           ),
+                          const SizedBox(height: 20),
+                          if (!_enabled)
+                            TextFormField(
+                              controller: _email,
+                              enabled: !_busy && !_enabled && !_sent,
+                              keyboardType: TextInputType.emailAddress,
+                              autocorrect: false,
+                              decoration: _fieldDecoration('Email address'),
+                              validator: (v) => v == null || !v.contains('@')
+                                  ? 'Enter a valid email'
+                                  : null,
+                            ),
+                          if (_sent) ...[
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Paste the verification code from your email. The code works only in this sign-in session.',
+                            ),
+                            TextFormField(
+                              controller: _code,
+                              enabled: !_busy,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              decoration: _fieldDecoration('Verification code'),
+                              validator: (v) =>
+                                  v == null || v.trim().length != 43
+                                  ? 'Paste the complete code'
+                                  : null,
+                            ),
+                          ],
+                          if (_enabled) ...[
+                            TextFormField(
+                              controller: _old,
+                              enabled: !_busy,
+                              obscureText: !_visiblePasswords.contains(
+                                'Current password',
+                              ),
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              autofillHints: const [AutofillHints.password],
+                              decoration: _fieldDecoration('Current password'),
+                              validator: (v) => v == null || v.isEmpty
+                                  ? 'Enter your current password'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_enabled || _sent) ...[
+                            TextFormField(
+                              controller: _password,
+                              enabled: !_busy,
+                              obscureText: !_visiblePasswords.contains(
+                                'New password',
+                              ),
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              autofillHints: const [AutofillHints.newPassword],
+                              maxLength: 128,
+                              decoration: _fieldDecoration(
+                                'New password',
+                              ).copyWith(counterText: ''),
+                              validator: validateNewPassword,
+                            ),
+                            const SizedBox(height: 12),
+                            PasswordRequirements(password: _password.text),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              controller: _confirm,
+                              enabled: !_busy,
+                              obscureText: !_visiblePasswords.contains(
+                                'Confirm password',
+                              ),
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              decoration: _fieldDecoration('Confirm password'),
+                              validator: (v) => v != _password.text
+                                  ? 'Passwords do not match'
+                                  : null,
+                            ),
+                            if (_confirm.text.isNotEmpty)
+                              Text(
+                                _confirm.text == _password.text
+                                    ? 'Passwords match'
+                                    : 'Passwords do not match yet',
+                                style: TextStyle(
+                                  color: _confirm.text == _password.text
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                          ],
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed:
+                                  _busy ||
+                                      ((_enabled || _sent) &&
+                                          (validateNewPassword(
+                                                    _password.text,
+                                                  ) !=
+                                                  null ||
+                                              _confirm.text != _password.text))
+                                  ? null
+                                  : _submit,
+                              child: Text(
+                                _busy
+                                    ? 'Please wait...'
+                                    : _enabled || _sent
+                                    ? 'Save password and sign out'
+                                    : 'Send verification email',
+                              ),
+                            ),
+                          ),
+                          if (_sent)
+                            TextButton(
+                              onPressed: _busy
+                                  ? null
+                                  : () async {
+                                      setState(() => _sent = false);
+                                    },
+                              child: const Text('Request another code'),
+                            ),
+                        ],
                       ],
                     ),
                   ),
@@ -399,5 +434,22 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
   InputDecoration _fieldDecoration(String label) => InputDecoration(
     labelText: label,
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    suffixIcon: label.toLowerCase().contains('password')
+        ? IconButton(
+            tooltip: _visiblePasswords.contains(label)
+                ? 'Hide password'
+                : 'Show password',
+            onPressed: () => setState(() {
+              if (!_visiblePasswords.add(label)) {
+                _visiblePasswords.remove(label);
+              }
+            }),
+            icon: Icon(
+              _visiblePasswords.contains(label)
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
+          )
+        : null,
   );
 }

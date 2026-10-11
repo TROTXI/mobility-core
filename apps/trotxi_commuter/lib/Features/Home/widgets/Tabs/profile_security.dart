@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'email_security_page.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -25,10 +26,11 @@ class ProfileSecurityPage extends StatefulWidget {
 }
 
 class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
-  void _onChangePasswordOrPin() {
+  void _openEmailSecurity(EmailSecuritySection section) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => EmailSecurityPage(client: widget.client),
+        builder: (_) =>
+            EmailSecurityPage(client: widget.client, section: section),
       ),
     );
   }
@@ -138,7 +140,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
       tabletLandscape: 960.0,
     );
     final horizontalPadding = layout.select(
-      phone: 16.0,
+      phone: 24.0,
       tabletPortrait: 24.0,
       tabletLandscape: 32.0,
     );
@@ -161,46 +163,52 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildSectionTitle(context, 'Sign-in security'),
-                  const SizedBox(height: 12),
-                  _SecurityTile(
-                    title: 'Password & recovery email',
-                    subtitle: 'Change your password or verify your email',
-                    onTap: _onChangePasswordOrPin,
+                  const AppPageHeading(
+                    title: 'Keep your account secure.',
+                    subtitle: 'Manage how you sign in and recover access.',
+                  ),
+                  const SizedBox(height: 24),
+                  AppSettingsGroup(
+                    children: [
+                      AppSettingsRow(
+                        title: 'Change password',
+                        subtitle: 'Update your sign-in password',
+                        icon: Icons.lock_outline_rounded,
+                        onTap: () =>
+                            _openEmailSecurity(EmailSecuritySection.password),
+                      ),
+                      AppSettingsRow(
+                        title: 'Recovery email',
+                        subtitle: 'Verify your contact email',
+                        icon: Icons.mail_outline_rounded,
+                        onTap: () =>
+                            _openEmailSecurity(EmailSecuritySection.email),
+                      ),
+                      AppSettingsRow(
+                        title: 'Manage signed-in devices',
+                        subtitle: 'Review access to your account',
+                        icon: Icons.devices_outlined,
+                        onTap: _openSessions,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 28),
-                  _buildSectionTitle(context, 'Devices & sessions'),
+                  _buildSectionTitle(context, 'Account access'),
                   const SizedBox(height: 12),
-                  _SecurityTile(
-                    title: 'Manage signed-in devices',
-                    subtitle: 'Review or revoke sessions on your account',
-                    onTap: _openSessions,
-                  ),
-                  const SizedBox(height: 28),
-                  _buildSectionTitle(context, 'Account actions'),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: colors.surfaceElevated,
-                      border: Border.all(color: colors.borderSubtle),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        _SecurityTile(
-                          title: 'Sign out on this device',
-                          onTap: _confirmSignOut,
-                          bordered: false,
-                        ),
-                        Divider(height: 1, color: colors.borderSubtle),
-                        _SecurityTile(
-                          title: 'Delete account',
-                          titleColor: colors.error,
-                          onTap: _confirmDeleteAccount,
-                          bordered: false,
-                        ),
-                      ],
-                    ),
+                  AppSettingsGroup(
+                    children: [
+                      AppSettingsRow(
+                        title: 'Sign out on this device',
+                        icon: Icons.logout_rounded,
+                        onTap: _confirmSignOut,
+                      ),
+                      AppSettingsRow(
+                        title: 'Delete account',
+                        icon: Icons.delete_outline_rounded,
+                        destructive: true,
+                        onTap: _confirmDeleteAccount,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -222,85 +230,6 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
     );
   }
 }
-
-/// A standalone, individually-carded row with a title/subtitle and a
-/// trailing chevron. Set [bordered] to false when the caller already draws
-/// the surrounding card (e.g. grouped rows with a divider between them).
-class _SecurityTile extends StatelessWidget {
-  const _SecurityTile({
-    required this.title,
-    this.subtitle,
-    this.titleColor,
-    required this.onTap,
-    this.bordered = true,
-  });
-
-  final String title;
-  final String? subtitle;
-  final Color? titleColor;
-  final VoidCallback onTap;
-  final bool bordered;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.label.copyWith(
-                    color: titleColor ?? colors.textPrimary,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: colors.iconSubtle),
-        ],
-      ),
-    );
-
-    if (!bordered) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(onTap: onTap, child: content),
-      );
-    }
-
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(onTap: onTap, child: content),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------
-// Sessions list — replacement GET /v1/me/sessions, revoke via
-// DELETE /v1/me/sessions/{id}
-// ---------------------------------------------------------------------
 
 class _SessionsListPage extends StatefulWidget {
   const _SessionsListPage({required this.client});
@@ -402,50 +331,34 @@ class _SessionsListPageState extends State<_SessionsListPage> {
     final colors = context.appColors;
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
+      appBar: AppBar(title: const Text('Signed-in devices')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Semantics(
-                    button: true,
-                    label: 'Back',
-                    child: InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 20,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Text(
-                    'Signed-in devices',
-                    style: AppTypography.title.copyWith(
+                    'Review account access',
+                    style: AppTypography.heading2.copyWith(
                       color: colors.textPrimary,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign-ins are listed by date. Remove access from any session you don’t recognise.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Expanded(child: _buildBody(context)),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                "Sessions don't include device details yet, so these are "
-                'shown by when they were created rather than device name.',
-                style: AppTypography.caption.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(child: _buildBody(context)),
-            ],
+            ),
           ),
         ),
       ),

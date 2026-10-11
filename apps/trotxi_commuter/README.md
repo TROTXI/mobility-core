@@ -46,11 +46,23 @@ Home, Trips, Wallet and Profile stay in the bottom navigation; search is in the
 header. Signup keeps details, password and SMS verification on separate steps,
 with live password requirements and a fixed action above the keyboard.
 
+Waitlist requests show a journey summary before submission and require
+confirmation before withdrawal. Payment history uses compact transaction cards;
+the receipt holds coverage, journey allowances and the full price breakdown.
+Support references are behind an expandable section rather than shown as IDs.
+Wallet keeps ride allowance separate from available and held money credit.
+
+Profile groups everyday settings and account access. Password and recovery email
+have separate screens. A verified phone opens on its current status, with an
+explicit action to change it. Support uses configured contact channels, falling
+back to the approved `info@trotxi.com` mailbox when no support email is supplied.
+
 Boarding passes use the real server proof and remain high contrast in both
 themes. Expired or backgrounded proofs are hidden. Reservation dates, times and
 stops come from the API, never from the design preview's sample journeys.
 
-Run `flutter test test/approved_design_test.dart` for narrow-screen, enlarged-text
-and contrast checks. Optional review renders can be generated with
-`flutter test test/approved_design_test.dart --update-goldens --dart-define=DESIGN_OUTPUT=/absolute/output/path`.
+Run `flutter test test/approved_design_test.dart test/remaining_design_test.dart`
+for narrow-screen, enlarged-text, contrast and screen-state checks. Optional
+review renders can be generated with
+`flutter test test/approved_design_test.dart test/remaining_design_test.dart --update-goldens --dart-define=DESIGN_OUTPUT=/absolute/output/path`.
 These renders are not cross-platform pixel baselines and are not part of normal CI.

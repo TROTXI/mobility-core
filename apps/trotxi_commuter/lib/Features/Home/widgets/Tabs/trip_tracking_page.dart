@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/commuter_trip_tracking.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
@@ -159,76 +162,173 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       darkUrl: clean(tiles?.darkStyleUrl),
       attribution: clean(tiles?.attribution) ?? TrotxiMapStyle.none.attribution,
     );
+    final colors = context.appColors;
     return Scaffold(
-      appBar: AppBar(title: Text(snapshot?.routeName ?? 'Trip tracking')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            'Only the bus location is shown. This app does not collect your location.',
-          ),
-          TextButton(
-            onPressed: _inFlight || !_foreground ? null : _refresh,
-            child: const Text('Refresh tracking'),
-          ),
-          if (_loading) const LinearProgressIndicator(),
-          if (!_foreground)
-            const Text('Tracking paused while the app is not active.'),
-          if (_error != null) Text(_error!),
-          if (snapshot != null) ...[
-            Text(
-              'Departs ${DateFormat('EEE, d MMM · h:mm a').format(snapshot.trip.scheduledAt.toUtc())}',
-            ),
-            Text(
-              snapshot.trip.direction == wire.TripDirectionEnum.outbound
-                  ? 'Outbound'
-                  : 'Return',
-            ),
-            Text(snapshot.trip.vehicleLabel ?? 'Vehicle not assigned'),
-            widget.mapBuilder(snapshot, style),
-            if (snapshot.mapWarning != null) Text(snapshot.mapWarning!),
-            if (snapshot.geometry != null)
-              Text(
-                snapshot.geometry!.source_ == wire.GeometrySource_Enum.observed
-                    ? 'Route line: observed'
-                    : 'Route line: configured',
-              ),
-            Text(switch (snapshot.live.state) {
-              wire.LiveTripStateEnum.notStarted => 'Trip has not started.',
-              wire.LiveTripStateEnum.awaitingFix =>
-                'Waiting for the driver’s first location update.',
-              wire.LiveTripStateEnum.ended =>
-                'Trip ended. No live bus location is shown.',
-              _ =>
-                snapshot.hasPosition
-                    ? '${snapshot.fresh ? 'Live bus' : 'Last known bus position'} · ${snapshot.age!.inSeconds}s old'
-                    : 'Bus location unavailable.',
-            }),
-            if (snapshot.age != null &&
-                snapshot.age! > const Duration(seconds: 120))
-              const Text('Position is too old for an arrival prediction.'),
-            if (snapshot.pickupEta == null)
-              const Text(
-                'No current pickup prediction. This does not mean the bus has arrived.',
-              )
-            else
-              Text(
-                'Your pickup · ~${(snapshot.pickupEta!.durationSeconds / 60).ceil()} min · ${snapshot.pickupEta!.basis.name} estimate',
-              ),
-            for (final eta in snapshot.etas)
-              ListTile(
-                title: Text(snapshot.stopName(eta.stopOccurrenceId)),
-                subtitle: Text(
-                  '~${(eta.durationSeconds / 60).ceil()} min · ${eta.distanceMeters.round()} m · ${eta.basis.name} estimate',
+      appBar: AppBar(title: const Text('Track your bus')),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              children: [
+                AppPageHeading(
+                  title: snapshot?.routeName ?? 'Your bus, on the way.',
+                  subtitle:
+                      'Only the bus location is shown. This app does not collect your location.',
                 ),
-                leading: Icon(
-                  eta.stopOccurrenceId == snapshot.live.riderPickupOccurrenceId
-                      ? Icons.place
-                      : Icons.circle_outlined,
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _inFlight || !_foreground ? null : _refresh,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Refresh tracking'),
+                  ),
                 ),
-              ),
-          ],
-        ],
+                if (_loading) const LinearProgressIndicator(),
+                if (!_foreground)
+                  const AppSurface(
+                    child: Text('Tracking paused while the app is not active.'),
+                  ),
+                if (_error != null)
+                  AppSurface(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.location_off_outlined,
+                          color: colors.warning,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(_error!, style: AppTypography.bodySmall),
+                      ],
+                    ),
+                  ),
+                if (snapshot != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: widget.mapBuilder(snapshot, style),
+                  ),
+                  const SizedBox(height: 20),
+                  AppSurface(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppStatusBadge(
+                          label: switch (snapshot.live.state) {
+                            wire.LiveTripStateEnum.notStarted =>
+                              'Trip has not started.',
+                            wire.LiveTripStateEnum.awaitingFix =>
+                              'Waiting for the driver’s first location update.',
+                            wire.LiveTripStateEnum.ended =>
+                              'Trip ended. No live bus location is shown.',
+                            _ =>
+                              snapshot.hasPosition
+                                  ? '${snapshot.fresh ? 'Live bus' : 'Last known bus position'} · ${snapshot.age!.inSeconds}s old'
+                                  : 'Bus location unavailable.',
+                          },
+                          color: snapshot.fresh
+                              ? colors.success
+                              : colors.warning,
+                        ),
+                        const SizedBox(height: 16),
+                        if (snapshot.pickupEta != null) ...[
+                          Text(
+                            '~${(snapshot.pickupEta!.durationSeconds / 60).ceil()} min',
+                            style: AppTypography.heading1.copyWith(
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Estimated arrival at your pickup',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ] else
+                          Text(
+                            'No current pickup prediction. This does not mean the bus has arrived.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        if (snapshot.age != null &&
+                            snapshot.age! > const Duration(seconds: 120)) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Position is too old for an arrival prediction.',
+                            style: AppTypography.caption.copyWith(
+                              color: colors.warning,
+                            ),
+                          ),
+                        ],
+                        if (snapshot.mapWarning != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            snapshot.mapWarning!,
+                            style: AppTypography.caption.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        const Divider(height: 1),
+                        const SizedBox(height: 10),
+                        AppDetailRow(
+                          label:
+                              snapshot.trip.direction ==
+                                  wire.TripDirectionEnum.outbound
+                              ? 'Outbound departure'
+                              : 'Return departure',
+                          value: DateFormat(
+                            'EEE, d MMM · h:mm a',
+                          ).format(snapshot.trip.scheduledAt.toUtc()),
+                        ),
+                        AppDetailRow(
+                          label: 'Your bus',
+                          value:
+                              snapshot.trip.vehicleLabel ??
+                              'Vehicle not assigned',
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (snapshot.etas.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    Text(
+                      'Along your route',
+                      style: AppTypography.title.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppSettingsGroup(
+                      children: [
+                        for (final eta in snapshot.etas)
+                          ListTile(
+                            title: Text(
+                              snapshot.stopName(eta.stopOccurrenceId),
+                            ),
+                            subtitle: Text(
+                              '~${(eta.durationSeconds / 60).ceil()} min · Estimated arrival',
+                            ),
+                            leading: Icon(
+                              eta.stopOccurrenceId ==
+                                      snapshot.live.riderPickupOccurrenceId
+                                  ? Icons.place_outlined
+                                  : Icons.circle_outlined,
+                              color: colors.actionPrimaryDefault,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

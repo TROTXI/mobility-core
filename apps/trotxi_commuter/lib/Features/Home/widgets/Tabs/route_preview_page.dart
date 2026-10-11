@@ -112,7 +112,7 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 700),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
             children: [
               Text(
                 widget.routeName,
@@ -221,7 +221,7 @@ class _RouteChoicePreviewPageState extends State<RouteChoicePreviewPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 700),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
             children: [
               Text(
                 widget.routeName,

@@ -1,6 +1,7 @@
 // Detail view for one purchase, opened from the wallet activity feed.
 
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
@@ -161,13 +162,31 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
           const SizedBox(height: 20),
           _buildPaymentStatus(context, purchase),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _copy(purchase.id),
-              icon: const Icon(Icons.copy_rounded, size: 18),
-              label: const Text('Copy reference for support'),
-            ),
+          AppSettingsGroup(
+            children: [
+              ExpansionTile(
+                title: const Text('Payment reference for support'),
+                tilePadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 4,
+                ),
+                childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+                children: [
+                  Text(
+                    'Share this reference only when you need help with this payment.',
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _copy(purchase.id),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text('Copy reference for support'),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -191,36 +210,37 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
       collectionState: purchase.collectionState,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          purchase.offerTerms != null
-              ? 'Subscription payment'
-              : purchasePlanLabel(purchase.plan),
-          style: AppTypography.heading3.copyWith(color: colors.textPrimary),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Created ${_formatMoment(purchase.createdAt)}',
-          style: AppTypography.caption.copyWith(color: colors.textSecondary),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: stateColor.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Text(
-            purchaseStateLabel(
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          AppStatusBadge(
+            label: purchaseStateLabel(
               purchase.state,
               collectionState: purchase.collectionState,
             ),
-            style: AppTypography.label.copyWith(color: stateColor),
+            color: stateColor,
           ),
-        ),
-      ],
+          const SizedBox(height: 20),
+          Text(
+            purchase.cashDue.formatted,
+            textAlign: TextAlign.center,
+            style: AppTypography.heading1.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            purchaseCashLabel(purchase.collectionState),
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _formatMoment(purchase.createdAt),
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 
@@ -238,7 +258,7 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: colors.backgroundSubtle,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: colors.borderSubtle),
       ),
       child: Column(
@@ -293,13 +313,14 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surfaceStrong,
-        borderRadius: BorderRadius.circular(14),
+        color: colors.surfaceElevated,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (purchase.appliedCredit.amountMinor > 0) ...[
+          ...[
             _buildAmountRow(context, 'Package price', purchase.price),
             const SizedBox(height: 8),
             _buildAmountRow(
@@ -309,10 +330,7 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
               prefix: '−',
             ),
             const SizedBox(height: 12),
-            Divider(
-              height: 1,
-              color: colors.onSurfaceStrong.withValues(alpha: 0.18),
-            ),
+            Divider(height: 1, color: colors.borderSubtle),
             const SizedBox(height: 12),
           ],
           _buildAmountRow(
@@ -342,9 +360,7 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
           child: Text(
             label,
             style: style.copyWith(
-              color: colors.onSurfaceStrong.withValues(
-                alpha: strong ? 1.0 : 0.72,
-              ),
+              color: strong ? colors.textPrimary : colors.textSecondary,
             ),
           ),
         ),
@@ -353,7 +369,7 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
           child: Text(
             '$prefix${money.formatted}',
             textAlign: TextAlign.right,
-            style: style.copyWith(color: colors.onSurfaceStrong),
+            style: style.copyWith(color: colors.textPrimary),
           ),
         ),
       ],

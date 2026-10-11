@@ -241,7 +241,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       tabletLandscape: 960.0,
     );
     final horizontalPadding = layout.select(
-      phone: 16.0,
+      phone: 24.0,
       tabletPortrait: 24.0,
       tabletLandscape: 32.0,
     );
@@ -286,28 +286,26 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                       AutofillHints.middleName,
                     ),
                   ]) ...[
-                    _FieldShell(
-                      label: field.$1,
-                      child: TextField(
-                        key: ValueKey(field.$1),
-                        controller: field.$2,
-                        enabled: !_saving,
-                        maxLength: field.$3,
-                        buildCounter:
-                            (
-                              context, {
-                              required currentLength,
-                              required isFocused,
-                              maxLength,
-                            }) => null,
-                        autofillHints: [field.$4],
-                        textCapitalization: TextCapitalization.words,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                        decoration: InputDecoration.collapsed(
-                          hintText: field.$1,
-                        ),
+                    TextField(
+                      key: ValueKey(field.$1),
+                      controller: field.$2,
+                      enabled: !_saving,
+                      maxLength: field.$3,
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
+                      autofillHints: [field.$4],
+                      textCapitalization: TextCapitalization.words,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: field.$1,
+                        counterText: '',
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -333,7 +331,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
               constraints: BoxConstraints(maxWidth: maxContentWidth),
               child: SizedBox(
                 width: double.infinity,
-                height: 52,
+
                 child: FilledButton(
                   onPressed: _saving ? null : _onSave,
                   child: _saving
@@ -430,42 +428,6 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
               style: AppTypography.label,
             ),
           ),
-      ],
-    );
-  }
-}
-
-/// A labeled, rounded/bordered container for each name field.
-class _FieldShell extends StatelessWidget {
-  const _FieldShell({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(
-            color: colors.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: colors.surfaceElevated,
-            border: Border.all(color: colors.borderSubtle),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: child,
-        ),
       ],
     );
   }

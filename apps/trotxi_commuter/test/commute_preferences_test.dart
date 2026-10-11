@@ -201,7 +201,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('New corridor'));
     await tester.pumpAndSettle();
-    expect(find.text('Choose outbound departure'), findsOneWidget);
+    expect(find.text('When will you leave?'), findsOneWidget);
     await tester.tap(find.text('06:30'));
     await tester.pumpAndSettle();
     expect(
@@ -212,7 +212,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Office'));
     await tester.pumpAndSettle();
-    expect(find.text('Choose return departure'), findsOneWidget);
+    expect(find.text('When will you head back?'), findsOneWidget);
     await tester.tap(find.text('17:30'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Office'));
@@ -270,7 +270,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Waitlist'), findsOneWidget);
+      expect(find.text('Waitlist & offers'), findsOneWidget);
       expect(
         find.textContaining('Tell us when and where you travel'),
         findsOneWidget,
@@ -280,6 +280,11 @@ void main() {
         await tester.pumpAndSettle();
       }
       await choose(tester, button: 'Choose a route', reveal: false);
+      expect(submitted, isNull);
+      expect(find.text('Your commute, at a glance.'), findsOneWidget);
+      await tester.ensureVisible(find.text('Send my request'));
+      await tester.tap(find.text('Send my request'));
+      await tester.pumpAndSettle();
       expect(submitted?['selection']['plan'], plan);
       expect(submitted?['travelDays'], [1, 2, 3, 4, 5]);
       expect(submitted?['selection']['legs'], hasLength(2));
@@ -322,7 +327,7 @@ void main() {
           'dropoffOccurrenceId': 'return-visit-2',
         },
       ]);
-      expect(find.text('New corridor — submitted'), findsOneWidget);
+      expect(find.text('Request received'), findsOneWidget);
       expect(find.text('Send request to operations'), findsNothing);
     },
   );
@@ -332,7 +337,7 @@ void main() {
   ) async {
     requests = [request(status: 'waitlisted', paused: true)];
     await pumpPage(tester);
-    expect(find.text('New corridor — waitlisted'), findsOneWidget);
+    expect(find.text('Waiting for availability'), findsOneWidget);
     expect(
       find.textContaining('Rides and remaining paid time are preserved'),
       findsOneWidget,
@@ -352,7 +357,7 @@ void main() {
     await tester.tap(find.text('Withdraw'));
     await tester.pumpAndSettle();
     expect(writes.single.path, '/v1/me/commute-requests/request/withdraw');
-    expect(find.text('New corridor — cancelled'), findsOneWidget);
+    expect(find.text('Withdrawn'), findsOneWidget);
     expect(find.text('Request a new route'), findsOneWidget);
   });
 

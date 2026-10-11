@@ -27,8 +27,9 @@ void main() {
           'version': 1,
         };
         fixture.reply = (request) {
-          if (request.path == '/v1/me/reservations')
+          if (request.path == '/v1/me/reservations') {
             return jsonResponse(page([seat]));
+          }
           if (request.path == '/v1/me/reservations/reserved' &&
               detailAvailable) {
             return jsonResponse({

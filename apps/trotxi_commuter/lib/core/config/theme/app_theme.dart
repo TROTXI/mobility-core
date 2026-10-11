@@ -80,7 +80,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleSpacing: 0,
+        titleSpacing: 16,
         toolbarHeight: 56,
         titleTextStyle: AppTypography.label.copyWith(
           fontSize: 17,

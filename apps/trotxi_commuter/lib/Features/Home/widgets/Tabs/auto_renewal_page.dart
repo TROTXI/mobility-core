@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -201,17 +202,17 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
             onRefresh: _load,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
               children: [
                 Text(
-                  'Choose how you renew',
+                  'Renew your way.',
                   style: AppTypography.heading2.copyWith(
                     color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Automatic renewal is optional and only works with a saved card. You stay in control.',
+                  'Choose whether a saved card can renew your plan.',
                   style: AppTypography.body.copyWith(
                     color: colors.textSecondary,
                   ),
@@ -255,39 +256,28 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                               Icons.credit_card_rounded,
                               color: colors.actionPrimaryDefault,
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Automatic renewal',
+                                card == null
+                                    ? 'No saved card yet'
+                                    : 'Your saved card',
                                 style: AppTypography.title.copyWith(
                                   color: colors.textPrimary,
                                 ),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: renewal.enabled && card != null
-                                    ? colors.actionPrimaryDefault.withValues(
-                                        alpha: 0.1,
-                                      )
-                                    : colors.backgroundSubtle,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                status,
-                                style: AppTypography.caption.copyWith(
-                                  color: renewal.enabled && card != null
-                                      ? colors.actionPrimaryDefault
-                                      : colors.textSecondary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
                           ],
+                        ),
+                        const SizedBox(height: 14),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: AppStatusBadge(
+                            label: status,
+                            color: renewal.enabled && card != null
+                                ? colors.success
+                                : colors.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: 14),
                         Text(
@@ -302,7 +292,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                         ),
                         const SizedBox(height: 18),
                         SizedBox(
-                          height: 50,
+                          width: double.infinity,
                           child: renewal.enabled
                               ? OutlinedButton(
                                   onPressed: _busy ? null : _toggle,
@@ -328,30 +318,38 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    'How it works',
-                    style: AppTypography.title.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _step(
-                    context,
-                    Icons.credit_card_outlined,
-                    'Pay an offer by card',
-                    'We can save a supported card only after you make a card payment.',
-                  ),
-                  _step(
-                    context,
-                    Icons.notifications_outlined,
-                    'Get a reminder first',
-                    'We email you the amount and card five days before coverage ends.',
-                  ),
-                  _step(
-                    context,
-                    Icons.event_repeat_outlined,
-                    'Renew on matching terms',
-                    'Charging can start three days before coverage ends. If the fare or route changes, you review a new offer instead.',
+                  AppSettingsGroup(
+                    children: [
+                      ExpansionTile(
+                        title: const Text('How auto-renewal works'),
+                        childrenPadding: const EdgeInsets.fromLTRB(
+                          18,
+                          8,
+                          18,
+                          8,
+                        ),
+                        children: [
+                          _step(
+                            context,
+                            Icons.credit_card_outlined,
+                            'Pay an offer by card',
+                            'We can save a supported card only after you make a card payment.',
+                          ),
+                          _step(
+                            context,
+                            Icons.notifications_outlined,
+                            'Get a reminder first',
+                            'We email you the amount and card five days before coverage ends.',
+                          ),
+                          _step(
+                            context,
+                            Icons.event_repeat_outlined,
+                            'Renew on matching terms',
+                            'Charging can start three days before coverage ends. If the fare or route changes, you review a new offer instead.',
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   if (upcoming != null) ...[
                     const SizedBox(height: 24),
@@ -429,26 +427,8 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
     );
   }
 
-  Widget _detailRow(BuildContext context, String label, String value) {
-    final colors = context.appColors;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: AppTypography.bodySmall.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          value,
-          style: AppTypography.label.copyWith(color: colors.textPrimary),
-        ),
-      ],
-    );
-  }
+  Widget _detailRow(BuildContext context, String label, String value) =>
+      AppDetailRow(label: label, value: value);
 
   Widget _step(
     BuildContext context,

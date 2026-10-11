@@ -62,8 +62,8 @@ void main() {
       }
     });
     await tester.pumpAndSettle();
-    expect(find.text('Back to available trips'), findsOneWidget);
-    await tester.tap(find.text('Back to available trips'));
+    expect(find.byTooltip('Back to available trips'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back to available trips'));
     await tester.pumpAndSettle();
     expect(find.text('Open trips'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -175,7 +175,7 @@ void main() {
       }
     });
     expect(find.text('Next trip'), findsOneWidget);
-    expect(find.text('Back to available trips'), findsNothing);
+    expect(find.byTooltip('Back to available trips'), findsNothing);
     expect(find.text('Evening commute'), findsOneWidget);
     expect(find.text('Completed'), findsNothing);
     final upcoming = fixture.requests

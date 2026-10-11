@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/commuter_checkout.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
@@ -80,6 +81,89 @@ class _StandbyPageState extends State<StandbyPage> {
         generation != widget.client.sessionGeneration) {
       return;
     }
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .8,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AppPageHeading(
+                  title: 'Your commute, at a glance.',
+                  subtitle: 'Check your journey before sending your request.',
+                ),
+                const SizedBox(height: 24),
+                AppSurface(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(selection.routeName, style: AppTypography.title),
+                      const SizedBox(height: 12),
+                      for (final leg in [
+                        selection.outbound,
+                        selection.returning,
+                      ]) ...[
+                        Text(
+                          '${leg.pickup.name} → ${leg.dropoff.name}',
+                          style: AppTypography.label,
+                        ),
+                        Text(
+                          leg.choice.schedule.localDeparture,
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      AppDetailRow(
+                        label: 'Travel days',
+                        value: (_travelDays.toList()..sort())
+                            .map((day) => _dayNames[day - 1])
+                            .join(', '),
+                      ),
+                      AppDetailRow(
+                        label: 'Plan',
+                        value: _plan == wire.PurchaseInputPlanEnum.annual
+                            ? 'Annual'
+                            : 'Monthly',
+                      ),
+                      AppDetailRow(
+                        label: 'Use ride credit',
+                        value: _useCredit ? 'Yes, if available' : 'No',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Joining is free and does not reserve a seat. You’ll review the price and dates before paying.',
+                  style: AppTypography.bodySmall,
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => Navigator.pop(sheetContext, true),
+                  child: const Text('Send my request'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext, false),
+                  child: const Text('Not now'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted ||
+        confirmed != true ||
+        generation != widget.client.sessionGeneration) {
+      return;
+    }
     final commute = selection.request(wire.Date.now(utc: true), false, '');
     final selectionInput = wire.PurchaseInput(
       (b) => b
@@ -113,6 +197,30 @@ class _StandbyPageState extends State<StandbyPage> {
 
   Future<void> _withdraw(wire.StandbyApplication application) async {
     final generation = widget.client.sessionGeneration;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Withdraw your request?'),
+        content: const Text(
+          'This removes your waitlist request and any unaccepted offer. It won’t cancel a plan you have already paid for.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep request'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Withdraw request'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted ||
+        confirmed != true ||
+        generation != widget.client.sessionGeneration) {
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -322,7 +430,7 @@ class _StandbyPageState extends State<StandbyPage> {
               ),
               const SizedBox(height: 12),
               SizedBox(
-                height: 52,
+                width: double.infinity,
                 child: FilledButton(
                   onPressed: () => Navigator.pop(sheetContext, true),
                   child: const Text('Accept and review payment'),
@@ -419,7 +527,7 @@ class _StandbyPageState extends State<StandbyPage> {
         .toList();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Waitlist'),
+        title: const Text('Waitlist & offers'),
         scrolledUnderElevation: 0,
         actions: [
           IconButton(
@@ -435,7 +543,7 @@ class _StandbyPageState extends State<StandbyPage> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: SizedBox(
-                  height: 54,
+                  width: double.infinity,
                   child: FilledButton(
                     onPressed: _busy || _travelDays.isEmpty ? null : _join,
                     child: const Text('Choose a route'),
@@ -444,58 +552,70 @@ class _StandbyPageState extends State<StandbyPage> {
               ),
             )
           : null,
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          children: [
-            _hero(active),
-            const SizedBox(height: 20),
-            if (_busy) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 16),
-            ],
-            if (_error != null) ...[
-              _notice(colors.error, Icons.error_outline, _error!),
-              const SizedBox(height: 16),
-            ],
-            if (!eligible && _verification != null) ...[
-              _notice(
-                colors.actionPrimaryDefault,
-                Icons.verified_user_outlined,
-                'Verify your phone before joining the waitlist.',
-                action: TextButton(
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            PhoneVerificationPage(client: widget.client),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+                children: [
+                  _hero(active),
+                  const SizedBox(height: 20),
+                  if (_busy) ...[
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_error != null) ...[
+                    _notice(colors.error, Icons.error_outline, _error!),
+                    const SizedBox(height: 16),
+                  ],
+                  if (!eligible && _verification != null) ...[
+                    _notice(
+                      colors.actionPrimaryDefault,
+                      Icons.verified_user_outlined,
+                      'Verify your phone before joining the waitlist.',
+                      action: TextButton(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  PhoneVerificationPage(client: widget.client),
+                            ),
+                          );
+                          if (mounted) _refresh();
+                        },
+                        child: const Text('Verify phone'),
                       ),
-                    );
-                    if (mounted) _refresh();
-                  },
-                  child: const Text('Verify phone'),
-                ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (eligible && active.isEmpty) _requestForm(),
+                  for (final application in active) ...[
+                    _applicationCard(application),
+                    const SizedBox(height: 12),
+                  ],
+                  const SizedBox(height: 20),
+                  if (active.isEmpty)
+                    _howItWorks()
+                  else if (active.every(
+                    (a) =>
+                        a.state == wire.StandbyApplicationStateEnum.submitted,
+                  ))
+                    _requestProgress(),
+                ],
               ),
-              const SizedBox(height: 16),
-            ],
-            if (eligible && active.isEmpty) _requestForm(),
-            for (final application in active) ...[
-              _applicationCard(application),
-              const SizedBox(height: 12),
-            ],
-            const SizedBox(height: 20),
-            _howItWorks(),
-          ],
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _hero(List<wire.StandbyApplication> active) {
-    final colors = context.appColors;
     final hasOffer = active.any(
       (a) =>
           a.state == wire.StandbyApplicationStateEnum.offered &&
@@ -518,7 +638,7 @@ class _StandbyPageState extends State<StandbyPage> {
         ? 'Your offer is here'
         : expiredOffer
         ? 'Your offer has expired'
-        : 'We have your request';
+        : 'You’re on the list.';
     final description = active.isEmpty
         ? 'Tell us when and where you travel. We will send a price for you to review.'
         : checkoutOpen
@@ -528,39 +648,7 @@ class _StandbyPageState extends State<StandbyPage> {
         : expiredOffer
         ? 'You can leave the waitlist and start a new request.'
         : 'We will let you know when we can offer your commute.';
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surfaceStrong,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            active.isEmpty
-                ? Icons.route_outlined
-                : Icons.directions_bus_outlined,
-            color: colors.onSurfaceStrong,
-            size: 26,
-          ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            style: AppTypography.heading3.copyWith(
-              color: colors.onSurfaceStrong,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: AppTypography.bodySmall.copyWith(
-              color: colors.onSurfaceStrong.withValues(alpha: 0.82),
-            ),
-          ),
-        ],
-      ),
-    );
+    return AppPageHeading(title: title, subtitle: description);
   }
 
   Widget _howItWorks() {
@@ -590,6 +678,24 @@ class _StandbyPageState extends State<StandbyPage> {
       ],
     );
   }
+
+  Widget _requestProgress() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _nextStep(
+        Icons.check_circle_outline,
+        'Request received. Your route and days are saved.',
+      ),
+      _nextStep(
+        Icons.search_rounded,
+        'Our team checks availability for your commute.',
+      ),
+      _nextStep(
+        Icons.local_offer_outlined,
+        'You review the dates and price when an offer is ready.',
+      ),
+    ],
+  );
 
   Widget _nextStep(IconData icon, String text) {
     final colors = context.appColors;
@@ -650,7 +756,7 @@ class _StandbyPageState extends State<StandbyPage> {
       decoration: BoxDecoration(
         color: colors.backgroundSubtle,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -881,7 +987,7 @@ class _StandbyPageState extends State<StandbyPage> {
               child: Text(
                 offer != null && !offerCurrent
                     ? 'Start a new request'
-                    : 'Cancel request',
+                    : 'Withdraw request',
               ),
             ),
           if (application.state ==

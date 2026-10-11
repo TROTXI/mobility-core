@@ -136,13 +136,23 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
       tabletLandscape: 960.0,
     );
     final horizontalPadding = layout.select(
-      phone: 16.0,
+      phone: 24.0,
       tabletPortrait: 24.0,
       tabletLandscape: 32.0,
     );
 
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
+      appBar: Navigator.of(context).canPop()
+          ? AppBar(
+              title: const Text('My trips'),
+              leading: IconButton(
+                tooltip: 'Back to available trips',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -211,14 +221,6 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (Navigator.of(context).canPop()) ...[
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_rounded),
-            label: const Text('Back to available trips'),
-          ),
-          const SizedBox(height: 12),
-        ],
         Text(
           'Trips',
           style: AppTypography.heading2.copyWith(color: colors.textPrimary),
@@ -235,7 +237,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
   Widget _buildSegmentedTabs(BuildContext context) {
     final colors = context.appColors;
     return Container(
-      height: 48,
+      constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colors.backgroundSubtle,
@@ -278,6 +280,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           decoration: BoxDecoration(
             color: selected ? colors.surfaceElevated : Colors.transparent,
             borderRadius: BorderRadius.circular(19),

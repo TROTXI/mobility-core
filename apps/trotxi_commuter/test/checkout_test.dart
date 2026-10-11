@@ -183,7 +183,7 @@ void main() {
     await drain(
       tester,
       () => tester.tap(find.text('View payment details')),
-      until: find.text('Copy reference for support'),
+      until: find.text('Payment reference for support'),
     );
     expect(find.text('Payment processing'), findsWidgets);
     await tester.ensureVisible(find.text('Close'));
@@ -233,8 +233,12 @@ void main() {
     await drain(
       tester,
       () => tester.tap(find.text('View payment details')),
-      until: find.text('Copy reference for support'),
+      until: find.text('Payment reference for support'),
     );
+    expect(find.text('Payment reference for support'), findsOneWidget);
+    await tester.ensureVisible(find.text('Payment reference for support'));
+    await tester.tap(find.text('Payment reference for support'));
+    await tester.pumpAndSettle();
     expect(find.text('Copy reference for support'), findsOneWidget);
     expect(find.text('Billing period'), findsNothing);
     expect(find.text('period'), findsNothing);
@@ -246,7 +250,7 @@ void main() {
     (tester) async {
       await pump(tester, noPurchases: true);
       expect(find.text('Prepare checkout'), findsNothing);
-      expect(find.text('View waitlist'), findsOneWidget);
+      expect(find.text('Waitlist & offers'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await finish(tester);
     },

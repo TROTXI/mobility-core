@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'commute_picker.dart';
@@ -181,14 +182,14 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
       tabletLandscape: 960.0,
     );
     final horizontalPadding = layout.select(
-      phone: 16.0,
+      phone: 24.0,
       tabletPortrait: 24.0,
       tabletLandscape: 32.0,
     );
 
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
-      appBar: AppBar(title: const Text('Commute preferences')),
+      appBar: AppBar(title: const Text('My commute')),
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,
@@ -204,11 +205,10 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Need a different route or time? Send us a request. Your current commute stays the same until the change is approved.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                  const AppPageHeading(
+                    title: 'Your daily routine.',
+                    subtitle:
+                        'Manage where and when you travel. Your current commute stays in place until a change is approved.',
                   ),
                   const SizedBox(height: 8),
                   TextButton(
@@ -233,8 +233,29 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${request.routeName} — ${request.status}'),
-                            Text('Requested: ${request.requestedDate}'),
+                            Text(
+                              request.routeName,
+                              style: AppTypography.title.copyWith(
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            AppStatusBadge(
+                              label: switch (request.status) {
+                                'submitted' => 'Request received',
+                                'waitlisted' => 'Waiting for availability',
+                                'approved' => 'Approved',
+                                'applied' => 'Change complete',
+                                'rejected' => 'Not available',
+                                'withdrawn' || 'cancelled' => 'Withdrawn',
+                                _ => 'Request updated',
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Requested start: ${DateFormat('d MMM y').format(DateTime.parse(request.requestedDate))}',
+                              style: AppTypography.bodySmall,
+                            ),
                             if (request.effectiveDate != null)
                               Text(
                                 'Effective date: ${request.effectiveDate}. Operations applies the change when ready.',
@@ -287,10 +308,7 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                     const SizedBox(height: 12),
                     _buildRouteCard(context),
                     const SizedBox(height: 28),
-                    _buildSectionTitle(
-                      context,
-                      'Scheduled departures · Africa/Accra',
-                    ),
+                    _buildSectionTitle(context, 'Departure times'),
                     const SizedBox(height: 12),
                     _buildTimesCard(context),
                     const SizedBox(height: 28),
