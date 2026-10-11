@@ -6,7 +6,7 @@ import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'replacement_fixture.dart';
 
 void main() {
-  testWidgets('help remains useful without a configured support contact', (
+  testWidgets('help falls back to the approved company support mailbox', (
     tester,
   ) async {
     final fixture = Fixture();
@@ -22,10 +22,7 @@ void main() {
     );
 
     expect(find.text('Payment history'), findsOneWidget);
-    expect(
-      find.textContaining('A direct support contact is not available'),
-      findsOneWidget,
-    );
+    expect(find.text('info@trotxi.com'), findsOneWidget);
     expect(find.text('Privacy notice'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();

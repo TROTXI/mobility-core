@@ -120,7 +120,7 @@ class _RoutesTabState extends State<RoutesTab> {
           color: colors.actionPrimaryDefault,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
             children: [
               Row(
                 children: [
@@ -154,7 +154,7 @@ class _RoutesTabState extends State<RoutesTab> {
               Material(
                 color: colors.surfaceElevated,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(20),
                   side: BorderSide(color: colors.borderSubtle),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -277,7 +277,7 @@ class _RoutesTabState extends State<RoutesTab> {
       child: Material(
         color: colors.surfaceElevated,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: colors.borderSubtle),
         ),
         clipBehavior: Clip.antiAlias,
@@ -371,7 +371,7 @@ class _RoutesTabState extends State<RoutesTab> {
       decoration: BoxDecoration(
         color: colors.backgroundSubtle,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

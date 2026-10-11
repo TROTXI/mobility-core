@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -174,10 +175,17 @@ class _PassTabState extends State<PassTab> with WidgetsBindingObserver {
     appBar: AppBar(title: const Text('Boarding pass')),
     body: SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const _PassHeader(),
+            Text('Ready to board.', style: AppTypography.heading2),
+            const SizedBox(height: 8),
+            Text(
+              'Choose your departure, then show your pass when you board.',
+              style: AppTypography.bodySmall.copyWith(
+                color: context.appColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 16),
             if (_seats.isNotEmpty)
               DropdownButton<String>(
@@ -189,7 +197,7 @@ class _PassTabState extends State<PassTab> with WidgetsBindingObserver {
                     DropdownMenuItem(
                       value: seat.id,
                       child: Text(
-                        '${seat.travelDate} · ${seat.direction == wire.ReservationDirectionEnum.outbound ? 'Outbound' : 'Return'}',
+                        '${DateFormat('EEE, d MMM').format(seat.travelDate.toDateTime())} · ${seat.direction == wire.ReservationDirectionEnum.outbound ? 'Outbound' : 'Return'}',
                       ),
                     ),
                 ],
@@ -237,73 +245,7 @@ class _PassTabState extends State<PassTab> with WidgetsBindingObserver {
   );
 }
 
-/// Neutral heading: a reservation and a valid proof have not been loaded yet.
-class _PassHeader extends StatelessWidget {
-  const _PassHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text(
-          'Boarding Pass',
-          style: TextStyle(
-            color: AppColors.dark,
-            fontSize: 24,
-            fontFamily: AppTypography.fontFamily,
-            fontWeight: FontWeight.w700,
-            height: 1.33,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _Dot(),
-              SizedBox(width: 4),
-              Text(
-                'RESERVATION PASS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontFamily: 'JetBrains Mono',
-                  fontWeight: FontWeight.w600,
-                  height: 1.33,
-                  letterSpacing: 0.60,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-}
-
-/// The white card: QR section (loading / error / live QR) + expiry row.
+/// Only the QR itself stays white in dark mode so scanners retain contrast.
 class _PassCard extends StatelessWidget {
   const _PassCard({
     required this.loading,
@@ -313,7 +255,6 @@ class _PassCard extends StatelessWidget {
     required this.remaining,
     required this.onRetry,
   });
-
   final bool loading;
   final Object? error;
   final String? passUrl;
@@ -323,171 +264,78 @@ class _PassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Only show a blocking loading/error state before we've ever had a
-    // pass URL. Once we have one, background refreshes happen silently
-    // and the existing QR stays on screen until the new one is ready.
+    final colors = context.appColors;
     final valid =
         passUrl != null && expiresAt != null && remaining > Duration.zero;
-    final showLoading = loading && !valid;
-    final showError = !valid && !showLoading;
-
-    return ConstrainedBox(
+    return Container(
+      width: double.infinity,
       constraints: const BoxConstraints(maxWidth: 448),
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppColors.lightBackground,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 2,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            if (showLoading)
-              const _QrLoading()
-            else if (showError)
-              _QrError(onRetry: onRetry)
-            else
-              _QrSection(passUrl: passUrl!),
-            if (valid) _PassMetaRow(expiresAt: expiresAt, remaining: remaining),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QrLoading extends StatelessWidget {
-  const _QrLoading();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(24),
-      child: SizedBox(
-        width: 256,
-        height: 256 + 16 + 16,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-    );
-  }
-}
-
-class _QrError extends StatelessWidget {
-  const _QrError({required this.onRetry});
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
+      margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(24),
-      child: SizedBox(
-        width: 256,
-        height: 256 + 16 + 16,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              size: 48,
-              color: AppColors.muted,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Couldn\'t load your pass',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.body,
-                fontSize: 14,
-                fontFamily: AppTypography.fontFamily,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.borderSubtle),
       ),
-    );
-  }
-}
-
-/// QR code framed with corner brackets, plus the "scan at entry" label.
-class _QrSection extends StatelessWidget {
-  const _QrSection({required this.passUrl});
-  final String passUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          SizedBox(
-            width: 256,
-            height: 256,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const _CornerBracket(alignment: Alignment.topLeft),
-                const _CornerBracket(alignment: Alignment.topRight),
-                const _CornerBracket(alignment: Alignment.bottomLeft),
-                const _CornerBracket(alignment: Alignment.bottomRight),
-                BoardingQr(data: passUrl),
-              ],
+          if (loading && !valid)
+            const Padding(
+              padding: EdgeInsets.all(64),
+              child: CircularProgressIndicator(),
+            )
+          else if (!valid) ...[
+            Icon(
+              Icons.confirmation_number_outlined,
+              size: 40,
+              color: colors.iconSubtle,
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'SCAN AT ENTRY POINT',
-            style: TextStyle(
-              color: AppColors.body,
-              fontSize: 12,
-              fontFamily: 'JetBrains Mono',
-              fontWeight: FontWeight.w600,
-              height: 1.33,
-              letterSpacing: 0.60,
+            const SizedBox(height: 16),
+            Text(
+              'Refresh your boarding pass.',
+              textAlign: TextAlign.center,
+              style: AppTypography.title,
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              'A current pass is needed to board.',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+            ),
+          ] else ...[
+            Text(
+              'SHOW WHEN YOU BOARD',
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 20),
+            BoardingQr(data: passUrl!),
+            const SizedBox(height: 20),
+            Text(
+              'Refreshes automatically',
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${remaining.inMinutes.toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')} remaining',
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
         ],
-      ),
-    );
-  }
-}
-
-class _CornerBracket extends StatelessWidget {
-  const _CornerBracket({required this.alignment});
-  final Alignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(width: 4, color: AppColors.primary),
-            bottom: BorderSide(width: 4, color: AppColors.primary),
-            left: BorderSide(width: 4, color: AppColors.primary),
-            right: BorderSide(width: 4, color: AppColors.primary),
-          ),
-        ),
       ),
     );
   }
@@ -496,222 +344,107 @@ class _CornerBracket extends StatelessWidget {
 class BoardingQr extends StatelessWidget {
   const BoardingQr({super.key, required this.data});
   final String data;
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 224,
-      height: 224,
-      padding: const EdgeInsets.all(8),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(width: 2, color: AppColors.dark)),
-      ),
-      child: QrImageView(
-        data: data,
-        version: QrVersions.auto,
-        backgroundColor: Colors.white,
-        eyeStyle: const QrEyeStyle(
-          eyeShape: QrEyeShape.square,
-          color: AppColors.dark,
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 224),
+    child: AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
         ),
-        dataModuleStyle: const QrDataModuleStyle(
-          dataModuleShape: QrDataModuleShape.square,
-          color: AppColors.dark,
-        ),
-      ),
-    );
-  }
-}
-
-/// Expiry timestamp (left) and live refresh countdown (right).
-class _PassMetaRow extends StatelessWidget {
-  const _PassMetaRow({required this.expiresAt, required this.remaining});
-
-  final DateTime? expiresAt;
-  final Duration remaining;
-
-  String _formatCountdown(Duration d) {
-    final m = d.inMinutes.toString().padLeft(2, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          _MetaItem(
-            label: 'EXPIRES IN',
-            value: _formatCountdown(remaining),
-            alignment: CrossAxisAlignment.end,
+        child: QrImageView(
+          data: data,
+          version: QrVersions.auto,
+          backgroundColor: Colors.white,
+          eyeStyle: const QrEyeStyle(
+            eyeShape: QrEyeShape.square,
+            color: Color(0xFF132D24),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaItem extends StatelessWidget {
-  const _MetaItem({
-    required this.label,
-    required this.value,
-    this.alignment = CrossAxisAlignment.start,
-  });
-
-  final String label;
-  final String value;
-  final CrossAxisAlignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: alignment,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.muted,
-            fontSize: 12,
-            fontFamily: 'JetBrains Mono',
-            fontWeight: FontWeight.w600,
-            height: 1.33,
-            letterSpacing: 0.60,
+          dataModuleStyle: const QrDataModuleStyle(
+            dataModuleShape: QrDataModuleShape.square,
+            color: Color(0xFF132D24),
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.alert,
-            fontSize: 14,
-            fontFamily: 'JetBrains Mono',
-            fontWeight: FontWeight.w700,
-            height: 1.43,
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ),
+  );
 }
 
-/// The actual reservation's fallback boarding code.
 class _PassFooter extends StatelessWidget {
   const _PassFooter({required this.code});
   final String code;
-
   @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 448),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.tipBg,
-              border: Border.all(color: AppColors.tipBorder),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Text(
-              'Tip: Turn up your screen brightness to maximum\n'
-              'for faster scanning at the gate.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.body,
-                fontSize: 14,
-                fontFamily: AppTypography.fontFamily,
-                fontWeight: FontWeight.w400,
-                height: 1.43,
-              ),
-            ),
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 448),
+    child: Column(
+      children: [
+        const SizedBox(height: 8),
+        _DailyPinCard(key: ValueKey(code), code: code),
+        const SizedBox(height: 16),
+        Text(
+          'Keep your boarding pass private.',
+          style: AppTypography.caption.copyWith(
+            color: context.appColors.textSecondary,
           ),
-          const SizedBox(height: 16),
-          _DailyPinCard(key: ValueKey(code), code: code),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
 
 /// Mask the returned boarding code until explicitly revealed.
 class _DailyPinCard extends StatefulWidget {
   const _DailyPinCard({super.key, required this.code});
   final String code;
-
   @override
   State<_DailyPinCard> createState() => _DailyPinCardState();
 }
 
 class _DailyPinCardState extends State<_DailyPinCard> {
-  String get _pin => widget.code;
   bool _visible = false;
-
-  void _toggleVisibility() {
-    setState(() => _visible = !_visible);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final displayValue = _visible
-        ? _pin.split('').join(' ')
-        : List.filled(_pin.length, '•').join(' ');
-
+    final colors = context.appColors;
+    final value = _visible
+        ? widget.code.split('').join(' ')
+        : List.filled(widget.code.length, '•').join(' ');
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        border: Border.all(color: AppColors.buttonBorder),
-        borderRadius: BorderRadius.circular(4),
+        color: colors.surfaceElevated,
+        border: Border.all(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'RESERVATION BOARDING CODE',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontFamily: 'JetBrains Mono',
-                    fontWeight: FontWeight.w600,
-                    height: 1.33,
-                    letterSpacing: 0.60,
+                Text(
+                  'BOARDING CODE',
+                  style: AppTypography.caption.copyWith(
+                    color: colors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
-                  displayValue,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontFamily: 'JetBrains Mono',
-                    fontWeight: FontWeight.w700,
-                    height: 1.33,
-                    letterSpacing: 2,
-                  ),
+                  value,
+                  style: AppTypography.title.copyWith(letterSpacing: 3),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: _toggleVisibility,
+            onPressed: () => setState(() => _visible = !_visible),
             icon: Icon(
               _visible
                   ? Icons.visibility_off_outlined
                   : Icons.visibility_outlined,
-              color: Colors.white,
             ),
             tooltip: _visible ? 'Hide code' : 'Show code',
           ),

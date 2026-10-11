@@ -78,21 +78,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     final colors = context.appColors;
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
-      appBar: AppBar(
-        title: const Text('Trip details'),
-        actions: [
-          if (_detail case final detail?)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: _buildStatusPill(
-                  context,
-                  tripOutcomeOf(detail.reservation.status),
-                ),
-              ),
-            ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Trip details')),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -102,7 +88,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
               color: colors.actionPrimaryDefault,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
                 children: _buildBody(context),
               ),
             ),
@@ -138,6 +124,11 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     };
 
     return [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: _buildStatusPill(context, outcome),
+      ),
+      const SizedBox(height: 12),
       Text(
         '${_formatWeekdayDayShort(detail.reservation.travelDate.toDateTime())} · '
         '${directionLabel(detail.reservation.direction)}',
@@ -237,7 +228,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                 child: Text(
                   _formatWeekdayDay(detail.reservation.travelDate.toDateTime()),
                   style: AppTypography.label.copyWith(
-                    color: colors.actionPrimaryDefault,
+                    color: colors.onSurfaceStrong,
                     letterSpacing: 0.4,
                   ),
                 ),
@@ -376,16 +367,22 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   }) {
     final colors = context.appColors;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
         ),
-        Text(
-          value,
-          style: AppTypography.label.copyWith(
-            color: valueColor ?? colors.textPrimary,
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: AppTypography.label.copyWith(
+              color: valueColor ?? colors.textPrimary,
+            ),
           ),
         ),
       ],
@@ -496,52 +493,33 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     TripOutcome outcome,
   ) {
     if (outcome != TripOutcome.confirmed) return const [];
-
-    final trip = detail.trip;
-    final buttons = <Widget>[];
-
-    if (trip != null) {
-      buttons.add(
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) =>
-                    TripTrackingPage(client: widget.client, tripId: trip.id),
-              ),
+    return [
+      const SizedBox(height: 24),
+      FilledButton.icon(
+        icon: const Icon(Icons.qr_code_rounded),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PassTab(
+              client: widget.client,
+              initialReservationId: detail.reservation.id,
             ),
-            child: const Text('Track trip'),
           ),
         ),
-      );
-    }
-
-    buttons.add(
-      Expanded(
-        child: FilledButton(
+        label: const Text('Boarding pass'),
+      ),
+      if (detail.trip case final trip?) ...[
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.near_me_outlined),
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => PassTab(
-                client: widget.client,
-                initialReservationId: detail.reservation.id,
-              ),
+              builder: (_) =>
+                  TripTrackingPage(client: widget.client, tripId: trip.id),
             ),
           ),
-          child: const Text('Boarding pass'),
+          label: const Text('Track trip'),
         ),
-      ),
-    );
-
-    return [
-      const SizedBox(height: 20),
-      Row(
-        children: [
-          for (var i = 0; i < buttons.length; i++) ...[
-            if (i != 0) const SizedBox(width: 12),
-            buttons[i],
-          ],
-        ],
-      ),
+      ],
     ];
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 
 class FullNamePage extends StatefulWidget {
@@ -70,8 +71,10 @@ class _FullNamePageState extends State<FullNamePage> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Text(
-              'Enter your full name so your driver and Trotxi support can recognise you.',
+            const AppPageHeading(
+              title: 'Let’s make it personal.',
+              subtitle:
+                  'Use your full name so your driver and our team can recognise you.',
             ),
             const SizedBox(height: 24),
             Form(
@@ -87,6 +90,7 @@ class _FullNamePageState extends State<FullNamePage> {
                       autofillHints: const [AutofillHints.givenName],
                       decoration: const InputDecoration(
                         labelText: 'First name',
+                        counterText: '',
                       ),
                       validator: (v) => v == null || v.trim().isEmpty
                           ? 'Enter your first name'
@@ -101,6 +105,7 @@ class _FullNamePageState extends State<FullNamePage> {
                       autofillHints: const [AutofillHints.middleName],
                       decoration: const InputDecoration(
                         labelText: 'Other names (optional)',
+                        counterText: '',
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -110,7 +115,10 @@ class _FullNamePageState extends State<FullNamePage> {
                       maxLength: 60,
                       textCapitalization: TextCapitalization.words,
                       autofillHints: const [AutofillHints.familyName],
-                      decoration: const InputDecoration(labelText: 'Last name'),
+                      decoration: const InputDecoration(
+                        labelText: 'Last name',
+                        counterText: '',
+                      ),
                       validator: (v) => v == null || v.trim().isEmpty
                           ? 'Enter your last name'
                           : null,

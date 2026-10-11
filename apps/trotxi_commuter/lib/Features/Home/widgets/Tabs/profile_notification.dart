@@ -112,10 +112,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
       appBar: AppBar(
-        title: Text(
-          'Notifications',
-          style: AppTypography.title.copyWith(color: colors.textPrimary),
-        ),
+        title: const Text('Notifications'),
         backgroundColor: colors.backgroundDefault,
       ),
       body: Center(
@@ -135,7 +132,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                         ],
                       )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
                   children: [
                     Text(
                       'Stay in the loop',
@@ -145,19 +142,13 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Choose how you hear about rides and when we ask about your next seat.',
+                      'Choose how Trotxi keeps you updated.',
                       style: AppTypography.body.copyWith(
                         color: colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 32),
-                    Text(
-                      'Ride alerts',
-                      style: AppTypography.title.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+
                     Text(
                       'Ride updates are always saved in your inbox.',
                       style: AppTypography.bodySmall.copyWith(
@@ -170,7 +161,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                         decoration: BoxDecoration(
                           color: colors.surfaceElevated,
                           border: Border.all(color: colors.borderSubtle),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(18),
@@ -185,7 +176,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                                   ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    'Phone alerts',
+                                    'Ride alerts',
                                     style: AppTypography.label.copyWith(
                                       color: colors.textPrimary,
                                     ),
@@ -216,7 +207,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                       const SizedBox(height: 28),
                     ],
                     Text(
-                      'When to ask about your next ride',
+                      'Daily seat reminder',
                       style: AppTypography.title.copyWith(
                         color: colors.textPrimary,
                       ),
@@ -247,7 +238,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                     ),
                     const SizedBox(height: 32),
                     Text(
-                      'Other updates',
+                      'News & offers',
                       style: AppTypography.title.copyWith(
                         color: colors.textPrimary,
                       ),
@@ -257,7 +248,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                       color: colors.surfaceElevated,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(color: colors.borderSubtle),
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: SwitchListTile.adaptive(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTypography {
-  static const String fontFamily = 'Poppins';
+  static const String fontFamily = 'Inter';
 
   static const display = TextStyle(
     fontFamily: fontFamily,
@@ -13,25 +13,26 @@ abstract final class AppTypography {
 
   static const heading1 = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: FontWeight.w700,
-    height: 40 / 32,
-    letterSpacing: -0.2,
+    height: 1.2,
+    letterSpacing: -1,
   );
 
   static const heading2 = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: FontWeight.w600,
-    height: 36 / 28,
-    letterSpacing: -0.1,
+    height: 1.25,
+    letterSpacing: -0.7,
   );
 
   static const heading3 = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: FontWeight.w600,
-    height: 32 / 24,
+    height: 1.3,
+    letterSpacing: -0.5,
   );
 
   static const title = TextStyle(

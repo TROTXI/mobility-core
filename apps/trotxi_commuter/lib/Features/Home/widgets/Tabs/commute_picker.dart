@@ -186,13 +186,6 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final direction = _returning ? 'return' : 'outbound';
-    final title = switch (_step) {
-      _Step.route => 'Choose a route',
-      _Step.departure => 'Choose $direction departure',
-      _Step.pickup => 'Choose $direction pickup',
-      _Step.dropoff => 'Choose $direction destination',
-    };
     final departures = _choices
         .where(
           (c) =>
@@ -218,7 +211,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
       appBar: AppBar(
-        title: Text(title),
+        title: const Text('Plan your commute'),
         leading: IconButton(
           onPressed: _back,
           tooltip: 'Back',
@@ -230,7 +223,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 620),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
               children: [
                 _progress(context),
                 const SizedBox(height: 28),
@@ -486,7 +479,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
       child: Material(
         color: colors.surfaceElevated,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: colors.borderSubtle),
         ),
         clipBehavior: Clip.antiAlias,
@@ -568,7 +561,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
       decoration: BoxDecoration(
         color: colors.backgroundSubtle,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

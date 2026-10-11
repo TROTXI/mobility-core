@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
@@ -21,6 +23,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
   String? _challengeId;
   String? _message;
   bool _busy = false;
+  bool _editing = false;
 
   @override
   void initState() {
@@ -89,6 +92,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       if (!mounted || generation != widget.client.sessionGeneration) return;
       setState(() {
         _challengeId = null;
+        _editing = result.status.name != 'verified';
         _code.clear();
         _message = result.status.name == 'review'
             ? 'This number needs support review before it can be linked.'
@@ -110,145 +114,170 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     final colors = context.appColors;
     final phone = _status?.phone;
     final verified = phone?.status.name == 'verified';
+    final enteringCode = _challengeId != null;
     return Scaffold(
-      backgroundColor: colors.backgroundDefault,
-      appBar: AppBar(title: const Text('Phone number')),
+      appBar: AppBar(
+        title: Text(enteringCode ? 'Verify your number' : 'Phone number'),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
               children: [
-                Text(
-                  verified ? 'Phone verified' : 'Verify your phone',
-                  style: AppTypography.heading2.copyWith(
-                    color: colors.textPrimary,
-                  ),
+                AppPageHeading(
+                  title: enteringCode
+                      ? 'Check your messages.'
+                      : verified
+                      ? 'Phone verified'
+                      : 'Your sign-in number.',
+                  subtitle: enteringCode
+                      ? 'Enter the six-digit code sent to ${_phone.text.trim()}.'
+                      : 'Use your verified phone number and password to sign in.',
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  verified
-                      ? 'Your verified number helps keep your account and rides secure.'
-                      : 'We’ll text you a six-digit code to confirm this number.',
-                  style: AppTypography.body.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                if (verified) ...[
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: colors.surfaceElevated,
-                      border: Border.all(color: colors.borderSubtle),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
+                const SizedBox(height: 24),
+                if (_status == null && _message == null)
+                  const Center(child: CircularProgressIndicator()),
+                if (verified && !enteringCode) ...[
+                  AppSurface(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.verified_rounded, color: colors.success),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Verified number',
-                                style: AppTypography.caption.copyWith(
-                                  color: colors.textSecondary,
-                                ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.phone_outlined,
+                              color: colors.actionPrimaryDefault,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'CURRENT NUMBER',
+                                    style: AppTypography.caption.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    phone?.maskedNumber ?? 'Verified',
+                                    style: AppTypography.title.copyWith(
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                phone?.maskedNumber ?? 'Verified',
-                                style: AppTypography.title.copyWith(
-                                  color: colors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        AppStatusBadge(
+                          label: 'Verified',
+                          color: colors.success,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (!_editing) ...[
+                    OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() => _editing = true),
+                      child: const Text('Change phone number'),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Your current number stays in place until you verify the new one.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
-                const SizedBox(height: 32),
-                Text(
-                  verified ? 'Change number' : 'Your number',
-                  style: AppTypography.title.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  verified
-                      ? 'Enter a new number and verify it before we update your account.'
-                      : 'Use a Ghana mobile number you can receive texts on.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _phone,
-                  keyboardType: TextInputType.phone,
-                  autofillHints: const [AutofillHints.telephoneNumber],
-                  decoration: InputDecoration(
-                    labelText: verified ? 'New mobile number' : 'Mobile number',
-                    hintText: '024 123 4567',
-                    prefixIcon: const Icon(Icons.phone_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                if (_status != null &&
+                    (!verified || _editing) &&
+                    !enteringCode) ...[
+                  TextField(
+                    controller: _phone,
+                    enabled: !_busy,
+                    keyboardType: TextInputType.phone,
+                    autofillHints: const [AutofillHints.telephoneNumber],
+                    decoration: InputDecoration(
+                      labelText: verified
+                          ? 'New mobile number'
+                          : 'Mobile number',
+                      hintText: '024 123 4567',
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
+                  const SizedBox(height: 16),
+                  FilledButton(
                     onPressed: _busy ? null : _send,
                     child: Text(verified ? 'Verify new number' : 'Send code'),
                   ),
-                ),
-                if (_challengeId != null) ...[
-                  const SizedBox(height: 28),
-                  Text(
-                    'Enter your code',
-                    style: AppTypography.title.copyWith(
-                      color: colors.textPrimary,
+                  if (verified)
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() => _editing = false),
+                      child: const Text('Keep current number'),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                ],
+                if (enteringCode) ...[
                   TextField(
                     controller: _code,
+                    enabled: !_busy,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     maxLength: 6,
                     autofillHints: const [AutofillHints.oneTimeCode],
-                    decoration: InputDecoration(
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
                       labelText: 'Six-digit code',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                      counterText: '',
                     ),
                   ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _busy ? null : _confirm,
-                      child: const Text('Confirm code'),
-                    ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: _busy || _code.text.length != 6
+                        ? null
+                        : _confirm,
+                    child: const Text('Confirm code'),
+                  ),
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _challengeId = null;
+                            _code.clear();
+                            _message = null;
+                            _editing = true;
+                          }),
+                    child: const Text('Change phone number'),
                   ),
                 ],
                 if (_message != null) ...[
                   const SizedBox(height: 16),
-                  Text(
-                    _message!,
-                    semanticsLabel: _message,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textSecondary,
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _message!,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
+                  if (_status == null)
+                    TextButton(onPressed: _refresh, child: const Text('Retry')),
                 ],
-                if (_busy) const Center(child: CircularProgressIndicator()),
+                if (_busy)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: LinearProgressIndicator(),
+                  ),
               ],
             ),
           ),

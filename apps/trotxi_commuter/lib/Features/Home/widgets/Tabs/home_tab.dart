@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -150,7 +151,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             child: RefreshIndicator(
               onRefresh: () => ref.refresh(rideLifecycleProvider.future),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                 children: [
                   _buildGreetingHeader(lifecycleAsync.asData?.value),
                   const SizedBox(height: 24),
@@ -195,7 +196,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   '$_greeting, $_firstName',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.heading3.copyWith(
+                  style: AppTypography.heading1.copyWith(
                     color: colors.textPrimary,
                   ),
                 ),
@@ -258,7 +259,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
       RidePending() => [_buildPendingCard()],
 
-      RideReserved(:final etaPhase) => [_buildReservedCard(etaPhase)],
+      RideReserved(:final etaPhase, :final reservationId) => [
+        _buildReservedCard(
+          etaPhase,
+          reservationId == null
+              ? null
+              : ref.watch(homeReservationDetailProvider).asData?.value,
+        ),
+      ],
 
       RideBoarded() => [_buildBoardedCard()],
 
@@ -469,8 +477,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     );
   }
 
-  Widget _buildReservedCard(EtaPhase etaPhase) {
+  Widget _buildReservedCard(EtaPhase etaPhase, wire.ReservationDetail? detail) {
     final colors = context.appColors;
+    final departure = detail?.trip?.scheduledAt;
     final etaLabel = etaPhase.eta == null
         ? 'Confirmed'
         : '${etaPhase.eta!.inMinutes} mins away';
@@ -480,19 +489,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       padding: const EdgeInsets.all(24),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: const Alignment(0.11, -0.18),
-          end: const Alignment(0.89, 1.18),
-          colors: [colors.actionPrimaryDefault, colors.actionPrimaryDefault],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: colors.actionPrimaryDefault.withValues(alpha: 0.28),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        color: colors.surfaceStrong,
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,8 +502,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 child: Text(
                   'Your seat is reserved',
                   style: TextStyle(
-                    color: colors.actionOnPrimary,
-                    fontSize: 22,
+                    color: colors.onSurfaceStrong,
+                    fontSize: 17,
                     fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w600,
                     height: 1.1,
@@ -516,12 +514,70 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               _buildEtaChip(etaLabel),
             ],
           ),
-          if (etaPhase.isEstimated) ...[
+          if (departure != null) ...[
+            const SizedBox(height: 24),
+            Text(
+              DateFormat('EEEE, d MMM').format(departure.toUtc()).toUpperCase(),
+              style: AppTypography.caption.copyWith(
+                color: colors.onSurfaceStrong.withValues(alpha: .8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              DateFormat('HH:mm').format(departure.toUtc()),
+              style: AppTypography.display.copyWith(
+                fontSize: 48,
+                color: colors.onSurfaceStrong,
+              ),
+            ),
+            Text(
+              'Scheduled departure',
+              style: AppTypography.caption.copyWith(
+                color: colors.onSurfaceStrong,
+              ),
+            ),
+          ],
+          if (detail?.route?.name case final name?) ...[
+            const SizedBox(height: 16),
+            Text(
+              name,
+              style: AppTypography.title.copyWith(
+                color: colors.onSurfaceStrong,
+              ),
+            ),
+          ],
+          if (detail?.pickupStop != null || detail?.dropoffStop != null) ...[
+            const SizedBox(height: 20),
+            for (final stop in [detail?.pickupStop, detail?.dropoffStop])
+              if (stop != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.radio_button_checked,
+                        size: 14,
+                        color: colors.onSurfaceStrong,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          stop.name,
+                          style: AppTypography.body.copyWith(
+                            color: colors.onSurfaceStrong,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+          if (etaPhase.isEstimated && etaPhase.eta != null) ...[
             const SizedBox(height: 8),
             Text(
               'Live location is unavailable. Arrival time is estimated.',
               style: TextStyle(
-                color: colors.actionOnPrimary.withValues(alpha: 0.85),
+                color: colors.onSurfaceStrong.withValues(alpha: 0.85),
                 fontSize: 12,
                 fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w500,
@@ -532,7 +588,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           SizedBox(
             width: double.infinity,
             child: Material(
-              color: colors.actionOnPrimary,
+              color: const Color(0xFFDDF7A4),
               borderRadius: BorderRadius.circular(16),
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -544,14 +600,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     children: [
                       Icon(
                         Icons.qr_code_2_rounded,
-                        color: colors.actionPrimaryPressed,
+                        color: const Color(0xFF183622),
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Show Boarding Pass',
+                        'View boarding pass',
                         style: TextStyle(
-                          color: colors.actionPrimaryPressed,
+                          color: const Color(0xFF183622),
                           fontSize: 16,
                           fontFamily: AppTypography.fontFamily,
                           fontWeight: FontWeight.w600,
@@ -680,17 +736,16 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 
   Widget _buildEtaChip(String label) {
-    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: colors.actionOnPrimary.withValues(alpha: 0.90),
+        color: const Color(0xFFDDF7A4),
         borderRadius: BorderRadius.circular(50),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: colors.actionPrimaryPressed,
+          color: const Color(0xFF183622),
           fontSize: 13,
           fontFamily: AppTypography.fontFamily,
           fontWeight: FontWeight.w600,
@@ -770,22 +825,20 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: action.onTap,
-        child: SizedBox(
-          height: 64,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 94),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(action.icon, color: colors.actionPrimaryDefault, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    action.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.label.copyWith(
-                      color: colors.textPrimary,
-                    ),
+                const SizedBox(height: 12),
+                Text(
+                  action.label,
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
                   ),
                 ),
               ],

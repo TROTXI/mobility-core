@@ -326,6 +326,11 @@ class _HomePageState extends State<HomePage> {
         userData: userData,
         userName: userData.displayName,
         onProfile: () => _goToDestination(CommuterDestination.profile),
+        onSearch: () => showCommuterSearch(
+          context,
+          client: widget.client,
+          onDestination: _goToDestination,
+        ),
       ),
       // None of the 4 tabs hosts a TextField directly (edits happen in
       // pushed pages/dialogs, which have their own Scaffolds), so this
@@ -334,33 +339,9 @@ class _HomePageState extends State<HomePage> {
       // keyboard closes) must not squash the dock up the screen either.
       resizeToAvoidBottomInset: false,
       body: LazyIndexedStack(index: _selected.index, children: pages),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          // Align with heightFactor: 1 hugs the dock's own height instead of
-          // expanding to fill the bottomNavigationBar slot — a bare Center
-          // (or FittedBox inside one) tries to be as tall as the space it's
-          // offered there, which Scaffold measures as very large and sends
-          // into a layout pass that never settles (visually: the dock floats
-          // mid-screen with dead space below, and pumpAndSettle hangs).
-          child: Align(
-            alignment: Alignment.center,
-            heightFactor: 1,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: CommuterPhoneDock(
-                selected: _selected,
-                onDestinationSelected: _goToDestination,
-                onSearch: () => showCommuterSearch(
-                  context,
-                  client: widget.client,
-                  onDestination: _goToDestination,
-                ),
-              ),
-            ),
-          ),
-        ),
+      bottomNavigationBar: CommuterNavigation(
+        selected: _selected,
+        onDestinationSelected: _goToDestination,
       ),
     );
   }

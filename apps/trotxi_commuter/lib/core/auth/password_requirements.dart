@@ -43,12 +43,14 @@ class PasswordRequirements extends StatelessWidget {
                           : colors.textSecondary,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      requirement.label,
-                      style: AppTypography.caption.copyWith(
-                        color: requirement.met
-                            ? colors.actionPrimaryDefault
-                            : colors.textSecondary,
+                    Flexible(
+                      child: Text(
+                        requirement.label,
+                        style: AppTypography.caption.copyWith(
+                          color: requirement.met
+                              ? colors.actionPrimaryDefault
+                              : colors.textSecondary,
+                        ),
                       ),
                     ),
                   ],

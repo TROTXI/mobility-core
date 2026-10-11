@@ -35,8 +35,13 @@ class RidePending extends RideLifecycleState {
 
 class RideReserved extends RideLifecycleState {
   final String? tripId;
+  final String? reservationId;
   final EtaPhase etaPhase;
-  const RideReserved({required this.tripId, required this.etaPhase});
+  const RideReserved({
+    required this.tripId,
+    required this.etaPhase,
+    this.reservationId,
+  });
 }
 
 class RideBoarded extends RideLifecycleState {
@@ -120,6 +125,7 @@ class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
     if (r.status == wire.ReservationStatusEnum.reserved) {
       return RideReserved(
         tripId: r.tripId,
+        reservationId: r.id,
         etaPhase: const EtaPhase(isEstimated: true),
       );
     }
@@ -146,3 +152,16 @@ final rideLifecycleProvider =
     AsyncNotifierProvider<RideLifecycleNotifier, RideLifecycleState?>(
       RideLifecycleNotifier.new,
     );
+
+// Optional hero details must never delay the authoritative reservation state.
+// Watching the lifecycle also discards late results after a refresh or a
+// direction change. The root ProviderScope is replaced on session changes.
+final homeReservationDetailProvider =
+    FutureProvider.autoDispose<wire.ReservationDetail?>((ref) async {
+      final client = ref.watch(trotxiClientProvider);
+      final lifecycle = await ref.watch(rideLifecycleProvider.future);
+      if (lifecycle is! RideReserved || lifecycle.reservationId == null) {
+        return null;
+      }
+      return client.reservationDetail(lifecycle.reservationId!);
+    });

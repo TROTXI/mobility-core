@@ -141,13 +141,14 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     return Scaffold(
       backgroundColor: colors.backgroundDefault,
       appBar: AppBar(
-        title: Text(
-          'Notifications',
-          style: AppTypography.title.copyWith(color: colors.textPrimary),
-        ),
+        title: const Text('Inbox'),
         backgroundColor: colors.backgroundDefault,
         actions: [
-          TextButton(onPressed: _markAll, child: const Text('Mark all read')),
+          IconButton(
+            onPressed: _markAll,
+            tooltip: 'Mark all read',
+            icon: const Icon(Icons.done_all_rounded),
+          ),
         ],
       ),
       body: Center(

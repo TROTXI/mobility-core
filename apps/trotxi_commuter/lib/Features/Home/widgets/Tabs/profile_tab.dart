@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_commuter/Features/Onboarding/pages/full_name_page.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
@@ -68,18 +68,6 @@ class _ProfileTabState extends State<ProfileTab> {
         _loading = false;
       });
       debugPrint('Profile fetch error: ${e.runtimeType}');
-    }
-  }
-
-  Future<void> _editDisplayName() async {
-    final generation = widget.client.sessionGeneration;
-    await Navigator.of(context).push(
-      MaterialPageRoute<bool>(
-        builder: (_) => FullNamePage(client: widget.client),
-      ),
-    );
-    if (mounted && generation == widget.client.sessionGeneration) {
-      await _fetchUser();
     }
   }
 
@@ -163,7 +151,7 @@ class _ProfileTabState extends State<ProfileTab> {
       tabletLandscape: 960.0,
     );
     final horizontalPadding = layout.select(
-      phone: 16.0,
+      phone: 24.0,
       tabletPortrait: 24.0,
       tabletLandscape: 32.0,
     );
@@ -194,84 +182,90 @@ class _ProfileTabState extends State<ProfileTab> {
                     displayName: _user?.displayName,
                     phone: _user?.phone,
                     avatarUrl: _user?.avatarUrl,
-                    onEdit: _editDisplayName,
+                    onEdit: _openPersonalInfo,
                   ),
                 const SizedBox(height: 28),
-                _buildSectionTitle(context, 'Account'),
-                const SizedBox(height: 12),
-                _SettingsCardTile(
-                  title: 'Personal information',
-                  subtitle: 'Name, phone and contact details',
-                  onTap: _user == null ? null : () => _openPersonalInfo(),
-                ),
-                const SizedBox(height: 8),
-                _SettingsCardTile(
-                  title: 'Commute preferences',
-                  subtitle: 'Pickup, destination and travel preferences',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          CommutePreferencesPage(client: widget.client),
+                AppSettingsGroup(
+                  children: [
+                    AppSettingsRow(
+                      icon: Icons.person_outline_rounded,
+                      title: 'Personal information',
+                      subtitle: 'Your name and photo',
+                      onTap: _user == null ? null : _openPersonalInfo,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _SettingsCardTile(
-                  title: 'Notifications',
-                  subtitle: 'Ride alerts, reminders and updates',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ProfileNotificationsPage(client: widget.client),
+                    AppSettingsRow(
+                      icon: Icons.route_outlined,
+                      title: 'My commute',
+                      subtitle: 'Route, stops and travel preferences',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              CommutePreferencesPage(client: widget.client),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _SettingsCardTile(
-                  title: 'Appearance',
-                  subtitle: 'Light, dark and system theme',
-                  onTap: () => _showAppearanceSheet(context),
-                ),
-                const SizedBox(height: 28),
-                _buildSectionTitle(context, 'Support & security'),
-                const SizedBox(height: 12),
-                _SettingsCardTile(
-                  title: 'Security & sign-in',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ProfileSecurityPage(client: widget.client),
+                    AppSettingsRow(
+                      icon: Icons.notifications_outlined,
+                      title: 'Notifications',
+                      subtitle: 'Ride alerts and updates',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ProfileNotificationsPage(client: widget.client),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                _SettingsCardTile(
-                  title: 'Phone verification',
-                  subtitle: 'Verify or update your Ghana mobile number',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          PhoneVerificationPage(client: widget.client),
+                const SizedBox(height: 20),
+                AppSettingsGroup(
+                  children: [
+                    AppSettingsRow(
+                      icon: Icons.shield_outlined,
+                      title: 'Security & sign-in',
+                      subtitle: 'Password, email and devices',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ProfileSecurityPage(client: widget.client),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _SettingsCardTile(
-                  title: 'Help, support & legal',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => HelpSupportPage(client: widget.client),
+                    AppSettingsRow(
+                      icon: Icons.phone_outlined,
+                      title: 'Phone number',
+                      subtitle: 'Manage your sign-in number',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              PhoneVerificationPage(client: widget.client),
+                        ),
+                      ),
                     ),
-                  ),
+                    AppSettingsRow(
+                      icon: Icons.brightness_6_outlined,
+                      title: 'Appearance',
+                      subtitle: 'Light, dark or device settings',
+                      onTap: () => _showAppearanceSheet(context),
+                    ),
+                    AppSettingsRow(
+                      icon: Icons.help_outline_rounded,
+                      title: 'Help & support',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              HelpSupportPage(client: widget.client),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 28),
-                // Not part of the new layout's captured frame, but kept —
-                // it's the only way to sign out of the app.
+                const SizedBox(height: 24),
                 _SignOutButton(onPressed: () => _confirmSignOut(context)),
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    '${_version == null ? 'Trotxi' : 'Version $_version'}\nHandcrafted for Ghana by Trotxi',
+                    '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter',
                     textAlign: TextAlign.center,
                     style: AppTypography.bodySmall.copyWith(
                       color: colors.textTertiary,
@@ -301,17 +295,6 @@ class _ProfileTabState extends State<ProfileTab> {
           style: AppTypography.caption.copyWith(color: colors.textSecondary),
         ),
       ],
-    );
-  }
-
-  Widget _buildSectionTitle(BuildContext context, String title) {
-    final colors = context.appColors;
-    return Text(
-      title,
-      style: AppTypography.label.copyWith(
-        color: colors.textPrimary,
-        fontWeight: FontWeight.w600,
-      ),
     );
   }
 }
@@ -356,7 +339,7 @@ class _ProfileHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceElevated,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -415,8 +398,8 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: onEdit,
+                TextButton(
+                  onPressed: onEdit,
                   child: Text(
                     'Edit profile',
                     style: AppTypography.buttonAction.copyWith(
@@ -446,7 +429,7 @@ class _ProfileHeaderLoading extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceElevated,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: CircularProgressIndicator(color: colors.actionPrimaryDefault),
     );
@@ -465,7 +448,7 @@ class _ProfileHeaderError extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceElevated,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
@@ -486,64 +469,6 @@ class _ProfileHeaderError extends StatelessWidget {
 
 /// A standalone, individually-carded settings row with a title/subtitle and
 /// a trailing chevron — each row is its own card, not grouped with dividers.
-class _SettingsCardTile extends StatelessWidget {
-  const _SettingsCardTile({required this.title, this.subtitle, this.onTap});
-
-  final String title;
-  final String? subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTypography.label.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle!,
-                          style: AppTypography.caption.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (onTap != null)
-                  Icon(Icons.chevron_right_rounded, color: colors.iconSubtle),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Bottom sheet behind the "Appearance" row — light/dark/system selection,
 /// wired straight to the shared [AppThemeController].
 class _AppearanceSheet extends StatelessWidget {
@@ -602,7 +527,7 @@ class _AppearanceSheet extends StatelessWidget {
     final selected = controller.themeMode == mode;
     return InkWell(
       onTap: () => controller.setThemeMode(mode),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(

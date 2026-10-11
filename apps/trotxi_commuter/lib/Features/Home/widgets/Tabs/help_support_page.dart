@@ -39,12 +39,11 @@ class HelpSupportPage extends StatelessWidget {
     final operations = client.configuration?.operations;
     final phone = operations?.phone?.trim();
     final whatsapp = operations?.whatsapp?.trim();
-    final email = operations?.email?.trim();
+    final configuredEmail = operations?.email?.trim();
+    final email = configuredEmail?.isNotEmpty == true
+        ? configuredEmail!
+        : 'info@trotxi.com';
     final hours = operations?.hours?.trim();
-    final hasContact =
-        (phone?.isNotEmpty ?? false) ||
-        (whatsapp?.isNotEmpty ?? false) ||
-        (email?.isNotEmpty ?? false);
     Uri? whatsappUri;
     if (whatsapp?.isNotEmpty ?? false) {
       final digits = whatsapp!.replaceAll(RegExp(r'[^0-9]'), '');
@@ -57,7 +56,7 @@ class HelpSupportPage extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
             children: [
               Text(
                 'What do you need help with?',
@@ -67,7 +66,7 @@ class HelpSupportPage extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Find your payment details or reach our team when a support channel is available.',
+                'Help with your trip, payment or account.',
                 style: AppTypography.body.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 28),
@@ -94,33 +93,6 @@ class HelpSupportPage extends StatelessWidget {
                 style: AppTypography.title.copyWith(color: colors.textPrimary),
               ),
               const SizedBox(height: 12),
-              if (!hasContact)
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundSubtle,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: colors.textSecondary,
-                        size: 21,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'A direct support contact is not available in this app yet. You can still check your payments above.',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               if (phone?.isNotEmpty ?? false)
                 _linkTile(
                   context,
@@ -137,15 +109,13 @@ class HelpSupportPage extends StatelessWidget {
                   subtitle: whatsapp!,
                   onTap: () => _open(context, whatsappUri!),
                 ),
-              if (email?.isNotEmpty ?? false)
-                _linkTile(
-                  context,
-                  icon: Icons.email_outlined,
-                  title: 'Email support',
-                  subtitle: email!,
-                  onTap: () =>
-                      _open(context, Uri(scheme: 'mailto', path: email)),
-                ),
+              _linkTile(
+                context,
+                icon: Icons.email_outlined,
+                title: 'Email support',
+                subtitle: email,
+                onTap: () => _open(context, Uri(scheme: 'mailto', path: email)),
+              ),
               if (hours?.isNotEmpty ?? false) ...[
                 const SizedBox(height: 4),
                 Text(

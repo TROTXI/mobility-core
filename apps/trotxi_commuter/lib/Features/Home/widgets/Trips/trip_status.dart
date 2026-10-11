@@ -60,18 +60,19 @@ bool tripOutcomeNeedsExplanation(TripOutcome outcome) => switch (outcome) {
   TripOutcome.declined ||
   TripOutcome.operatorCancelled ||
   TripOutcome.unseated => true,
-  TripOutcome.pending || TripOutcome.confirmed || TripOutcome.completed =>
-    false,
+  TripOutcome.pending ||
+  TripOutcome.confirmed ||
+  TripOutcome.completed => false,
 };
 
 String tripOutcomeExplanation(TripOutcome outcome) => switch (outcome) {
   TripOutcome.missed =>
     "Boarding wasn't recorded for this trip before it ended, so it's "
         'marked as missed.',
-  TripOutcome.declined => "Your reservation request wasn't approved for "
-      'this trip.',
-  TripOutcome.operatorCancelled =>
-    'This trip was cancelled by the operator.',
+  TripOutcome.declined =>
+    "Your reservation request wasn't approved for "
+        'this trip.',
+  TripOutcome.operatorCancelled => 'This trip was cancelled by the operator.',
   TripOutcome.unseated =>
     "Your seat wasn't confirmed in time and was released.",
   TripOutcome.pending || TripOutcome.confirmed || TripOutcome.completed => '',
@@ -82,5 +83,5 @@ String tripOutcomeExplanation(TripOutcome outcome) => switch (outcome) {
 /// home_page_provider.dart.
 String directionLabel(ReservationDirectionEnum direction) =>
     direction == ReservationDirectionEnum.outbound
-        ? 'Morning commute'
-        : 'Evening commute';
+    ? 'Morning commute'
+    : 'Evening commute';

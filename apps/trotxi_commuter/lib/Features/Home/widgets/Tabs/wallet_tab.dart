@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -209,7 +210,7 @@ class _WalletTabState extends State<WalletTab> {
       tabletLandscape: 960.0,
     );
     final horizontalPadding = layout.select(
-      phone: 16.0,
+      phone: 24.0,
       tabletPortrait: 24.0,
       tabletLandscape: 32.0,
     );
@@ -338,90 +339,46 @@ class _WalletTabState extends State<WalletTab> {
     );
   }
 
-  Widget _buildPaymentActions(BuildContext context) {
-    final colors = context.appColors;
-    return Material(
-      color: colors.surfaceElevated,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: colors.borderSubtle),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          _paymentAction(
-            context,
-            icon: Icons.credit_card_outlined,
-            title: 'Card auto-renewal',
-            subtitle: 'Manage renewal and saved cards',
-            onTap: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(
-                builder: (_) => AutoRenewalPage(client: widget.client),
-              ),
+  Widget _buildPaymentActions(BuildContext context) => AppSettingsGroup(
+    children: [
+      AppSettingsRow(
+        icon: Icons.receipt_long_outlined,
+        title: 'Payments',
+        subtitle: 'History and pending payments',
+        onTap: () async {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => CheckoutPage(client: widget.client),
             ),
-          ),
-          Divider(height: 1, indent: 56, color: colors.borderSubtle),
-          _paymentAction(
-            context,
-            icon: Icons.receipt_long_outlined,
-            title: 'Review or recover payment',
-            subtitle: 'Check the latest payment status',
-            onTap: () async {
-              await Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => CheckoutPage(client: widget.client),
-                ),
-              );
-              if (mounted) await _load();
-            },
-          ),
-        ],
+          );
+          if (mounted) await _load();
+        },
       ),
-    );
-  }
-
-  Widget _paymentAction(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    final colors = context.appColors;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Icon(icon, color: colors.actionPrimaryDefault, size: 22),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTypography.label.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: colors.iconSubtle),
-          ],
+      AppSettingsRow(
+        icon: Icons.credit_card_outlined,
+        title: 'Card auto-renewal',
+        subtitle: 'Manage renewal and saved cards',
+        onTap: () => Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) => AutoRenewalPage(client: widget.client),
+          ),
         ),
       ),
-    );
-  }
+      AppSettingsRow(
+        icon: Icons.local_offer_outlined,
+        title: 'Waitlist & offers',
+        subtitle: 'Manage your next commute',
+        onTap: () async {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => StandbyPage(client: widget.client),
+            ),
+          );
+          if (mounted) await _load();
+        },
+      ),
+    ],
+  );
 
   // ---------------------------------------------------------------------
   // Header
@@ -438,7 +395,7 @@ class _WalletTabState extends State<WalletTab> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Manage credits, payments and your plan.',
+          'Your plan, rides and payments.',
           style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
         ),
       ],
@@ -580,15 +537,16 @@ class _WalletTabState extends State<WalletTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'RIDE CREDITS',
+            'YOUR RIDE BALANCE',
             style: AppTypography.label.copyWith(
-              color: colors.actionPrimaryDefault,
+              color: colors.onSurfaceStrong.withValues(alpha: 0.85),
               letterSpacing: 0.6,
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: 10,
             children: [
               Text(
                 '${entitlements.remainingRides}',
@@ -609,7 +567,9 @@ class _WalletTabState extends State<WalletTab> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+          Divider(color: colors.onSurfaceStrong.withValues(alpha: .2)),
+          const SizedBox(height: 12),
           Text(
             '${entitlements.availableCredit.formatted} credit available',
             style: AppTypography.label.copyWith(color: colors.onSurfaceStrong),
@@ -628,7 +588,7 @@ class _WalletTabState extends State<WalletTab> {
             held > 0
                 ? '${entitlements.heldCredit.formatted} is held against a '
                       'purchase that is still settling.'
-                : 'Credit is applied automatically when you renew.',
+                : 'Available credit can reduce your next plan payment.',
             style: AppTypography.caption.copyWith(
               color: colors.onSurfaceStrong.withValues(alpha: 0.72),
             ),
