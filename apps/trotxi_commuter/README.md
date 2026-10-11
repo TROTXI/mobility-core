@@ -37,3 +37,20 @@ background modes. The Apple app identifier and signing profile must allow push,
 and the APNs authentication key must be uploaded to the matching Firebase app.
 Verify registration and delivery on a physical device; Xcode selects the APNs
 environment from the signing profile.
+
+## Interface
+
+The commuter theme bundles Inter locally and shares warm neutral surfaces,
+green actions, form fields, cards, dialogs and sheets across light and dark modes.
+Home, Trips, Wallet and Profile stay in the bottom navigation; search is in the
+header. Signup keeps details, password and SMS verification on separate steps,
+with live password requirements and a fixed action above the keyboard.
+
+Boarding passes use the real server proof and remain high contrast in both
+themes. Expired or backgrounded proofs are hidden. Reservation dates, times and
+stops come from the API, never from the design preview's sample journeys.
+
+Run `flutter test test/approved_design_test.dart` for narrow-screen, enlarged-text
+and contrast checks. Optional review renders can be generated with
+`flutter test test/approved_design_test.dart --update-goldens --dart-define=DESIGN_OUTPUT=/absolute/output/path`.
+These renders are not cross-platform pixel baselines and are not part of normal CI.

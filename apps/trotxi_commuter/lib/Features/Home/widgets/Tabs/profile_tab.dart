@@ -246,7 +246,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 const SizedBox(height: 8),
                 _SettingsCardTile(
-                  title: 'Phone verification',
+                  title: 'Phone number',
                   subtitle: 'Verify or update your Ghana mobile number',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -257,7 +257,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 const SizedBox(height: 8),
                 _SettingsCardTile(
-                  title: 'Help, support & legal',
+                  title: 'Help & support',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => HelpSupportPage(client: widget.client),
@@ -415,8 +415,8 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: onEdit,
+                TextButton(
+                  onPressed: onEdit,
                   child: Text(
                     'Edit profile',
                     style: AppTypography.buttonAction.copyWith(
@@ -501,7 +501,7 @@ class _SettingsCardTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceElevated,
         border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Material(
         color: Colors.transparent,
@@ -602,7 +602,7 @@ class _AppearanceSheet extends StatelessWidget {
     final selected = controller.themeMode == mode;
     return InkWell(
       onTap: () => controller.setThemeMode(mode),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(

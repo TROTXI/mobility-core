@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_client/public_information.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -43,7 +45,8 @@ class PublicInformationLinks extends StatelessWidget {
     final style = TextButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       minimumSize: const Size(0, 44),
-      textStyle: const TextStyle(fontSize: 14),
+      textStyle: AppTypography.caption,
+      foregroundColor: context.appColors.textSecondary,
     );
     Widget link(String text, Uri uri) => TextButton(
       style: style,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-// Place holder values ---> replace with tokens from ux-design when delivered
+// Legacy aliases for screens that have not yet moved to semantic roles.
 class AppColors {
-  static const primary = AppPrimitiveColors.green950;
-  static const lightBackground = AppPrimitiveColors.neutral0;
+  static const primary = Color(0xFF155C3E);
+  static const lightBackground = Color(0xFFFAFBF8);
   static const buttontext = AppPrimitiveColors.neutral0;
 
   static const alert = Color.fromARGB(255, 216, 59, 32);
@@ -59,8 +59,8 @@ abstract final class AppPrimitiveColors {
   // (2444:35 Light and 2444:613 Dark). The Dark role aliases the approved
   // commuter page primitive so Auth and Home cannot drift to different dark
   // page colors while retaining separate semantic ownership in screen code.
-  static const authLightPage = Color(0xFFFBFCFB);
-  static const authDarkPage = homeDarkPage;
+  static const authLightPage = Color(0xFFFAFBF8);
+  static const authDarkPage = Color(0xFF111B16);
 
   static Color authPage(Brightness brightness) =>
       brightness == Brightness.dark ? authDarkPage : authLightPage;
@@ -194,27 +194,27 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   final Color mapHighlight;
 
   static const light = AppSemanticColors(
-    backgroundDefault: AppPrimitiveColors.neutral0,
-    backgroundSubtle: AppPrimitiveColors.neutral50,
+    backgroundDefault: Color(0xFFFAFBF8),
+    backgroundSubtle: Color(0xFFEEF2E9),
     surfaceDefault: AppPrimitiveColors.neutral0,
     surfaceElevated: AppPrimitiveColors.neutral0,
-    surfaceStrong: AppPrimitiveColors.navy900,
+    surfaceStrong: Color(0xFF244B38),
     onSurfaceStrong: AppPrimitiveColors.neutral0,
-    borderDefault: AppPrimitiveColors.neutral500,
-    borderSubtle: AppPrimitiveColors.neutral200,
-    textPrimary: AppPrimitiveColors.navy900,
-    textSecondary: AppPrimitiveColors.neutral700,
+    borderDefault: Color(0xFF87968A),
+    borderSubtle: Color(0xFFE2E8DF),
+    textPrimary: Color(0xFF132D24),
+    textSecondary: Color(0xFF59685F),
     textTertiary: AppPrimitiveColors.neutral600,
     textInverse: AppPrimitiveColors.neutral0,
-    iconDefault: AppPrimitiveColors.navy900,
+    iconDefault: Color(0xFF132D24),
     iconSubtle: AppPrimitiveColors.neutral600,
-    actionPrimaryDefault: AppPrimitiveColors.green700,
+    actionPrimaryDefault: Color(0xFF155C3E),
     actionPrimaryHover: AppPrimitiveColors.green800,
     actionPrimaryPressed: AppPrimitiveColors.green900,
     actionPrimaryDisabled: AppPrimitiveColors.neutral200,
     actionOnPrimary: AppPrimitiveColors.neutral0,
     actionOnDisabled: AppPrimitiveColors.neutral600,
-    actionSecondary: AppPrimitiveColors.navy900,
+    actionSecondary: Color(0xFF132D24),
     focus: AppPrimitiveColors.yellow700,
     success: AppPrimitiveColors.green700,
     warning: AppPrimitiveColors.yellow800,
@@ -225,31 +225,31 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   );
 
   static const dark = AppSemanticColors(
-    backgroundDefault: AppPrimitiveColors.homeDarkPage,
-    backgroundSubtle: AppPrimitiveColors.homeDarkPage,
-    surfaceDefault: AppPrimitiveColors.homeDarkNavigation,
-    surfaceElevated: Color(0xFF171F1A),
-    surfaceStrong: Color(0xFF29322C),
-    onSurfaceStrong: Color(0xFFF7FAF8),
-    borderDefault: AppPrimitiveColors.homeDarkNavigationBorder,
-    borderSubtle: Color(0xFF28312C),
-    textPrimary: Color(0xFFF7FAF8),
-    textSecondary: Color(0xFFAAB3AD),
-    textTertiary: Color(0xFF8B9690),
-    textInverse: Color(0xFF0D110F),
-    iconDefault: Color(0xFFF7FAF8),
-    iconSubtle: Color(0xFFAAB3AD),
-    actionPrimaryDefault: Color(0xFF058740),
-    actionPrimaryHover: Color(0xFF067647),
-    actionPrimaryPressed: Color(0xFF064C31),
-    actionPrimaryDisabled: Color(0xFF29322C),
-    actionOnPrimary: Color(0xFFFFFFFF),
-    actionOnDisabled: Color(0xFF8B9690),
-    actionSecondary: Color(0xFFF7FAF8),
+    backgroundDefault: Color(0xFF111B16),
+    backgroundSubtle: Color(0xFF223226),
+    surfaceDefault: Color(0xFF1B2920),
+    surfaceElevated: Color(0xFF1B2920),
+    surfaceStrong: Color(0xFF244B38),
+    onSurfaceStrong: Color(0xFFF1F5ED),
+    borderDefault: Color(0xFF7C8D7E),
+    borderSubtle: Color(0xFF354438),
+    textPrimary: Color(0xFFF1F5ED),
+    textSecondary: Color(0xFFB0BDAE),
+    textTertiary: Color(0xFFA5B3A3),
+    textInverse: Color(0xFF111B16),
+    iconDefault: Color(0xFFF1F5ED),
+    iconSubtle: Color(0xFFB0BDAE),
+    actionPrimaryDefault: Color(0xFFC9EC9B),
+    actionPrimaryHover: Color(0xFFDDF7A4),
+    actionPrimaryPressed: Color(0xFFB2D385),
+    actionPrimaryDisabled: Color(0xFF354438),
+    actionOnPrimary: Color(0xFF183622),
+    actionOnDisabled: Color(0xFFA5B3A3),
+    actionSecondary: Color(0xFFF1F5ED),
     focus: Color(0xFFD99720),
-    success: Color(0xFF00A651),
-    warning: Color(0xFFD99720),
-    error: Color(0xFFD14343),
+    success: Color(0xFFC9EC9B),
+    warning: Color(0xFFF3C57E),
+    error: Color(0xFFFFB8AA),
     routeActive: Color(0xFF00A651),
     routeInactive: Color(0xFF8B9690),
     mapHighlight: Color(0xFFD99720),

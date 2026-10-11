@@ -3,7 +3,7 @@ import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 void main() {
-  test('both themes render all Material text roles in bundled Poppins', () {
+  test('both themes render all Material text roles in bundled Inter', () {
     for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
       expect(theme.useMaterial3, isTrue);
       for (final text in [theme.textTheme, theme.primaryTextTheme]) {
@@ -24,12 +24,12 @@ void main() {
           text.labelMedium,
           text.labelSmall,
         ]) {
-          expect(style?.fontFamily, 'Poppins');
+          expect(style?.fontFamily, 'Inter');
         }
       }
       expect(
         theme.elevatedButtonTheme.style?.textStyle?.resolve({})?.fontFamily,
-        'Poppins',
+        'Inter',
       );
       final colors = theme.extension<AppSemanticColors>()!;
       expect(theme.dialogTheme.backgroundColor, colors.surfaceElevated);
@@ -40,7 +40,7 @@ void main() {
       );
       expect(
         theme.textButtonTheme.style?.textStyle?.resolve({})?.fontFamily,
-        'Poppins',
+        'Inter',
       );
     }
   });

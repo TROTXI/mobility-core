@@ -82,7 +82,7 @@ void main() {
     await tester.tap(find.byType(DropdownButton<String>));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('2026-09-16 · $direction').last);
+    await tester.tap(find.text('Wed, 16 Sep · $direction').last);
     if (settle) {
       await tester.pumpAndSettle();
     } else {
@@ -129,7 +129,7 @@ void main() {
     await tester.pump(const Duration(seconds: 11));
     await tester.pump();
     expect(find.byType(QrImageView), findsNothing);
-    expect(find.text('RESERVATION BOARDING CODE'), findsNothing);
+    expect(find.text('BOARDING CODE'), findsNothing);
     await finish(tester);
   });
 
@@ -143,7 +143,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pump();
     expect(find.byType(QrImageView), findsNothing);
-    expect(find.text('RESERVATION BOARDING CODE'), findsNothing);
+    expect(find.text('BOARDING CODE'), findsNothing);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump(const Duration(minutes: 1));
     expect(f.requests, hasLength(count));

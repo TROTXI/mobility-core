@@ -312,7 +312,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
   }) {
     final colors = context.appColors;
     final hint = switch (label) {
-      'First name' => 'As on your ID',
+      'First name' => 'e.g. Ama',
       'Last name' => 'Family name',
       'Other names (optional)' => 'Middle name, if any',
       'Phone number' => '024 123 4567',
@@ -320,15 +320,8 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       'Six-digit code' => '000000',
       _ => null,
     };
-    final icon = switch (label) {
-      'Phone number' => Icons.phone_outlined,
-      'Email' => Icons.mail_outline_rounded,
-      'Password' || 'Confirm password' => Icons.lock_outline_rounded,
-      'Six-digit code' => Icons.sms_outlined,
-      _ => null,
-    };
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       borderSide: BorderSide(color: colors.borderSubtle),
     );
     return Padding(
@@ -396,9 +389,6 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
           focusedErrorBorder: border.copyWith(
             borderSide: BorderSide(color: colors.error, width: 2),
           ),
-          prefixIcon: icon == null
-              ? null
-              : Icon(icon, size: 20, color: colors.iconSubtle),
           suffixIcon: secret
               ? IconButton(
                   tooltip: _showPassword ? 'Hide password' : 'Show password',
@@ -409,19 +399,6 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                   ),
                 )
               : null,
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionLabel(BuildContext context, String label) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 0, 16),
-      child: Text(
-        label,
-        style: AppTypography.label.copyWith(
-          color: context.appColors.textPrimary,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -440,7 +417,10 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       padding: const EdgeInsets.only(bottom: 28),
       child: Column(
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 16,
+            runSpacing: 4,
             children: [
               Text(
                 'STEP ${current + 1} OF 3',
@@ -450,7 +430,6 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                   letterSpacing: 1,
                 ),
               ),
-              const Spacer(),
               Text(
                 labels[current],
                 style: AppTypography.caption.copyWith(
@@ -492,12 +471,12 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       _Step.reset => 'Reset password',
     };
     final heading = switch (_step) {
-      _Step.signIn => 'Good to see you again.',
-      _Step.signUp => 'Your details',
-      _Step.credentials => 'Create a password',
-      _Step.code => 'One last check',
+      _Step.signIn => 'Welcome back.',
+      _Step.signUp => 'Let’s get to know you.',
+      _Step.credentials => 'Keep your account yours.',
+      _Step.code => 'Check your messages.',
       _Step.finish => 'Finish your account',
-      _Step.reset => 'Reset your password',
+      _Step.reset => 'Let’s get you back in.',
     };
     final action = switch (_step) {
       _Step.signIn => 'Sign in',
@@ -563,11 +542,11 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                 Text(
                                   switch (_step) {
                                     _Step.signIn =>
-                                      'Sign in to see your trips, offers and ride updates.',
+                                      'Sign in to your Trotxi account.',
                                     _Step.signUp =>
-                                      'Let us know who is joining the journey.',
+                                      'Your full name helps us identify you on your rides.',
                                     _Step.credentials =>
-                                      'Keep your account safe with a password only you know.',
+                                      'Choose a password you don’t use elsewhere.',
                                     _Step.code =>
                                       'Enter the six-digit code we sent to ${_phone.text.trim()}.',
                                     _Step.finish =>
@@ -583,19 +562,39 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                 const SizedBox(height: 28),
                                 if (_step == _Step.signUp ||
                                     _step == _Step.finish) ...[
-                                  _sectionLabel(context, 'Personal details'),
-                                  _input(
-                                    'First name',
-                                    _first,
-                                    validator: _required,
-                                  ),
-                                  _input(
-                                    'Last name',
-                                    _last,
-                                    validator: _required,
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final fields = [
+                                        _input(
+                                          'First name',
+                                          _first,
+                                          validator: _required,
+                                        ),
+                                        _input(
+                                          'Last name',
+                                          _last,
+                                          validator: _required,
+                                        ),
+                                      ];
+                                      if (constraints.maxWidth < 330 ||
+                                          MediaQuery.textScalerOf(
+                                                context,
+                                              ).scale(16) >
+                                              20) {
+                                        return Column(children: fields);
+                                      }
+                                      return Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(child: fields[0]),
+                                          const SizedBox(width: 12),
+                                          Expanded(child: fields[1]),
+                                        ],
+                                      );
+                                    },
                                   ),
                                   _input('Other names (optional)', _other),
-                                  _sectionLabel(context, 'How we reach you'),
                                 ],
                                 if (_step == _Step.signIn ||
                                     _step == _Step.signUp)
@@ -618,9 +617,6 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                 if (_step == _Step.signIn ||
                                     _step == _Step.credentials ||
                                     _step == _Step.finish) ...[
-                                  if (_step == _Step.credentials ||
-                                      _step == _Step.finish)
-                                    _sectionLabel(context, 'Account security'),
                                   _input(
                                     'Password',
                                     _password,
@@ -744,7 +740,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                     _step == _Step.credentials ||
                                     _step == _Step.finish) ...[
                                   Text(
-                                    'Your information is used to set up your account and commute.',
+                                    'Your email is used for updates and account recovery.',
                                     textAlign: TextAlign.center,
                                     style: AppTypography.caption.copyWith(
                                       color: colors.textSecondary,

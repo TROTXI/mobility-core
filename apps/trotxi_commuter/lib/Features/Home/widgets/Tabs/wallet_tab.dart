@@ -580,9 +580,9 @@ class _WalletTabState extends State<WalletTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'RIDE CREDITS',
+            'YOUR RIDE BALANCE',
             style: AppTypography.label.copyWith(
-              color: colors.actionPrimaryDefault,
+              color: colors.onSurfaceStrong.withValues(alpha: 0.85),
               letterSpacing: 0.6,
             ),
           ),

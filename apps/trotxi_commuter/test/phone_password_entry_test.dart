@@ -111,7 +111,7 @@ void main() {
     await enter('Email', 'ama@example.com');
     await tester.tap(continueButton);
     await tester.pumpAndSettle();
-    expect(find.text('Create a password'), findsOneWidget);
+    expect(find.text('Keep your account yours.'), findsOneWidget);
     expect(find.text('Confirm password'), findsOneWidget);
     expect(find.text('12 to 128 characters'), findsNothing);
     expect(find.text('At least 12 characters'), findsOneWidget);
@@ -227,7 +227,7 @@ void main() {
     await enter('Email', 'ama@example.com');
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(find.text('Create a password'), findsOneWidget);
+    expect(find.text('Keep your account yours.'), findsOneWidget);
     await enter('Password', 'Correct horse trotxi battery1!');
     await enter('Confirm password', 'Correct horse trotxi battery1!');
     final send = find.text('Send verification code');

@@ -3,128 +3,175 @@ import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
+/// Shared controls for the approved commuter design, including sheets and dialogs.
 class AppTheme {
   AppTheme._();
+  static ThemeData get lightTheme => _build(Brightness.light);
+  static ThemeData get darkTheme => _build(Brightness.dark);
 
-  static TextTheme _type(Brightness brightness) =>
-      ThemeData(brightness: brightness).textTheme
-          .apply(fontFamily: AppTypography.fontFamily)
-          .merge(AppTypography.textTheme);
-
-  /// iOS already gets an edge-swipe-to-go-back gesture for free from
-  /// Cupertino's default page transition; Android doesn't unless it's
-  /// given the same transition builder. Applying this app-wide means every
-  /// `MaterialPageRoute` push (personal info, commute preferences,
-  /// notifications, security, etc.) gets "drag left-to-right = back"
-  /// without each screen needing its own gesture handling.
-  static const _pageTransitionsTheme = PageTransitionsTheme(
-    builders: {
-      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    },
-  );
-
-  static ThemeData get lightTheme => ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.light,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.light,
-    ).copyWith(primary: AppColors.primary, surface: AppColors.lightBackground),
-    scaffoldBackgroundColor: AppColors.lightBackground,
-    extensions: const [AppSemanticColors.light],
-    fontFamily: AppTypography.fontFamily,
-    textTheme: _type(Brightness.light),
-    primaryTextTheme: _type(Brightness.light),
-    pageTransitionsTheme: _pageTransitionsTheme,
-    dialogTheme: DialogThemeData(
-      backgroundColor: AppSemanticColors.light.surfaceElevated,
-      titleTextStyle: AppTypography.title.copyWith(
-        color: AppSemanticColors.light.textPrimary,
+  static ThemeData _build(Brightness brightness) {
+    final colors = brightness == Brightness.dark
+        ? AppSemanticColors.dark
+        : AppSemanticColors.light;
+    final type = ThemeData(brightness: brightness).textTheme
+        .apply(fontFamily: AppTypography.fontFamily)
+        .merge(AppTypography.textTheme)
+        .apply(bodyColor: colors.textPrimary, displayColor: colors.textPrimary);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+    );
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: colors.borderSubtle),
+    );
+    final button = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(48, 52)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
-    ),
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: AppSemanticColors.light.surfaceElevated,
-      modalBackgroundColor: AppSemanticColors.light.surfaceElevated,
-    ),
-    listTileTheme: ListTileThemeData(
-      textColor: AppSemanticColors.light.textPrimary,
-      iconColor: AppSemanticColors.light.iconDefault,
-      subtitleTextStyle: AppTypography.bodySmall.copyWith(
-        color: AppSemanticColors.light.textSecondary,
+      shape: WidgetStatePropertyAll(shape),
+      textStyle: const WidgetStatePropertyAll(AppTypography.buttonAction),
+      elevation: const WidgetStatePropertyAll(0),
+      backgroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled)
+            ? colors.actionPrimaryDisabled
+            : colors.actionPrimaryDefault,
       ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: AppSemanticColors.light.actionPrimaryDefault,
-        textStyle: AppTypography.buttonAction,
+      foregroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled)
+            ? colors.actionOnDisabled
+            : colors.actionOnPrimary,
       ),
-    ),
-
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.buttontext,
-        textStyle: AppTypography.buttonAction,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        minimumSize: const Size.fromHeight(56), // 56dp tap target floor
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    ),
-  );
-
-  static ThemeData get darkTheme {
-    const colors = AppSemanticColors.dark;
+    );
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme:
           ColorScheme.fromSeed(
-            seedColor: AppPrimitiveColors.trotxiGreen,
-            brightness: Brightness.dark,
+            seedColor: const Color(0xFF155C3E),
+            brightness: brightness,
           ).copyWith(
             primary: colors.actionPrimaryDefault,
+            onPrimary: colors.actionOnPrimary,
+            primaryContainer: colors.backgroundSubtle,
+            onPrimaryContainer: colors.textPrimary,
             surface: colors.surfaceDefault,
+            onSurface: colors.textPrimary,
+            onSurfaceVariant: colors.textSecondary,
+            outline: colors.borderDefault,
+            outlineVariant: colors.borderSubtle,
+            error: colors.error,
           ),
       scaffoldBackgroundColor: colors.backgroundDefault,
-      extensions: const [AppSemanticColors.dark],
+      extensions: [colors],
       fontFamily: AppTypography.fontFamily,
-      textTheme: _type(Brightness.dark),
-      primaryTextTheme: _type(Brightness.dark),
-      pageTransitionsTheme: _pageTransitionsTheme,
-      dialogTheme: DialogThemeData(
-        backgroundColor: colors.surfaceElevated,
-        titleTextStyle: AppTypography.title.copyWith(color: colors.textPrimary),
+      textTheme: type,
+      primaryTextTheme: type,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
       ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: colors.surfaceElevated,
-        modalBackgroundColor: colors.surfaceElevated,
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.backgroundDefault,
+        foregroundColor: colors.textPrimary,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 0,
+        toolbarHeight: 56,
+        titleTextStyle: AppTypography.label.copyWith(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
+        ),
       ),
-      listTileTheme: ListTileThemeData(
-        textColor: colors.textPrimary,
-        iconColor: colors.iconDefault,
-        subtitleTextStyle: AppTypography.bodySmall.copyWith(
+      cardTheme: CardThemeData(
+        color: colors.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: colors.borderSubtle),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: colors.surfaceElevated,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: border,
+        enabledBorder: border,
+        focusedBorder: border.copyWith(
+          borderSide: BorderSide(color: colors.actionPrimaryDefault, width: 2),
+        ),
+        errorBorder: border.copyWith(
+          borderSide: BorderSide(color: colors.error),
+        ),
+        focusedErrorBorder: border.copyWith(
+          borderSide: BorderSide(color: colors.error, width: 2),
+        ),
+        hintStyle: AppTypography.bodySmall.copyWith(color: colors.textTertiary),
+        labelStyle: AppTypography.bodySmall.copyWith(
           color: colors.textSecondary,
+        ),
+        errorMaxLines: 3,
+      ),
+      filledButtonTheme: FilledButtonThemeData(style: button),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: button),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.textPrimary,
+          minimumSize: const Size(48, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          shape: shape,
+          side: BorderSide(color: colors.borderSubtle),
+          textStyle: AppTypography.buttonAction,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: colors.actionPrimaryDefault,
+          minimumSize: const Size(44, 44),
           textStyle: AppTypography.buttonAction,
         ),
       ),
-
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colors.actionPrimaryDefault,
-          foregroundColor: colors.actionOnPrimary,
-          textStyle: AppTypography.buttonAction,
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          minimumSize: const Size.fromHeight(56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colors.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: AppTypography.title.copyWith(color: colors.textPrimary),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.surfaceElevated,
+        modalBackgroundColor: colors.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: colors.textPrimary,
+        iconColor: colors.iconDefault,
+        titleTextStyle: AppTypography.body.copyWith(color: colors.textPrimary),
+        subtitleTextStyle: AppTypography.bodySmall.copyWith(
+          color: colors.textSecondary,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      ),
+      dividerTheme: DividerThemeData(color: colors.borderSubtle, thickness: 1),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: colors.textPrimary,
+        contentTextStyle: AppTypography.bodySmall.copyWith(
+          color: colors.backgroundDefault,
+        ),
+        shape: shape,
       ),
     );
   }

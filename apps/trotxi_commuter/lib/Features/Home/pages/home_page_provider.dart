@@ -36,7 +36,12 @@ class RidePending extends RideLifecycleState {
 class RideReserved extends RideLifecycleState {
   final String? tripId;
   final EtaPhase etaPhase;
-  const RideReserved({required this.tripId, required this.etaPhase});
+  final wire.ReservationDetail? detail;
+  const RideReserved({
+    required this.tripId,
+    required this.etaPhase,
+    this.detail,
+  });
 }
 
 class RideBoarded extends RideLifecycleState {
@@ -107,6 +112,7 @@ final reservationRepositoryProvider = Provider<ReservationRepository>(
 class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
   @override
   FutureOr<RideLifecycleState?> build() async {
+    final client = ref.watch(trotxiClientProvider);
     final r = await ref
         .watch(reservationRepositoryProvider)
         .fetchTodayReservation();
@@ -118,9 +124,18 @@ class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
       return const RidePending();
     }
     if (r.status == wire.ReservationStatusEnum.reserved) {
+      // Resolve the actual route and departure for the hero. Missing detail
+      // must not become an invented time or hide the reservation itself.
+      wire.ReservationDetail? detail;
+      try {
+        detail = await client.reservationDetail(r.id);
+      } on TrotxiException {
+        // The existing Trips view can retry this optional detail read.
+      }
       return RideReserved(
         tripId: r.tripId,
         etaPhase: const EtaPhase(isEstimated: true),
+        detail: detail,
       );
     }
     if (r.status == wire.ReservationStatusEnum.boarded) {

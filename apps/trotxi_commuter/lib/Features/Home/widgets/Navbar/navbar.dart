@@ -10,11 +10,13 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
     required this.userData,
     required this.userName,
     this.onProfile,
+    this.onSearch,
   });
 
   final Account userData;
   final String userName;
   final VoidCallback? onProfile;
+  final VoidCallback? onSearch;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -38,10 +40,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
       child: Container(
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: colors.surfaceElevated,
-          border: Border(bottom: BorderSide(color: colors.borderSubtle)),
-        ),
+        decoration: BoxDecoration(color: colors.backgroundDefault),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -51,6 +50,13 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
               height: 42,
               fit: BoxFit.contain,
             ),
+            const Spacer(),
+            IconButton(
+              onPressed: onSearch,
+              tooltip: 'Search routes and stops',
+              icon: const Icon(Icons.search_rounded),
+            ),
+            const SizedBox(width: 4),
             Tooltip(
               message: 'Open profile',
               child: Material(
