@@ -178,12 +178,16 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   final Color textInverse;
   final Color iconDefault;
   final Color iconSubtle;
+
+  /// Filled action background. Pair with actionOnPrimary, not body text.
   final Color actionPrimaryDefault;
   final Color actionPrimaryHover;
   final Color actionPrimaryPressed;
   final Color actionPrimaryDisabled;
   final Color actionOnPrimary;
   final Color actionOnDisabled;
+
+  /// Foreground accent for text/icons on page, card and subtle tinted surfaces.
   final Color actionSecondary;
   final Color focus;
   final Color success;

@@ -348,7 +348,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           icon: Icons.event_busy_rounded,
           title: 'Reservation declined',
           message: "This trip wasn't confirmed. Try reserving another slot.",
-          accentColor: colors.actionPrimaryDefault,
+          accentColor: colors.actionSecondary,
         ),
       ],
 
@@ -847,9 +847,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: filled
-                  ? colors.actionOnPrimary
-                  : colors.actionPrimaryDefault,
+              color: filled ? colors.actionOnPrimary : colors.textPrimary,
               fontSize: 16,
               fontFamily: AppTypography.fontFamily,
               fontWeight: FontWeight.w600,

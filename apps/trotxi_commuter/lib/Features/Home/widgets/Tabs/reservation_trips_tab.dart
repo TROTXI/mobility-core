@@ -288,9 +288,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
           child: Text(
             label,
             style: AppTypography.label.copyWith(
-              color: selected
-                  ? colors.actionPrimaryDefault
-                  : colors.textSecondary,
+              color: selected ? colors.actionSecondary : colors.textSecondary,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             ),
           ),
@@ -399,7 +397,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
                     child: Text(
                       _formatWeekdayDay(reservation.travelDate.toDateTime()),
                       style: AppTypography.label.copyWith(
-                        color: colors.actionPrimaryDefault,
+                        color: colors.actionSecondary,
                         letterSpacing: 0.4,
                       ),
                     ),
@@ -482,7 +480,7 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 28, color: colors.actionPrimaryDefault),
+          Icon(icon, size: 28, color: colors.actionSecondary),
           const SizedBox(height: 16),
           Text(
             title,

@@ -425,7 +425,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
               Text(
                 'STEP ${current + 1} OF 3',
                 style: AppTypography.caption.copyWith(
-                  color: colors.actionPrimaryDefault,
+                  color: colors.actionSecondary,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
                 ),
@@ -654,7 +654,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                           : 'Passwords do not match yet',
                                       style: AppTypography.caption.copyWith(
                                         color: _confirm.text == _password.text
-                                            ? colors.actionPrimaryDefault
+                                            ? colors.actionSecondary
                                             : colors.error,
                                       ),
                                     ),
@@ -694,7 +694,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                     child: Text(
                                       _message!,
                                       style: TextStyle(
-                                        color: colors.actionPrimaryDefault,
+                                        color: colors.actionSecondary,
                                       ),
                                     ),
                                   ),

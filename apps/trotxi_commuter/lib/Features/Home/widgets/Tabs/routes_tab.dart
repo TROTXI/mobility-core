@@ -166,7 +166,7 @@ class _RoutesTabState extends State<RoutesTab> {
                       children: [
                         Icon(
                           Icons.calendar_month_rounded,
-                          color: colors.actionPrimaryDefault,
+                          color: colors.actionSecondary,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -306,7 +306,7 @@ class _RoutesTabState extends State<RoutesTab> {
                   child: Text(
                     time,
                     style: AppTypography.label.copyWith(
-                      color: colors.actionPrimaryDefault,
+                      color: colors.actionSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -376,7 +376,7 @@ class _RoutesTabState extends State<RoutesTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: colors.actionPrimaryDefault),
+          Icon(icon, color: colors.actionSecondary),
           const SizedBox(height: 12),
           Text(
             title,

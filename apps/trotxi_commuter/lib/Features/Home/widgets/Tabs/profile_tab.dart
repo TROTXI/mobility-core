@@ -415,7 +415,7 @@ class _ProfileHeader extends StatelessWidget {
                   child: Text(
                     'Edit profile',
                     style: AppTypography.buttonAction.copyWith(
-                      color: colors.actionPrimaryDefault,
+                      color: colors.actionSecondary,
                       fontSize: 13,
                     ),
                   ),
@@ -548,7 +548,7 @@ class _AppearanceSheet extends StatelessWidget {
               selected
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color: selected ? colors.actionPrimaryDefault : colors.iconSubtle,
+              color: selected ? colors.actionSecondary : colors.iconSubtle,
               size: 20,
             ),
             const SizedBox(width: 12),

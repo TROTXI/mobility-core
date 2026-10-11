@@ -490,7 +490,7 @@ class _SearchPanelState extends State<_SearchPanel> {
       children.add(
         ListTile(
           dense: true,
-          leading: Icon(entry.icon, color: colors.actionPrimaryDefault),
+          leading: Icon(entry.icon, color: colors.actionSecondary),
           title: Text(
             entry.title,
             style: AppTypography.label.copyWith(color: colors.textPrimary),

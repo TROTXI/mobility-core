@@ -193,7 +193,7 @@ class HelpSupportPage extends StatelessWidget {
             horizontal: 16,
             vertical: 5,
           ),
-          leading: Icon(icon, color: colors.actionPrimaryDefault),
+          leading: Icon(icon, color: colors.actionSecondary),
           title: Text(
             title,
             style: AppTypography.label.copyWith(color: colors.textPrimary),

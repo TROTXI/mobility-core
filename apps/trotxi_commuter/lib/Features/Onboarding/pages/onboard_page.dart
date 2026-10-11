@@ -71,7 +71,7 @@ class OnBoardPage extends StatelessWidget {
                             Text(
                               text,
                               style: AppTypography.caption.copyWith(
-                                color: colors.actionPrimaryDefault,
+                                color: colors.actionSecondary,
                               ),
                             ),
                         ],

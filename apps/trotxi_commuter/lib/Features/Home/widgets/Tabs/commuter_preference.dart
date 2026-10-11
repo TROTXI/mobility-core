@@ -521,7 +521,7 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
             child: Text(
               selection == null ? 'Choose route' : 'Change route',
               style: AppTypography.caption.copyWith(
-                color: colors.actionPrimaryDefault,
+                color: colors.actionSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),

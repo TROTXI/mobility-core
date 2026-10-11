@@ -384,7 +384,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage>
                                     : 'Passwords do not match yet',
                                 style: TextStyle(
                                   color: _confirm.text == _password.text
-                                      ? Theme.of(context).colorScheme.primary
+                                      ? context.appColors.actionSecondary
                                       : Theme.of(context).colorScheme.error,
                                 ),
                               ),

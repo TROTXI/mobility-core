@@ -242,7 +242,7 @@ class _CheckoutPageState extends State<CheckoutPage>
                       icon: Icons.receipt_long_outlined,
                       message:
                           'No payments yet. Offers you accept will appear here.',
-                      accent: colors.actionPrimaryDefault,
+                      accent: colors.actionSecondary,
                     )
                   else
                     for (final p in checkout.purchases) ...[
@@ -267,7 +267,7 @@ class _CheckoutPageState extends State<CheckoutPage>
     return _surfaceCard(
       context,
       children: [
-        Icon(Icons.bookmark_added_outlined, color: colors.actionPrimaryDefault),
+        Icon(Icons.bookmark_added_outlined, color: colors.actionSecondary),
         const SizedBox(height: 10),
         Text(
           'Checkout saved',

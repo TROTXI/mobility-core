@@ -302,10 +302,7 @@ class _WalletTabState extends State<WalletTab> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.event_available_rounded,
-            color: colors.actionPrimaryDefault,
-          ),
+          Icon(Icons.event_available_rounded, color: colors.actionSecondary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -809,7 +806,7 @@ class _WalletTabState extends State<WalletTab> {
                 children: [
                   Icon(
                     Icons.receipt_long_outlined,
-                    color: colors.actionPrimaryDefault,
+                    color: colors.actionSecondary,
                     size: 26,
                   ),
                   const SizedBox(height: 12),
@@ -872,9 +869,7 @@ class _WalletTabState extends State<WalletTab> {
           Text(
             isCredit ? '+' : '−',
             style: AppTypography.bodyLarge.copyWith(
-              color: isCredit
-                  ? colors.actionPrimaryDefault
-                  : colors.textPrimary,
+              color: isCredit ? colors.actionSecondary : colors.textPrimary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -904,9 +899,7 @@ class _WalletTabState extends State<WalletTab> {
             amount,
             textAlign: TextAlign.right,
             style: AppTypography.label.copyWith(
-              color: isCredit
-                  ? colors.actionPrimaryDefault
-                  : colors.textSecondary,
+              color: isCredit ? colors.actionSecondary : colors.textSecondary,
             ),
           ),
           if (purchase != null) ...[
