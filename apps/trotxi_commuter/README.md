@@ -16,7 +16,7 @@ stop preview, scoped live bus tracking,
 current/upcoming membership, payment recovery/history, ride/credit history,
 pauses, commute-change requests, avatar/account controls and support.
 Wallet also exposes opt-in card auto-renewal, turn-off and saved-card removal.
-The bell opens the durable inbox; preferences use the server ETag. When the
+The Updates shortcut opens the durable inbox; preferences use the server ETag. When the
 rider enables phone alerts, the app registers its Firebase device token and
 opens the server inbox from a push tap. Push content is not authorization.
 
@@ -40,10 +40,14 @@ environment from the signing profile.
 
 ## Interface
 
-The commuter theme bundles Inter locally and shares warm neutral surfaces,
+The commuter theme bundles Inter locally and shares the Figma neutral surfaces,
 green actions, form fields, cards, dialogs and sheets across light and dark modes.
-Home, Trips, Wallet and Profile stay in the bottom navigation; search is in the
-header. Signup keeps details, password and SMS verification on separate steps,
+Home, Trips, Wallet and Profile sit in the floating navigation capsule, with a
+separate search button. Home shows compact trip, plan and upcoming-reservation
+summaries from the API. Returning from another tab or trip/inbox screen refreshes
+those summaries. Pickup information is shown only when the API supplies a stop;
+driver calling and trip sharing are not offered without backend support.
+Signup keeps details, password and SMS verification on separate steps,
 with live password requirements and a fixed action above the keyboard.
 
 Waitlist requests show a journey summary before submission and require
@@ -61,7 +65,7 @@ Boarding passes use the real server proof and remain high contrast in both
 themes. Expired or backgrounded proofs are hidden. Reservation dates, times and
 stops come from the API, never from the design preview's sample journeys.
 
-Run `flutter test test/approved_design_test.dart test/remaining_design_test.dart`
+Run `flutter test test/approved_design_test.dart test/remaining_design_test.dart test/figma_home_test.dart`
 for narrow-screen, enlarged-text, contrast and screen-state checks. Optional
 review renders can be generated with
 `flutter test test/approved_design_test.dart test/remaining_design_test.dart --update-goldens --dart-define=DESIGN_OUTPUT=/absolute/output/path`.

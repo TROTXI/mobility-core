@@ -112,7 +112,7 @@ void main() {
         );
         expect(
           find.text('Actual route'),
-          detailAvailable ? findsOneWidget : findsNothing,
+          detailAvailable ? findsNWidgets(2) : findsNothing,
         );
         expect(
           container

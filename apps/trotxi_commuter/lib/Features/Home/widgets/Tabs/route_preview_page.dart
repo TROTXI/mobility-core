@@ -288,7 +288,7 @@ Widget _previewNotice(BuildContext context) {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.info_outline_rounded, color: colors.actionPrimaryDefault),
+        Icon(Icons.info_outline_rounded, color: colors.actionSecondary),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -330,7 +330,7 @@ Widget _stopsList(BuildContext context, List<wire.StopOccurrence> stops) {
                 child: Text(
                   '${index + 1}',
                   style: AppTypography.label.copyWith(
-                    color: colors.actionPrimaryDefault,
+                    color: colors.actionSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

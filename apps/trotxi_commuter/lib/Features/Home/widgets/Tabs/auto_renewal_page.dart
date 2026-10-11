@@ -254,7 +254,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                           children: [
                             Icon(
                               Icons.credit_card_rounded,
-                              color: colors.actionPrimaryDefault,
+                              color: colors.actionSecondary,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -373,7 +373,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
                           Text(
                             _upcomingState(upcoming.state),
                             style: AppTypography.label.copyWith(
-                              color: colors.actionPrimaryDefault,
+                              color: colors.actionSecondary,
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -449,7 +449,7 @@ class _AutoRenewalPageState extends State<AutoRenewalPage> {
               color: colors.actionPrimaryDefault.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 19, color: colors.actionPrimaryDefault),
+            child: Icon(icon, size: 19, color: colors.actionSecondary),
           ),
           const SizedBox(width: 12),
           Expanded(

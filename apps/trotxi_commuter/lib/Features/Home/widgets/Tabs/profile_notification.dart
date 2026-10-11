@@ -172,7 +172,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                                 children: [
                                   Icon(
                                     Icons.notifications_outlined,
-                                    color: colors.actionPrimaryDefault,
+                                    color: colors.actionSecondary,
                                   ),
                                   const SizedBox(width: 10),
                                   Text(

@@ -373,7 +373,7 @@ class _StandbyPageState extends State<StandbyPage> {
                                     ? 'Return journey'
                                     : 'Outbound journey',
                                 style: AppTypography.caption.copyWith(
-                                  color: colors.actionPrimaryDefault,
+                                  color: colors.actionSecondary,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -583,7 +583,7 @@ class _StandbyPageState extends State<StandbyPage> {
                   ],
                   if (!eligible && _verification != null) ...[
                     _notice(
-                      colors.actionPrimaryDefault,
+                      colors.actionSecondary,
                       Icons.verified_user_outlined,
                       'Verify your phone before joining the waitlist.',
                       action: TextButton(
@@ -741,7 +741,7 @@ class _StandbyPageState extends State<StandbyPage> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: colors.actionPrimaryDefault),
+          Icon(icon, size: 20, color: colors.actionSecondary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -928,7 +928,7 @@ class _StandbyPageState extends State<StandbyPage> {
                 application.state == wire.StandbyApplicationStateEnum.submitted
                     ? Icons.hourglass_top_outlined
                     : Icons.local_offer_outlined,
-                color: colors.actionPrimaryDefault,
+                color: colors.actionSecondary,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -940,7 +940,7 @@ class _StandbyPageState extends State<StandbyPage> {
                       ? 'Offer expired'
                       : _status(application.state),
                   style: AppTypography.label.copyWith(
-                    color: colors.actionPrimaryDefault,
+                    color: colors.actionSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

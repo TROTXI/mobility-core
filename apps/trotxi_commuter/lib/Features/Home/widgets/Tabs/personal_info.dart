@@ -384,7 +384,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                   child: Text(
                     _initials,
                     style: AppTypography.heading3.copyWith(
-                      color: colors.actionPrimaryDefault,
+                      color: colors.actionSecondary,
                     ),
                   ),
                 ),
@@ -421,7 +421,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
               padding: EdgeInsets.zero,
               alignment: Alignment.centerLeft,
               minimumSize: const Size(0, 44),
-              foregroundColor: colors.actionPrimaryDefault,
+              foregroundColor: colors.actionSecondary,
             ),
             child: Text(
               hasAvatar ? 'Change photo' : 'Add a photo',

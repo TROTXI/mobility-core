@@ -108,7 +108,7 @@ class AppSettingsRow extends StatelessWidget {
               Icon(
                 icon,
                 size: 22,
-                color: destructive ? colors.error : colors.actionPrimaryDefault,
+                color: destructive ? colors.error : colors.actionSecondary,
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -154,7 +154,7 @@ class AppStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = color ?? context.appColors.actionPrimaryDefault;
+    final accent = color ?? context.appColors.actionSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(

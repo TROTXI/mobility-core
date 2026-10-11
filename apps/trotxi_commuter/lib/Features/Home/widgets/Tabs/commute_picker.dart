@@ -353,7 +353,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                       children: [
                         Icon(
                           Icons.route_rounded,
-                          color: colors.actionPrimaryDefault,
+                          color: colors.actionSecondary,
                           size: 20,
                         ),
                         const SizedBox(width: 10),
@@ -544,7 +544,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
         Text(
           _returning ? 'RETURN JOURNEY' : 'OUTBOUND JOURNEY',
           style: AppTypography.caption.copyWith(
-            color: colors.actionPrimaryDefault,
+            color: colors.actionSecondary,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
           ),
@@ -608,7 +608,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                         ),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(icon, color: colors.actionPrimaryDefault),
+                      child: Icon(icon, color: colors.actionSecondary),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -674,7 +674,7 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: colors.actionPrimaryDefault),
+          Icon(icon, color: colors.actionSecondary),
           const SizedBox(height: 12),
           Text(
             title,

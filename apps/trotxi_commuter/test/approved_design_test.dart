@@ -116,7 +116,9 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(NavigationDestination), findsNWidgets(4));
+    for (final name in ['home', 'trips', 'wallet', 'profile']) {
+      expect(find.byKey(ValueKey('dock-$name')), findsOneWidget);
+    }
     await tester.tap(find.text('Trips'));
     await tester.pumpAndSettle();
     expect(selected, CommuterDestination.trips);

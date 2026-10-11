@@ -148,7 +148,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                           children: [
                             Icon(
                               Icons.phone_outlined,
-                              color: colors.actionPrimaryDefault,
+                              color: colors.actionSecondary,
                             ),
                             const SizedBox(width: 14),
                             Expanded(

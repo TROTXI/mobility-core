@@ -39,7 +39,7 @@ class PasswordRequirements extends StatelessWidget {
                           : Icons.radio_button_unchecked_rounded,
                       size: 16,
                       color: requirement.met
-                          ? colors.actionPrimaryDefault
+                          ? colors.actionSecondary
                           : colors.textSecondary,
                     ),
                     const SizedBox(width: 6),
@@ -48,7 +48,7 @@ class PasswordRequirements extends StatelessWidget {
                         requirement.label,
                         style: AppTypography.caption.copyWith(
                           color: requirement.met
-                              ? colors.actionPrimaryDefault
+                              ? colors.actionSecondary
                               : colors.textSecondary,
                         ),
                       ),

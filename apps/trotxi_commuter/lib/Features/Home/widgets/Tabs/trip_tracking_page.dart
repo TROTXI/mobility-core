@@ -318,7 +318,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
                                       snapshot.live.riderPickupOccurrenceId
                                   ? Icons.place_outlined
                                   : Icons.circle_outlined,
-                              color: colors.actionPrimaryDefault,
+                              color: colors.actionSecondary,
                             ),
                           ),
                       ],

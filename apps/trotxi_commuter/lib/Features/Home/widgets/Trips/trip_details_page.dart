@@ -452,7 +452,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
             ),
             child: Icon(
               Icons.directions_bus_filled_rounded,
-              color: colors.actionPrimaryDefault,
+              color: colors.actionSecondary,
             ),
           ),
           const SizedBox(width: 14),

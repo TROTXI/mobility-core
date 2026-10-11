@@ -200,7 +200,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                             Icon(
                               Icons.notifications_none_rounded,
                               size: 38,
-                              color: colors.actionPrimaryDefault,
+                              color: colors.actionSecondary,
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -251,7 +251,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                               child: ListTile(
                                 leading: Icon(
                                   copy.$3,
-                                  color: colors.actionPrimaryDefault,
+                                  color: colors.actionSecondary,
                                 ),
                                 title: Text(
                                   copy.$1,
@@ -273,7 +273,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                                     ? Icon(
                                         Icons.circle,
                                         size: 9,
-                                        color: colors.actionPrimaryDefault,
+                                        color: colors.actionSecondary,
                                       )
                                     : null,
                                 onTap: () => _open(item),
