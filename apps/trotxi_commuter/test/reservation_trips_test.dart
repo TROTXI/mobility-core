@@ -26,6 +26,50 @@ Map<String, Object?> seat(
 };
 
 void main() {
+  testWidgets('standalone trips has a way back; the tab does not add one', (
+    tester,
+  ) async {
+    final fixture = Fixture();
+    await fixture.signedIn();
+    fixture.reply = (request) => jsonResponse(page([]));
+
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ReservationTripsTab(client: fixture.api),
+                  ),
+                ),
+                child: const Text('Open trips'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open trips'));
+      for (
+        var i = 0;
+        i < 100 && find.text('No upcoming trips').evaluate().isEmpty;
+        i++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Back to available trips'), findsOneWidget);
+    await tester.tap(find.text('Back to available trips'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open trips'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    fixture.api.dispose();
+  });
+
   testWidgets('reservation detail uses the generated API and Ghana time', (
     tester,
   ) async {
@@ -131,6 +175,7 @@ void main() {
       }
     });
     expect(find.text('Next trip'), findsOneWidget);
+    expect(find.text('Back to available trips'), findsNothing);
     expect(find.text('Evening commute'), findsOneWidget);
     expect(find.text('Completed'), findsNothing);
     final upcoming = fixture.requests

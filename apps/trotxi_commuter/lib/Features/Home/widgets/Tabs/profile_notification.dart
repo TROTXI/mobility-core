@@ -120,7 +120,7 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
+          constraints: const BoxConstraints(maxWidth: 560),
           child: preferences == null
               ? _error == null
                     ? const CircularProgressIndicator()
@@ -135,34 +135,72 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                         ],
                       )
               : ListView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                   children: [
                     Text(
-                      'Ride notifications',
+                      'Stay in the loop',
+                      style: AppTypography.heading2.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Choose how you hear about rides and when we ask about your next seat.',
+                      style: AppTypography.body.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      'Ride alerts',
                       style: AppTypography.title.copyWith(
                         color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Ride updates are saved in your inbox. Enable phone alerts to be notified when a trip needs your response.',
+                      'Ride updates are always saved in your inbox.',
                       style: AppTypography.bodySmall.copyWith(
                         color: colors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     if (push != null) ...[
-                      Card(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colors.surfaceElevated,
+                          border: Border.all(color: colors.borderSubtle),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Phone alerts', style: AppTypography.label),
-                              const SizedBox(height: 6),
-                              Text(push.status),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.notifications_outlined,
+                                    color: colors.actionPrimaryDefault,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Phone alerts',
+                                    style: AppTypography.label.copyWith(
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                push.status,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
                               if (!push.enabled) ...[
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
                                 FilledButton.icon(
                                   onPressed: push.enable,
                                   icon: const Icon(
@@ -175,15 +213,22 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 28),
                     ],
                     Text(
-                      'Daily seat request',
-                      style: AppTypography.label.copyWith(
+                      'When to ask about your next ride',
+                      style: AppTypography.title.copyWith(
                         color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
+                    Text(
+                      'We’ll ask before your next commute. You can respond later from your inbox.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: _saving
                           ? null
@@ -200,24 +245,43 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                         ).format(context),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 32),
                     Text(
-                      'Choose when you would like to be asked about your next ride. You can always respond from your inbox.',
-                      style: AppTypography.caption.copyWith(
-                        color: colors.textSecondary,
+                      'Other updates',
+                      style: AppTypography.title.copyWith(
+                        color: colors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('News and promotions'),
-                      subtitle: const Text(
-                        'Occasional Trotxi updates. Trip and account messages still arrive when this is off.',
+                    const SizedBox(height: 12),
+                    Material(
+                      color: colors.surfaceElevated,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: colors.borderSubtle),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      value: preferences.optionalUpdatesEnabled,
-                      onChanged: _saving
-                          ? null
-                          : (value) => _save(optional: value),
+                      clipBehavior: Clip.antiAlias,
+                      child: SwitchListTile.adaptive(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        title: Text(
+                          'News and promotions',
+                          style: AppTypography.label.copyWith(
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Occasional Trotxi news. Trip and account messages still arrive when this is off.',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        value: preferences.optionalUpdatesEnabled,
+                        onChanged: _saving
+                            ? null
+                            : (value) => _save(optional: value),
+                      ),
                     ),
                     if (_saving) const LinearProgressIndicator(),
                   ],

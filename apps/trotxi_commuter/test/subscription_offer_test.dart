@@ -89,9 +89,29 @@ void main() {
             ),
           );
         }
+        if (request.path == '/v1/me/standby/application/accept') {
+          return jsonResponse({
+            'data': {
+              'id': 'purchase',
+              'plan': 'monthly',
+              'state': 'awaiting_payment',
+              'collectionState': 'pending',
+              'price': {'amountMinor': 7000, 'currency': 'GHS'},
+              'appliedCredit': {'amountMinor': 0, 'currency': 'GHS'},
+              'cashDue': {'amountMinor': 7000, 'currency': 'GHS'},
+              'checkout': {
+                'url': 'https://checkout.paystack.com/test-only',
+                'expiresAt': null,
+              },
+              'billingPeriodId': null,
+              'failureCode': null,
+              'createdAt': timestamp,
+            },
+          });
+        }
         return jsonResponse({'data': account()});
       };
-      await tester.binding.setSurfaceSize(const Size(430, 932));
+      await tester.binding.setSurfaceSize(const Size(360, 640));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       Future<void> drain(Future<void> Function() action) async {
         await tester.runAsync(() async {
@@ -111,22 +131,24 @@ void main() {
       expect(find.text('Verify phone'), findsOneWidget);
       expect(find.text('Choose a route'), findsNothing);
       verified = true;
-      await drain(() => tester.tap(find.text('Refresh')));
+      await drain(() => tester.tap(find.byTooltip('Refresh waitlist')));
       expect(find.text('Choose a route'), findsOneWidget);
       expect(find.byType(FilterChip), findsNWidgets(7));
       offered = true;
-      await drain(() => tester.tap(find.text('Refresh')));
+      await drain(() => tester.tap(find.byTooltip('Refresh waitlist')));
+      expect(find.text('Your offer is here'), findsOneWidget);
       expect(
-        find.text('Your offer is ready. Review it below before it expires.'),
+        find.text('Review the journeys, dates and price before deciding.'),
         findsOneWidget,
       );
-      expect(find.textContaining('We will let you know'), findsNothing);
+      await tester.drag(find.byType(ListView), const Offset(0, -260));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Review your offer'));
       await tester.pumpAndSettle();
-      expect(find.text('Package: GHS 70.00'), findsOneWidget);
+      expect(find.text('GHS 70.00'), findsOneWidget);
       expect(find.text('Credit per unused ride: GHS 1.00'), findsOneWidget);
       expect(find.text('Credit per unused ride: GHS 2.00'), findsOneWidget);
-      expect(find.text('6 rides on Mon, Wed, Fri'), findsNWidgets(2));
+      expect(find.text('6 rides · Mon, Wed, Fri'), findsNWidgets(2));
       expect(
         f.requests.where(
           (r) => r.method == 'POST' && r.path.endsWith('/accept'),
@@ -135,6 +157,33 @@ void main() {
       );
       await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Review your offer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accept and review payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(() async {
+        for (
+          var i = 0;
+          i < 20 && find.text('Ready for payment').evaluate().isEmpty;
+          i++
+        ) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+        }
+      });
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Ready for payment'), findsOneWidget);
+      await tester.binding.setSurfaceSize(const Size(320, 568));
+      tester.binding.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(
+        tester.binding.platformDispatcher.clearTextScaleFactorTestValue,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Continue to Paystack'));
+      await tester.ensureVisible(find.text('Later'));
+      expect(tester.takeException(), isNull);
+      await drain(() => tester.tap(find.text('Later')));
       await tester.pumpWidget(const SizedBox());
       f.api.dispose();
     },

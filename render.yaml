@@ -152,15 +152,13 @@ services:
         value: https://tiles.trotxi.com/style.light.json
       - key: MAP_STYLE_DARK_URL
         value: https://tiles.trotxi.com/style.dark.json
-      # Who a driver calls when something goes wrong (#234). Served on /flags for
-      # the same reason the map styles are: depots differ, and a number baked
-      # into a shipped build is worse than none. Not secret — it is the number on
-      # the side of the van — so it belongs here rather than in the dashboard.
+      # Public support details for the commuter and driver apps. Served on
+      # /flags so the contact can change without a mobile app release.
+      - key: OPERATIONS_EMAIL
+        value: info@trotxi.com
       #
-      # Deliberately NOT set to a placeholder. Unset -> /flags reports null and
-      # the app hides the control, which is the safe answer; a real-looking
-      # number that rings nowhere is the exact failure #234 exists to prevent.
-      # Fill these in once operations confirms the line, then redeploy.
+      # Phone and WhatsApp remain unset until Operations confirms the line;
+      # a real-looking number that rings nowhere is worse than no number.
       #
       #   - key: OPERATIONS_PHONE
       #     value: '+233XXXXXXXXX'

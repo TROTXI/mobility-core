@@ -28,30 +28,133 @@ void main() {
     ]);
   });
 
-  testWidgets('card renewal requires explicit consent and card-removal confirmation', (
+  testWidgets(
+    'card renewal requires explicit consent and card-removal confirmation',
+    (tester) async {
+      final fixture = Fixture();
+      await fixture.signedIn();
+      fixture.reply = (request) {
+        if (request.path == '/v1/me/auto-renewal' && request.method == 'GET') {
+          return jsonResponse({
+            'data': {
+              'enabled': false,
+              'card': {
+                'brand': 'Visa',
+                'last4': '1234',
+                'expMonth': 12,
+                'expYear': 2028,
+              },
+              'upcoming': null,
+            },
+          });
+        }
+        return jsonResponse({
+          'error': {'code': 'not_found', 'message': 'No fixture'},
+        }, 404);
+      };
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: AutoRenewalPage(client: fixture.api),
+          ),
+        );
+        for (
+          var i = 0;
+          i < 100 &&
+              find
+                  .text('Visa ending 1234 · expires 12/2028')
+                  .evaluate()
+                  .isEmpty;
+          i++
+        ) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          await tester.pump();
+        }
+      });
+      expect(find.text('Off'), findsOneWidget);
+      expect(fixture.requests.where((r) => r.method == 'PUT'), isEmpty);
+
+      await tester.tap(find.text('Turn on auto-renewal'));
+      await tester.pumpAndSettle();
+      expect(find.text('Allow card auto-renewal?'), findsOneWidget);
+      await tester.tap(find.text('Keep current setting'));
+      await tester.pumpAndSettle();
+      expect(fixture.requests.where((r) => r.method == 'PUT'), isEmpty);
+
+      await tester.tap(find.text('Remove saved card'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove saved card?'), findsOneWidget);
+      await tester.tap(find.text('Keep current setting'));
+      await tester.pumpAndSettle();
+      expect(fixture.requests.where((r) => r.method == 'DELETE'), isEmpty);
+      await tester.pumpWidget(const SizedBox.shrink());
+      fixture.api.dispose();
+    },
+  );
+
+  testWidgets(
+    'consent without a card explains that setup takes a later payment',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 932));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final fixture = Fixture();
+      addTearDown(fixture.api.dispose);
+      await fixture.signedIn();
+      fixture.reply = (request) {
+        if (request.path == '/v1/me/auto-renewal') {
+          return jsonResponse({
+            'data': {'enabled': false, 'card': null, 'upcoming': null},
+          });
+        }
+        return jsonResponse({
+          'error': {'code': 'not_found', 'message': 'No fixture'},
+        }, 404);
+      };
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: AutoRenewalPage(client: fixture.api),
+          ),
+        );
+        for (
+          var i = 0;
+          i < 100 && find.text('Allow future card renewals').evaluate().isEmpty;
+          i++
+        ) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          await tester.pump();
+        }
+      });
+      expect(
+        find.text(
+          'No card is saved. Turning this on will not charge you or save a card today.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Allow future card renewals'));
+      await tester.pumpAndSettle();
+      expect(find.text('Allow card auto-renewal?'), findsOneWidget);
+      expect(
+        find.textContaining('This does not save a card or charge you now.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Keep current setting'));
+      await tester.pumpAndSettle();
+      expect(fixture.requests.where((r) => r.method == 'PUT'), isEmpty);
+    },
+  );
+
+  testWidgets('enabled without a saved card is not shown as ready', (
     tester,
   ) async {
     final fixture = Fixture();
+    addTearDown(fixture.api.dispose);
     await fixture.signedIn();
-    fixture.reply = (request) {
-      if (request.path == '/v1/me/auto-renewal' && request.method == 'GET') {
-        return jsonResponse({
-          'data': {
-            'enabled': false,
-            'card': {
-              'brand': 'Visa',
-              'last4': '1234',
-              'expMonth': 12,
-              'expYear': 2028,
-            },
-            'upcoming': null,
-          },
-        });
-      }
-      return jsonResponse({
-        'error': {'code': 'not_found', 'message': 'No fixture'},
-      }, 404);
-    };
+    fixture.reply = (request) => jsonResponse({
+      'data': {'enabled': true, 'card': null, 'upcoming': null},
+    });
     await tester.runAsync(() async {
       await tester.pumpWidget(
         MaterialApp(
@@ -61,31 +164,15 @@ void main() {
       );
       for (
         var i = 0;
-        i < 100 &&
-            find.text('Visa ending 1234 · expires 12/2028').evaluate().isEmpty;
+        i < 100 && find.text('Waiting for a card').evaluate().isEmpty;
         i++
       ) {
         await Future<void>.delayed(const Duration(milliseconds: 10));
         await tester.pump();
       }
     });
-    expect(find.text('Off'), findsOneWidget);
-    expect(fixture.requests.where((r) => r.method == 'PUT'), isEmpty);
-
-    await tester.tap(find.text('Turn on auto-renewal'));
-    await tester.pumpAndSettle();
-    expect(find.text('Turn on card auto-renewal?'), findsOneWidget);
-    await tester.tap(find.text('Keep current setting'));
-    await tester.pumpAndSettle();
-    expect(fixture.requests.where((r) => r.method == 'PUT'), isEmpty);
-
-    await tester.tap(find.text('Remove saved card'));
-    await tester.pumpAndSettle();
-    expect(find.text('Remove saved card?'), findsOneWidget);
-    await tester.tap(find.text('Keep current setting'));
-    await tester.pumpAndSettle();
-    expect(fixture.requests.where((r) => r.method == 'DELETE'), isEmpty);
-    await tester.pumpWidget(const SizedBox.shrink());
-    fixture.api.dispose();
+    expect(find.text('Waiting for a card'), findsOneWidget);
+    expect(find.textContaining('not ready yet'), findsOneWidget);
+    expect(find.text('Turn off auto-renewal'), findsOneWidget);
   });
 }
