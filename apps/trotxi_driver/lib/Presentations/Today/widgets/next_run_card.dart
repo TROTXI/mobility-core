@@ -102,7 +102,7 @@ class NextRunCard extends StatelessWidget {
                     if (headline != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        '${headline!.riders} confirmed riders · ${headline!.stops} stops',
+                        '${headline!.riders} confirmed ${headline!.riders == 1 ? 'rider' : 'riders'} · ${headline!.stops} ${headline!.stops == 1 ? 'stop' : 'stops'}',
                         style: AppTypography.bodySmall.copyWith(color: ink),
                       ),
                     ],

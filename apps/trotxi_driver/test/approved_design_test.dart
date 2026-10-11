@@ -34,6 +34,7 @@ import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/Presentations/Today/widgets/next_run_card.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_driver/data/position_publisher.dart';
@@ -322,6 +323,26 @@ Future<_Trips> _show(
 }
 
 void main() {
+  testWidgets('next trip uses singular rider and stop labels', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          body: NextRunCard(
+            run: _Trips().run,
+            headline: const RunHeadline(
+              riders: 1,
+              morning: 1,
+              standby: 0,
+              stops: 1,
+            ),
+            onPrimary: () {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('1 confirmed rider · 1 stop'), findsOneWidget);
+  });
   const pages = [
     'readiness',
     'permissions',
