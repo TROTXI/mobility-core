@@ -1,6 +1,5 @@
 import { Button, Switch, Tab, TabList } from '@fluentui/react-components';
 import { PlayRegular } from '@fluentui/react-icons';
-import { startRegistration } from '@simplewebauthn/browser';
 import { useState } from 'react';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
@@ -15,22 +14,89 @@ type Flag = components['schemas']['Flag'];
 type Minimum = components['schemas']['MinimumVersion'];
 type TraceHold = components['schemas']['TraceHold'];
 const jobs = [
-  ['Run payment maintenance', '/v1/ops/maintenance/payments'],
-  ['Generate trips', '/v1/ops/maintenance/trip-generation'],
-  ['Ask riders', '/v1/ops/maintenance/ask-dispatch'],
-  ['Apply reservation defaults', '/v1/ops/maintenance/reservation-defaults'],
-  ['Resume pauses', '/v1/ops/maintenance/personal-pause-resumes'],
-  ['Process payment inbox', '/v1/ops/maintenance/payment-inbox'],
-  ['Reconcile payments', '/v1/ops/maintenance/payment-reconciliation'],
-  ['Close periods', '/v1/ops/maintenance/period-close'],
-  ['Resolve no-shows', '/v1/ops/maintenance/no-shows'],
-  ['Learn route speeds', '/v1/ops/maintenance/route-learning'],
-  ['Apply GPS retention', '/v1/ops/maintenance/gps-retention'],
+  {
+    label: 'Generate trips',
+    path: '/v1/ops/maintenance/trip-generation',
+    description: 'Create departures from published schedules for the selected service date.',
+    group: 'Service',
+    scope: 'date',
+  },
+  {
+    label: 'Ask riders',
+    path: '/v1/ops/maintenance/ask-dispatch',
+    description: 'Send seat requests for the selected service date and direction.',
+    group: 'Service',
+    scope: 'direction',
+  },
+  {
+    label: 'Apply reservation defaults',
+    path: '/v1/ops/maintenance/reservation-defaults',
+    description: 'Resolve unanswered seat requests for the selected service date and direction.',
+    group: 'Service',
+    scope: 'direction',
+  },
+  {
+    label: 'Resolve no-shows',
+    path: '/v1/ops/maintenance/no-shows',
+    description: 'Settle unboarded reservations for the selected service date and direction.',
+    group: 'Service',
+    scope: 'direction',
+  },
+  {
+    label: 'Run payment maintenance',
+    path: '/v1/ops/maintenance/payments',
+    description: 'Process payment events, reconcile provider results and close eligible periods.',
+    group: 'Payments & coverage',
+    scope: 'global',
+  },
+  {
+    label: 'Resume pauses',
+    path: '/v1/ops/maintenance/personal-pause-resumes',
+    description: 'End personal pauses whose resume time has arrived.',
+    group: 'Payments & coverage',
+    scope: 'global',
+  },
+  {
+    label: 'Learn route speeds',
+    path: '/v1/ops/maintenance/route-learning',
+    description: 'Update route timing estimates from eligible trip evidence.',
+    group: 'System upkeep',
+    scope: 'global',
+  },
+  {
+    label: 'Apply GPS retention',
+    path: '/v1/ops/maintenance/gps-retention',
+    description: 'Remove expired GPS evidence, excluding active holds.',
+    group: 'System upkeep',
+    scope: 'global',
+  },
+  {
+    label: 'Process payment inbox',
+    path: '/v1/ops/maintenance/payment-inbox',
+    description: 'Only consume queued provider events.',
+    group: 'Payment recovery steps',
+    scope: 'global',
+  },
+  {
+    label: 'Reconcile payments',
+    path: '/v1/ops/maintenance/payment-reconciliation',
+    description: 'Only reconcile payment states with provider evidence.',
+    group: 'Payment recovery steps',
+    scope: 'global',
+  },
+  {
+    label: 'Close periods',
+    path: '/v1/ops/maintenance/period-close',
+    description: 'Only close eligible coverage periods.',
+    group: 'Payment recovery steps',
+    scope: 'global',
+  },
 ] as const;
+type Job = (typeof jobs)[number];
 
 export function Platform() {
   const { session } = useAuth();
-  const [tab, setTab] = useState<'flags' | 'versions' | 'jobs' | 'traces' | 'security'>('flags');
+  const [tab, setTab] = useState<'flags' | 'versions' | 'jobs' | 'traces'>('flags');
   const [minimum, setMinimum] = useState<Minimum | null>(null);
   const [minimumBuild, setMinimumBuild] = useState(1);
   const [storeUrl, setStoreUrl] = useState('');
@@ -57,7 +123,7 @@ export function Platform() {
   return (
     <Page
       title="Platform controls"
-      description="Release safety, maintenance and administrator access in one guarded workspace."
+      description="Release settings and guarded recovery controls. Manage your own passkeys in My profile."
     >
       <TabList
         selectedValue={tab}
@@ -68,7 +134,6 @@ export function Platform() {
         <Tab value="versions">Minimum versions</Tab>
         <Tab value="jobs">Manual jobs</Tab>
         <Tab value="traces">Trace holds</Tab>
-        <Tab value="security">Security</Tab>
       </TabList>
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
       {tab === 'flags' && (
@@ -162,7 +227,6 @@ export function Platform() {
       )}
       {tab === 'jobs' && <MaintenanceJobs session={session} />}
       {tab === 'traces' && <TraceHolds />}
-      {tab === 'security' && <SecurityPanel />}
       <ActionDialog
         open={Boolean(minimum)}
         title="Update minimum supported build"
@@ -227,71 +291,6 @@ export function Platform() {
   );
 }
 
-function SecurityPanel() {
-  const { session } = useAuth();
-  const status = useQuery<components['schemas']['PasskeyStatus']>(
-    async (signal) => {
-      const { data, error } = await session.client.GET('/v1/auth/passkeys', {
-        params: { header: opsHeaders },
-        signal,
-      });
-      if (error) throw new Error(error.error.message);
-      return data.data;
-    },
-    [session],
-  );
-  const [working, setWorking] = useState(false);
-  const [message, setMessage] = useState('');
-  const addPasskey = async () => {
-    setWorking(true);
-    setMessage('');
-    try {
-      const options = await session.client.POST('/v1/auth/passkeys/registration/options', {
-        params: { header: opsHeaders },
-      });
-      if (options.error) throw new Error(options.error.error.message);
-      const credential = await startRegistration({ optionsJSON: options.data.data as never });
-      const result = await session.client.POST('/v1/auth/passkeys/registration/verification', {
-        params: { header: opsHeaders },
-        body: credential as never,
-      });
-      if (result.error) throw new Error(result.error.error.message);
-      setMessage('Passkey added.');
-      status.retry();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Passkey registration failed.');
-    } finally {
-      setWorking(false);
-    }
-  };
-  return (
-    <Panel title="Administrator passkeys">
-      {status.loading ? (
-        <LoadingRows rows={2} />
-      ) : (
-        <div className="panel-body">
-          <p>
-            <strong>{status.data?.passkeyCount ?? 0} passkeys registered</strong>
-          </p>
-          <p className="muted">
-            This session is{' '}
-            {status.data?.verified ? 'verified for operational access' : 'not elevated'}. Add
-            another passkey only after verifying an existing one.
-          </p>
-          {message && <p>{message}</p>}
-          <Button
-            appearance="primary"
-            disabled={working || !status.data?.verified}
-            onClick={() => void addPasskey()}
-          >
-            {working ? 'Waiting for passkey…' : 'Add another passkey'}
-          </Button>
-        </div>
-      )}
-    </Panel>
-  );
-}
-
 async function setFlag(
   session: ReturnType<typeof useAuth>['session'],
   row: Flag,
@@ -315,7 +314,13 @@ async function setFlag(
 
 function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['session'] }) {
   const [running, setRunning] = useState<string | null>(null);
-  const [result, setResult] = useState('');
+  const [result, setResult] = useState<{
+    label: string;
+    message: string;
+    details?: string;
+    error?: boolean;
+  } | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [serviceDate, setServiceDate] = useState(() =>
     new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Africa/Accra',
@@ -325,9 +330,10 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
     }).format(new Date()),
   );
   const [direction, setDirection] = useState<'outbound' | 'return'>('outbound');
-  const run = async (path: (typeof jobs)[number][1]) => {
+  const run = async (job: Job) => {
+    const { path, label } = job;
     setRunning(path);
-    setResult('');
+    setResult(null);
     try {
       const maintenance = { params: { header: opsHeaders }, body: { limit: 100 } } as const;
       const serviceDay = {
@@ -363,62 +369,123 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
                                 maintenance,
                               );
       if (response.error) throw new Error(response.error.error.message);
-      setResult(`${path.split('/').at(-1)} completed: ${JSON.stringify(response.data.data)}`);
+      const data = response.data.data as Record<string, unknown>;
+      const counts = ['considered', 'succeeded', 'blocked', 'failed']
+        .filter((key) => typeof data[key] === 'number')
+        .map((key) => `${key}: ${data[key]}`);
+      setResult({
+        label,
+        message: counts.length ? counts.join(' · ') : 'Completed. See details for the result.',
+        details: JSON.stringify(data, null, 2),
+      });
     } catch (error) {
-      setResult(error instanceof Error ? error.message : 'Job failed.');
+      setResult({
+        label,
+        message: error instanceof Error ? error.message : 'The job could not be completed.',
+        error: true,
+      });
     } finally {
       setRunning(null);
     }
   };
+  const jobRow = (job: Job) => (
+    <div className="maintenance-job" key={job.path}>
+      <div>
+        <strong>{job.label}</strong>
+        <p>{job.description}</p>
+      </div>
+      <Button
+        icon={<PlayRegular />}
+        disabled={Boolean(running)}
+        onClick={() => setSelectedJob(job)}
+      >
+        {running === job.path ? 'Running…' : 'Run'}
+      </Button>
+    </div>
+  );
   return (
     <Panel title="Manual maintenance">
-      <div className="panel-body" style={{ display: 'grid', gap: 12 }}>
-        <div className="toolbar">
-          <label>
-            Service date{' '}
-            <input
-              type="date"
-              value={serviceDate}
-              onChange={(event) => setServiceDate(event.target.value)}
-            />
-          </label>
-          <label>
-            Direction{' '}
-            <select
-              value={direction}
-              onChange={(event) => setDirection(event.target.value as typeof direction)}
-            >
-              <option value="outbound">Outbound</option>
-              <option value="return">Return</option>
-            </select>
-          </label>
-        </div>
-        {jobs.map(([label, path]) => (
-          <div
-            key={path}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '12px 0',
-              borderBottom: '1px solid #eeeaf1',
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <strong>{label}</strong>
-              <div className="mono muted">{path}</div>
+      <div className="panel-body maintenance-workspace">
+        <p className="muted">
+          These are recovery controls. Use them when a scheduled run needs investigation or a
+          specific service day needs correction. Each maintenance step uses a batch limit of 100.
+        </p>
+        <section aria-labelledby="service-jobs-title">
+          <div className="maintenance-heading">
+            <h3 id="service-jobs-title">Service day</h3>
+            <div className="maintenance-scope">
+              <label>
+                Service date
+                <input
+                  type="date"
+                  value={serviceDate}
+                  onChange={(event) => setServiceDate(event.target.value)}
+                />
+              </label>
+              <label>
+                Direction
+                <select
+                  value={direction}
+                  onChange={(event) => setDirection(event.target.value as typeof direction)}
+                >
+                  <option value="outbound">Outbound</option>
+                  <option value="return">Return</option>
+                </select>
+              </label>
             </div>
-            <Button
-              icon={<PlayRegular />}
-              disabled={Boolean(running)}
-              onClick={() => void run(path)}
-            >
-              {running === path ? 'Running…' : 'Run'}
-            </Button>
           </div>
-        ))}
-        {result && <div className="job-result">{result}</div>}
+          <p className="muted">
+            Direction applies to rider asks, defaults and no-shows. Trip generation uses the date
+            only.
+          </p>
+          {jobs.filter((job) => job.group === 'Service').map(jobRow)}
+        </section>
+        <section aria-labelledby="payment-jobs-title">
+          <h3 id="payment-jobs-title">Payments & coverage</h3>
+          {jobs.filter((job) => job.group === 'Payments & coverage').map(jobRow)}
+        </section>
+        <details className="maintenance-advanced">
+          <summary>System upkeep and individual recovery steps</summary>
+          <p className="muted">
+            Use an individual step only when diagnosing a failure in the combined workflow.
+          </p>
+          {jobs
+            .filter(
+              (job) => job.group === 'System upkeep' || job.group === 'Payment recovery steps',
+            )
+            .map(jobRow)}
+        </details>
+        {result && (
+          <div className="job-result" role={result.error ? 'alert' : 'status'}>
+            <strong>{result.label}</strong>
+            <p>{result.message}</p>
+            {result.details && (
+              <details>
+                <summary>Technical result</summary>
+                <pre>{result.details}</pre>
+              </details>
+            )}
+          </div>
+        )}
       </div>
+      <ActionDialog
+        open={Boolean(selectedJob)}
+        title={`Run ${selectedJob?.label.toLowerCase() ?? 'job'}?`}
+        description={selectedJob?.description}
+        confirmLabel="Run job"
+        onClose={() => setSelectedJob(null)}
+        onConfirm={async () => {
+          if (selectedJob) await run(selectedJob);
+        }}
+      >
+        <p className="dialog-note">
+          {selectedJob?.scope === 'direction'
+            ? `${serviceDate} · ${direction}`
+            : selectedJob?.scope === 'date'
+              ? serviceDate
+              : 'All eligible records; service date and direction do not apply.'}
+        </p>
+      </ActionDialog>
     </Panel>
   );
 }

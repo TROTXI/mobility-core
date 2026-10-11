@@ -1,13 +1,12 @@
 import { Button, Tab, TabList } from '@fluentui/react-components';
 import { ArrowClockwiseRegular } from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, StatusBadge, when } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
-import { LiveMap } from '../components/LiveMap';
 import { formatAccraClock } from '../api/accra-time';
 import { dispatchLink } from './dispatch-context';
 import {
@@ -26,6 +25,9 @@ type TripLine = {
   source: 'geometry' | 'stops' | 'unavailable';
 };
 const emptyLine: Point[] = [];
+const LiveMap = lazy(() =>
+  import('../components/LiveMap').then((module) => ({ default: module.LiveMap })),
+);
 
 export function Overview() {
   const { session } = useAuth();
@@ -284,10 +286,12 @@ export function Overview() {
                 <div className="overview-section-heading">
                   <h2>Live map</h2>
                 </div>
-                <LiveMap
-                  markers={liveMarkers}
-                  line={tripLine?.versionId === selectedVersionId ? tripLine.points : emptyLine}
-                />
+                <Suspense fallback={<div className="map-loading">Opening live map…</div>}>
+                  <LiveMap
+                    markers={liveMarkers}
+                    line={tripLine?.versionId === selectedVersionId ? tripLine.points : emptyLine}
+                  />
+                </Suspense>
                 {liveMarkers.length === 0 && (
                   <p className="map-meta">No vehicle has sent a GPS fix in this window.</p>
                 )}
