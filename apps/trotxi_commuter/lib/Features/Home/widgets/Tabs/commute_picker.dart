@@ -7,6 +7,8 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart'
     show commuteError;
 import 'route_preview_page.dart';
+import '../../../Search/journey_search.dart';
+import '../../../Search/journey_search_page.dart';
 
 class SelectedCommuteLeg {
   const SelectedCommuteLeg(this.choice, this.pickup, this.dropoff);
@@ -37,8 +39,13 @@ class CommuteRouteSelection {
 enum _Step { route, departure, pickup, dropoff }
 
 class CommutePickerPage extends StatefulWidget {
-  const CommutePickerPage({super.key, required this.client});
+  const CommutePickerPage({
+    super.key,
+    required this.client,
+    this.initialJourney,
+  });
   final CommuterApi client;
+  final JourneyMatch? initialJourney;
   @override
   State<CommutePickerPage> createState() => _CommutePickerPageState();
 }
@@ -54,13 +61,21 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
   CommuteLegChoice? _choice;
   wire.StopOccurrence? _pickup;
   SelectedCommuteLeg? _outbound;
+  SelectedCommuteLeg? _suggestedReturn;
+  JourneyMatch? _seedJourney;
+  String? _selectionNotice;
   String _routeQuery = '';
   bool get _returning => _outbound != null;
 
   @override
   void initState() {
     super.initState();
-    _loadRoutes();
+    final initial = widget.initialJourney;
+    if (initial == null) {
+      _loadRoutes();
+    } else {
+      _selectRoute(initial.choice.route, initial: initial);
+    }
   }
 
   @override
@@ -75,6 +90,11 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
       _loading = true;
       _error = null;
       _step = _Step.route;
+      _route = null;
+      _seedJourney = null;
+      _suggestedReturn = null;
+      _outbound = null;
+      _selectionNotice = null;
     });
     try {
       final routes = await widget.client.routes();
@@ -86,14 +106,17 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
     }
   }
 
-  Future<void> _selectRoute(wire.Route route) async {
+  Future<void> _selectRoute(wire.Route route, {JourneyMatch? initial}) async {
     final attempt = ++_attempt;
     final generation = widget.client.sessionGeneration;
     setState(() {
       _loading = true;
       _error = null;
       _route = route;
+      _seedJourney = initial;
+      _selectionNotice = null;
       _outbound = null;
+      _suggestedReturn = null;
     });
     try {
       final schedules = await widget.client.schedules(route.id);
@@ -131,6 +154,46 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
         setState(() {
           _choices = choices;
           _step = _Step.departure;
+          // Re-resolve against fresh schedule data, never submit a cached
+          // search result directly or silently replace a selected stop.
+          if (initial != null) {
+            final matching = choices.where(
+              (c) =>
+                  c.schedule.id == initial.choice.schedule.id &&
+                  c.version.id == initial.choice.version.id &&
+                  (initial.serviceDate == null ||
+                      operatesOn(c, initial.serviceDate!)),
+            );
+            if (matching.isNotEmpty) {
+              final choice = matching.first;
+              final pickups = choice.pickups.where(
+                (s) => s.id == initial.pickup.id,
+              );
+              final dropoffs = pickups.isEmpty
+                  ? <wire.StopOccurrence>[]
+                  : choice
+                        .dropoffsAfter(pickups.first.id)
+                        .where((s) => s.id == initial.dropoff.id)
+                        .toList();
+              if (pickups.isNotEmpty && dropoffs.isNotEmpty) {
+                final leg = SelectedCommuteLeg(
+                  choice,
+                  pickups.first,
+                  dropoffs.first,
+                );
+                if (choice.pattern.direction ==
+                    wire.PatternDirectionEnum.outbound) {
+                  _outbound = leg;
+                } else {
+                  _suggestedReturn = leg;
+                }
+              }
+            }
+            if (_outbound == null && _suggestedReturn == null) {
+              _selectionNotice =
+                  'That journey has changed. Please choose your departure and stops again.';
+            }
+          }
         });
       }
     } catch (e) {
@@ -143,11 +206,19 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
   void _back() {
     if (_loading) {
       _attempt++;
+      if (_routes.isEmpty) {
+        Navigator.pop(context);
+        return;
+      }
       setState(() {
         _loading = false;
         _error = null;
         _step = _Step.route;
       });
+      return;
+    }
+    if (_step == _Step.departure && !_returning && _routes.isEmpty) {
+      _loadRoutes();
       return;
     }
     setState(() {
@@ -172,6 +243,13 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
   void _dropoff(wire.StopOccurrence stop) {
     final leg = SelectedCommuteLeg(_choice!, _pickup!, stop);
     if (!_returning) {
+      final returning = _suggestedReturn;
+      if (returning != null &&
+          returning.choice.schedule.serviceWindow !=
+              leg.choice.schedule.serviceWindow) {
+        Navigator.pop(context, CommuteRouteSelection(leg, returning));
+        return;
+      }
       setState(() {
         _outbound = leg;
         _choice = null;
@@ -195,7 +273,13 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                       : wire.PatternDirectionEnum.outbound) &&
               (!_returning ||
                   c.schedule.serviceWindow !=
-                      _outbound!.choice.schedule.serviceWindow),
+                      _outbound!.choice.schedule.serviceWindow) &&
+              (_returning ||
+                  _suggestedReturn == null ||
+                  c.schedule.serviceWindow !=
+                      _suggestedReturn!.choice.schedule.serviceWindow) &&
+              (_seedJourney?.serviceDate == null ||
+                  operatesOn(c, _seedJourney!.serviceDate!)),
         )
         .toList();
     final stops = _choice == null
@@ -316,9 +400,28 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                     action: 'Try again',
                     onAction: _route == null
                         ? _loadRoutes
-                        : () => _selectRoute(_route!),
+                        : () => _selectRoute(_route!, initial: _seedJourney),
                   )
                 else if (_step == _Step.route) ...[
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.travel_explore_rounded),
+                    label: const Text('Search by pickup and destination'),
+                    onPressed: () async {
+                      final match = await Navigator.of(context)
+                          .push<JourneyMatch>(
+                            MaterialPageRoute(
+                              builder: (_) => JourneySearchPage(
+                                client: widget.client,
+                                selectOnly: true,
+                              ),
+                            ),
+                          );
+                      if (match != null && mounted) {
+                        _selectRoute(match.choice.route, initial: match);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
                     onChanged: (value) => setState(
                       () => _routeQuery = value.trim().toLowerCase(),
@@ -351,6 +454,11 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
                       onTap: () => _selectRoute(route),
                     ),
                 ] else if (_step == _Step.departure) ...[
+                  if (_selectionNotice != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(_selectionNotice!),
+                    ),
                   if (departures.isEmpty)
                     _messageCard(
                       context,

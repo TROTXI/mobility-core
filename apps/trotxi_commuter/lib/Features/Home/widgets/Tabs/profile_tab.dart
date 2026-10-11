@@ -181,6 +181,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   _ProfileHeader(
                     displayName: _user?.displayName,
                     phone: _user?.phone,
+                    email: _user?.email,
                     avatarUrl: _user?.avatarUrl,
                     onEdit: _openPersonalInfo,
                   ),
@@ -305,12 +306,14 @@ class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.displayName,
     required this.phone,
+    required this.email,
     required this.avatarUrl,
     required this.onEdit,
   });
 
   final String? displayName;
   final String? phone;
+  final String? email;
   final String? avatarUrl;
   final VoidCallback onEdit;
 
@@ -397,6 +400,15 @@ class _ProfileHeader extends StatelessWidget {
                         : colors.textSecondary,
                   ),
                 ),
+                if (email?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    email!.trim(),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: onEdit,

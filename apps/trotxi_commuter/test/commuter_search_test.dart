@@ -64,7 +64,7 @@ void main() {
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
-              onPressed: () => showCommuterSearch(
+              onPressed: () => showAppSearch(
                 context,
                 client: fixture.api,
                 onDestination: (d) => opened = d,
@@ -94,7 +94,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'nothing like this');
     await tester.pumpAndSettle();
-    expect(find.textContaining('No results'), findsOneWidget);
+    expect(find.textContaining('Some results couldn’t load'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'money');
     await tester.pumpAndSettle();

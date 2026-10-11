@@ -9,10 +9,12 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'checkout_page.dart';
 import 'commute_picker.dart';
 import 'phone_verification_page.dart';
+import '../../../Search/journey_search.dart';
 
 class StandbyPage extends StatefulWidget {
-  const StandbyPage({super.key, required this.client});
+  const StandbyPage({super.key, required this.client, this.initialJourney});
   final CommuterApi client;
+  final JourneyMatch? initialJourney;
 
   @override
   State<StandbyPage> createState() => _StandbyPageState();
@@ -73,7 +75,10 @@ class _StandbyPageState extends State<StandbyPage> {
     final generation = widget.client.sessionGeneration;
     final selection = await Navigator.of(context).push<CommuteRouteSelection>(
       MaterialPageRoute(
-        builder: (_) => CommutePickerPage(client: widget.client),
+        builder: (_) => CommutePickerPage(
+          client: widget.client,
+          initialJourney: widget.initialJourney,
+        ),
       ),
     );
     if (!mounted ||
@@ -546,7 +551,11 @@ class _StandbyPageState extends State<StandbyPage> {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: _busy || _travelDays.isEmpty ? null : _join,
-                    child: const Text('Choose a route'),
+                    child: Text(
+                      widget.initialJourney == null
+                          ? 'Choose a route'
+                          : 'Continue with this route',
+                    ),
                   ),
                 ),
               ),
@@ -592,6 +601,35 @@ class _StandbyPageState extends State<StandbyPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                  ],
+                  if (widget.initialJourney != null && active.isEmpty) ...[
+                    AppSurface(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your selected journey',
+                            style: AppTypography.caption,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${widget.initialJourney!.pickup.name} → ${widget.initialJourney!.dropoff.name}',
+                            style: AppTypography.title,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.initialJourney!.choice.route.name} · ${widget.initialJourney!.choice.schedule.localDeparture}',
+                            style: AppTypography.bodySmall,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Next, choose the other leg of your commute. You’ll review both journeys before sending a request.',
+                            style: AppTypography.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
                   if (eligible && active.isEmpty) _requestForm(),
                   for (final application in active) ...[
