@@ -1034,10 +1034,10 @@ select {
   gap: 2px;
 }
 .nav-group + .nav-group {
-  margin-top: 16px;
+  margin-top: 9px;
 }
 .nav-section-label {
-  padding: 8px 12px 10px;
+  padding: 6px 12px;
   color: var(--ops-muted);
   font-size: 10px;
   font-weight: 700;
@@ -1046,7 +1046,7 @@ select {
 }
 [data-theme] .nav-link {
   width: 100%;
-  min-height: 42px;
+  min-height: 39px;
   padding: 0 11px;
   gap: 10px;
   color: var(--ops-rail-text);

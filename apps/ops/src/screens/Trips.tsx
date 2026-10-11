@@ -206,7 +206,7 @@ export function Trips() {
   return (
     <Page
       title="Dispatch & trips"
-      description="Plan departures, match drivers and buses, and resolve assignment exceptions."
+      description="Assign buses and drivers, monitor departures and resolve exceptions."
       actions={
         <>
           <Button icon={<ArrowClockwiseRegular />} onClick={query.retry}>

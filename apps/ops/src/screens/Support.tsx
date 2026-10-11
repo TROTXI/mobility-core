@@ -116,7 +116,7 @@ export function Support() {
   return (
     <Page
       title="Support & requests"
-      description="Exceptions find the dispatcher and every decision keeps its actor and reason."
+      description="Review incidents, driver requests, commute changes and account deletion progress."
     >
       <TabList
         selectedValue={tab}

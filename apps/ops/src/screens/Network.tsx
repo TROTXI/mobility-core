@@ -353,7 +353,7 @@ export function Network() {
   return (
     <Page
       title="Routes & network"
-      description="Manage corridors, boarding points, immutable route versions, departures, fares and capacity."
+      description="Set up routes, departures, fares and capacity before sending offers."
       actions={
         <>
           <Button icon={<ArrowClockwiseRegular />} onClick={refreshAll}>

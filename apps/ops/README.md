@@ -11,7 +11,7 @@ WebAuthn passkey check. Access tokens remain in memory; the rotating refresh
 token is scoped to the browser tab. Every `/v1/ops/*` request is still
 authorized by current database role and passkey elevation on the API.
 
-Access is invite only. A superadmin uses **More → Team & access** to enter a
+Access is invite only. A superadmin uses **Monitor & control → Team & access** to enter a
 name and Google email. The recipient follows the email link, signs in with that
 Google account and completes passkey setup before entering Ops. Invitations
 expire after 48 hours; the directory supports resend, cancellation and whole-account
@@ -65,8 +65,9 @@ pnpm --filter @trotxi/ops build
 ```
 
 The main shell and screens are route-split. MapLibre/PMTiles is isolated in its
-own browser chunk and positions refresh from the single Ops overview snapshot
-every ten seconds.
+own browser chunk and loads only when a map is shown. Live positions refresh
+from the single Ops overview snapshot every ten seconds. Payments and Support
+load only the selected queue.
 
 ## Deployment
 

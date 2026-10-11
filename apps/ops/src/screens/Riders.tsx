@@ -50,7 +50,7 @@ export function Riders() {
   return (
     <Page
       title="Riders"
-      description="Membership, route and credit context without exposing provider credentials."
+      description="Find rider memberships, trips, credits and account issues."
       actions={
         <Input
           contentBefore={<SearchRegular />}

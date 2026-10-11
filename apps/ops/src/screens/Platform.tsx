@@ -123,7 +123,7 @@ export function Platform() {
   return (
     <Page
       title="Platform controls"
-      description="Release settings and guarded recovery controls. Manage your own passkeys in My profile."
+      description="Manage releases, recovery jobs and GPS evidence holds. Your passkeys are in My profile."
     >
       <TabList
         selectedValue={tab}

@@ -75,7 +75,7 @@ export function Payments() {
   return (
     <Page
       title="Payments & credits"
-      description="Provider facts, rider value and human decisions stay separate."
+      description="Check purchases, resolve payment reviews and monitor card renewals."
       actions={
         <Button icon={<ArrowClockwiseRegular />} onClick={activeQuery.retry}>
           Refresh
