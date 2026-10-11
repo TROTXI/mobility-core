@@ -259,8 +259,13 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
       RidePending() => [_buildPendingCard()],
 
-      RideReserved(:final etaPhase, :final detail) => [
-        _buildReservedCard(etaPhase, detail),
+      RideReserved(:final etaPhase, :final reservationId) => [
+        _buildReservedCard(
+          etaPhase,
+          reservationId == null
+              ? null
+              : ref.watch(homeReservationDetailProvider).asData?.value,
+        ),
       ],
 
       RideBoarded() => [_buildBoardedCard()],
