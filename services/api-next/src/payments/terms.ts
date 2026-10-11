@@ -1,6 +1,10 @@
 // Port of the existing integer-basis-point and UTC calendar rules, with safe
 // intermediate arithmetic. No HTTP caller supplies these priced terms.
-export type Plan = 'monthly' | 'annual';
+export const availablePlans = ['weekly', 'biweekly', 'monthly'] as const;
+// Annual remains readable only for previously purchased coverage.
+export type Plan = (typeof availablePlans)[number] | 'annual';
+export const isAvailablePlan = (value: unknown): boolean =>
+  availablePlans.includes(value as (typeof availablePlans)[number]);
 export const MIN_CHARGE_PESEWAS = 100;
 export const MAX_MONEY = 2147483647;
 /** Shared by preview and checkout: keep the provider's minimum cash charge. */
@@ -38,9 +42,13 @@ export function priceTerms(input: Pricing): PricedTerms {
   return { ...input, pricePesewas: Number(price) };
 }
 export function billingEnd(plan: Plan, start: Date): Date {
-  if (!Number.isFinite(start.getTime()) || !['monthly', 'annual'].includes(plan))
+  if (!Number.isFinite(start.getTime()) || ![...availablePlans, 'annual'].includes(plan))
     throw new Error('invalid_billing_period');
   const end = new Date(start);
+  if (plan === 'weekly' || plan === 'biweekly') {
+    end.setUTCDate(end.getUTCDate() + (plan === 'weekly' ? 7 : 14));
+    return end;
+  }
   end.setUTCDate(1);
   end.setUTCMonth(end.getUTCMonth() + (plan === 'annual' ? 12 : 1));
   const last = new Date(end);

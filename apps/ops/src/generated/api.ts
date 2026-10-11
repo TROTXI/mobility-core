@@ -1169,6 +1169,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/reservations/{id}/rating': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** rate Reservation */
+    post: operations['rateReservation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/ride-entries': {
     parameters: {
       query?: never;
@@ -3983,7 +4000,7 @@ export interface components {
     OpsPurchase: {
       id: string;
       /** @enum {string} */
-      plan: 'monthly' | 'annual';
+      plan: 'weekly' | 'biweekly' | 'monthly' | 'annual';
       /** @enum {string} */
       state:
         | 'awaiting_payment'
@@ -4085,7 +4102,7 @@ export interface components {
       /** @enum {string} */
       status: 'active' | 'paused' | 'lapsed' | 'none';
       /** @enum {string|null} */
-      plan: 'monthly' | 'annual' | null;
+      plan: 'weekly' | 'biweekly' | 'monthly' | 'annual' | null;
       routeName: string | null;
       ridesLeft: number | null;
       availableCredit: components['schemas']['Money'];
@@ -4120,7 +4137,7 @@ export interface components {
       purchases: {
         id: string;
         /** @enum {string} */
-        plan: 'monthly' | 'annual';
+        plan: 'weekly' | 'biweekly' | 'monthly' | 'annual';
         state: string;
         cashDue: components['schemas']['Money'];
         /** Format: date-time */
@@ -4142,6 +4159,8 @@ export interface components {
       active: number;
       paused: number;
       lapsed: number;
+      weekly: number;
+      biweekly: number;
       monthly: number;
       annual: number;
       creditOutstanding: components['schemas']['Money'];
@@ -4562,7 +4581,7 @@ export interface components {
     };
     PlanPricing: {
       /** @enum {string} */
-      plan: 'monthly' | 'annual';
+      plan: 'weekly' | 'biweekly' | 'monthly';
       ridesPerPeriod: number;
       priceMultiplierBp: number;
       takeRateBp: number;
@@ -4628,7 +4647,7 @@ export interface components {
     Purchase: {
       id: string;
       /** @enum {string} */
-      plan: 'monthly' | 'annual';
+      plan: 'weekly' | 'biweekly' | 'monthly' | 'annual';
       /** @enum {string} */
       state:
         | 'awaiting_payment'
@@ -4663,7 +4682,7 @@ export interface components {
     };
     PurchaseInput: {
       /** @enum {string} */
-      plan: 'monthly' | 'annual';
+      plan: 'weekly' | 'biweekly' | 'monthly';
       routeId: string;
       legs: components['schemas']['CommuteLeg'][];
       useCredit: boolean;
@@ -4677,7 +4696,7 @@ export interface components {
     PurchaseQuote: {
       routeId: string;
       /** @enum {string} */
-      plan: 'monthly' | 'annual';
+      plan: 'weekly' | 'biweekly' | 'monthly' | 'annual';
       ridesGranted: number;
       fare: components['schemas']['Money'];
       price: components['schemas']['Money'];
@@ -4694,7 +4713,7 @@ export interface components {
     };
     PurchaseQuoteInput: {
       /** @enum {string} */
-      plan: 'monthly' | 'annual';
+      plan: 'weekly' | 'biweekly' | 'monthly';
       routeId: string;
       useCredit: boolean;
     };
@@ -4703,6 +4722,13 @@ export interface components {
     };
     PurchaseResponse: {
       data: components['schemas']['Purchase'];
+    };
+    PurchaseSelection: {
+      /** @enum {string} */
+      plan: 'weekly' | 'biweekly' | 'monthly' | 'annual';
+      routeId: string;
+      legs: components['schemas']['CommuteLeg'][];
+      useCredit: boolean;
     };
     ReasonInput: {
       reason: string;
@@ -4739,6 +4765,8 @@ export interface components {
       tripId: string | null;
       /** Format: date */
       travelDate: string;
+      /** @enum {string|null} */
+      tripStatus?: 'scheduled' | 'active' | 'completed' | 'cancelled' | null;
       /** @enum {string} */
       direction: 'outbound' | 'return';
       /** @enum {string} */
@@ -4785,6 +4813,11 @@ export interface components {
     };
     ReservationDetail: {
       reservation: components['schemas']['Reservation'];
+      rating?: {
+        stars: number;
+        /** Format: date-time */
+        ratedAt: string;
+      } | null;
       /** @description Current corridor name; the reservation does not snapshot route renames. */
       route: {
         id: string;
@@ -4867,6 +4900,17 @@ export interface components {
       page: {
         nextCursor: string | null;
       };
+    };
+    RideRating: {
+      stars: number;
+      /** Format: date-time */
+      ratedAt: string;
+    };
+    RideRatingInput: {
+      stars: number;
+    };
+    RideRatingResponse: {
+      data: components['schemas']['RideRating'];
     };
     RiderErasureInput: {
       reason: string;
@@ -5030,7 +5074,7 @@ export interface components {
       routeName: string;
       /** @enum {string} */
       state: 'submitted' | 'offered' | 'withdrawn' | 'checkout_open' | 'completed';
-      selection: components['schemas']['PurchaseInput'];
+      selection: components['schemas']['PurchaseSelection'];
       travelDays: number[];
       offer: {
         id: string;
@@ -7668,7 +7712,7 @@ export interface operations {
         /** @description Application state. Omit for all states. */
         state?: 'submitted' | 'offered' | 'checkout_open' | 'completed' | 'withdrawn';
         /** @description Requested plan. */
-        plan?: 'monthly' | 'annual';
+        plan?: 'weekly' | 'biweekly' | 'monthly';
         /** @description Travel weekday: Monday=1, Sunday=7. */
         day?: number;
         /** @description Literal partial rider name. Route demand totals respect these filters except routeId and pagination. */
@@ -9095,6 +9139,59 @@ export interface operations {
       401: components['responses']['Error401'];
       403: components['responses']['Error403'];
       404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  rateReservation: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
+        'Idempotency-Key': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RideRatingInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RideRatingResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
       426: components['responses']['Error426'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];
@@ -13449,7 +13546,7 @@ export interface operations {
         'X-Trotxi-Platform'?: 'ios' | 'android';
       };
       path: {
-        plan: 'monthly' | 'annual';
+        plan: 'weekly' | 'biweekly' | 'monthly';
       };
       cookie?: never;
     };

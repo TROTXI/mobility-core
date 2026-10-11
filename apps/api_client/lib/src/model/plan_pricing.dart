@@ -24,7 +24,7 @@ part 'plan_pricing.g.dart';
 abstract class PlanPricing implements Built<PlanPricing, PlanPricingBuilder> {
   @BuiltValueField(wireName: r'plan')
   PlanPricingPlanEnum get plan;
-  // enum planEnum {  monthly,  annual,  };
+  // enum planEnum {  weekly,  biweekly,  monthly,  };
 
   @BuiltValueField(wireName: r'ridesPerPeriod')
   int get ridesPerPeriod;
@@ -206,10 +206,12 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
 }
 
 class PlanPricingPlanEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'weekly')
+  static const PlanPricingPlanEnum weekly = _$planPricingPlanEnum_weekly;
+  @BuiltValueEnumConst(wireName: r'biweekly')
+  static const PlanPricingPlanEnum biweekly = _$planPricingPlanEnum_biweekly;
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PlanPricingPlanEnum monthly = _$planPricingPlanEnum_monthly;
-  @BuiltValueEnumConst(wireName: r'annual')
-  static const PlanPricingPlanEnum annual = _$planPricingPlanEnum_annual;
 
   static Serializer<PlanPricingPlanEnum> get serializer =>
       _$planPricingPlanEnumSerializer;

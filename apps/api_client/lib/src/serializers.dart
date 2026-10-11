@@ -273,6 +273,7 @@ import 'package:trotxi_api_client/src/model/purchase_quote.dart';
 import 'package:trotxi_api_client/src/model/purchase_quote_input.dart';
 import 'package:trotxi_api_client/src/model/purchase_quote_response.dart';
 import 'package:trotxi_api_client/src/model/purchase_response.dart';
+import 'package:trotxi_api_client/src/model/purchase_selection.dart';
 import 'package:trotxi_api_client/src/model/reason_input.dart';
 import 'package:trotxi_api_client/src/model/receive_paystack_webhook_request.dart';
 import 'package:trotxi_api_client/src/model/refresh_input.dart';
@@ -288,6 +289,7 @@ import 'package:trotxi_api_client/src/model/reservation_decision_result_pass.dar
 import 'package:trotxi_api_client/src/model/reservation_decision_result_response.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail_pickup_stop.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_rating.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail_response.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail_route.dart';
 import 'package:trotxi_api_client/src/model/reservation_detail_trip.dart';
@@ -298,6 +300,9 @@ import 'package:trotxi_api_client/src/model/restriction_response.dart';
 import 'package:trotxi_api_client/src/model/review_decision.dart';
 import 'package:trotxi_api_client/src/model/ride_entry.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
+import 'package:trotxi_api_client/src/model/ride_rating.dart';
+import 'package:trotxi_api_client/src/model/ride_rating_input.dart';
+import 'package:trotxi_api_client/src/model/ride_rating_response.dart';
 import 'package:trotxi_api_client/src/model/rider_erasure_input.dart';
 import 'package:trotxi_api_client/src/model/rider_notification.dart';
 import 'package:trotxi_api_client/src/model/rider_notification_page.dart';
@@ -630,6 +635,7 @@ part 'serializers.g.dart';
   PurchaseQuoteInput,
   PurchaseQuoteResponse,
   PurchaseResponse,
+  PurchaseSelection,
   ReasonInput,
   ReceivePaystackWebhookRequest,
   RefreshInput,
@@ -645,6 +651,7 @@ part 'serializers.g.dart';
   ReservationDecisionResultResponse,
   ReservationDetail,
   ReservationDetailPickupStop,
+  ReservationDetailRating,
   ReservationDetailResponse,
   ReservationDetailRoute,
   ReservationDetailTrip,
@@ -655,6 +662,9 @@ part 'serializers.g.dart';
   ReviewDecision,
   RideEntry,
   RideEntryPage,
+  RideRating,
+  RideRatingInput,
+  RideRatingResponse,
   RiderErasureInput,
   RiderNotification,
   RiderNotificationPage,

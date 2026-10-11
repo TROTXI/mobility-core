@@ -16,6 +16,7 @@ part 'reservation.g.dart';
 /// * [id]
 /// * [tripId]
 /// * [travelDate]
+/// * [tripStatus]
 /// * [direction]
 /// * [status]
 /// * [pickupOccurrenceId]
@@ -34,6 +35,10 @@ abstract class Reservation implements Built<Reservation, ReservationBuilder> {
 
   @BuiltValueField(wireName: r'travelDate')
   Date get travelDate;
+
+  @BuiltValueField(wireName: r'tripStatus')
+  ReservationTripStatusEnum? get tripStatus;
+  // enum tripStatusEnum {  scheduled,  active,  completed,  cancelled,  };
 
   @BuiltValueField(wireName: r'direction')
   ReservationDirectionEnum get direction;
@@ -102,6 +107,13 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
       object.travelDate,
       specifiedType: const FullType(Date),
     );
+    if (object.tripStatus != null) {
+      yield r'tripStatus';
+      yield serializers.serialize(
+        object.tripStatus,
+        specifiedType: const FullType.nullable(ReservationTripStatusEnum),
+      );
+    }
     yield r'direction';
     yield serializers.serialize(
       object.direction,
@@ -193,6 +205,14 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
           ) as Date;
           result.travelDate = valueDes;
           break;
+        case r'tripStatus':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(ReservationTripStatusEnum),
+          ) as ReservationTripStatusEnum?;
+          if (valueDes == null) continue;
+          result.tripStatus = valueDes;
+          break;
         case r'direction':
           final valueDes = serializers.deserialize(
             value,
@@ -278,6 +298,31 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
     );
     return result.build();
   }
+}
+
+class ReservationTripStatusEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'scheduled')
+  static const ReservationTripStatusEnum scheduled =
+      _$reservationTripStatusEnum_scheduled;
+  @BuiltValueEnumConst(wireName: r'active')
+  static const ReservationTripStatusEnum active =
+      _$reservationTripStatusEnum_active;
+  @BuiltValueEnumConst(wireName: r'completed')
+  static const ReservationTripStatusEnum completed =
+      _$reservationTripStatusEnum_completed;
+  @BuiltValueEnumConst(wireName: r'cancelled')
+  static const ReservationTripStatusEnum cancelled =
+      _$reservationTripStatusEnum_cancelled;
+
+  static Serializer<ReservationTripStatusEnum> get serializer =>
+      _$reservationTripStatusEnumSerializer;
+
+  const ReservationTripStatusEnum._(String name) : super(name);
+
+  static BuiltSet<ReservationTripStatusEnum> get values =>
+      _$reservationTripStatusEnumValues;
+  static ReservationTripStatusEnum valueOf(String name) =>
+      _$reservationTripStatusEnumValueOf(name);
 }
 
 class ReservationDirectionEnum extends EnumClass {

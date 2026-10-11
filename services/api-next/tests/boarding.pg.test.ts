@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID, randomBytes, createHmac } from 'node:crypto';
+import { randomUUID, randomBytes, createHmac, createHash } from 'node:crypto';
 import { SignJWT } from 'jose';
 import { setup, at, files } from './helpers/financial-fixture.js';
 import { MembershipService } from '../src/membership/service.js';
@@ -221,6 +221,85 @@ async function seat(t: TestContext, aux = false) {
   f.setNow('2026-01-02T06:35:00Z');
   return { ...f, period, run: trip, reservation: r };
 }
+
+test('RATING-01: only the boarded rider can rate a completed trip, exactly once without another ride debit', async (t) => {
+  const f = await seat(t);
+  const path = `/v1/me/reservations/${f.reservation.id}/rating`;
+  const detailPath = `/v1/me/reservations/${f.reservation.id}`;
+  assert.equal((await f.request('GET', detailPath, undefined, 'rider')).data.rating, null);
+  for (const stars of [0, 6, 2.5, '5', null])
+    await f.request('POST', path, { stars }, 'rider', 400);
+  await f.request('POST', path, { stars: 5 }, 'other', 404);
+  await f.request('POST', path, { stars: 5 }, 'driver', 400);
+  await f.request('POST', path, { stars: 5 }, 'rider', 409);
+  await f.board(f.run.id, { kind: 'photo', reservationId: f.reservation.id });
+  await f.owner.query(
+    "UPDATE app.trips SET status='active',started_at=clock_timestamp() WHERE id=$1",
+    [f.run.id],
+  );
+  await f.request('POST', path, { stars: 5 }, 'rider', 409);
+  await f.owner.query(
+    "UPDATE app.trips SET status='completed',completed_at=clock_timestamp() WHERE id=$1",
+    [f.run.id],
+  );
+  const before = await f.counts();
+  const key = randomUUID();
+  const results = await Promise.all([
+    f.request('POST', path, { stars: 5 }, 'rider', 200, key),
+    f.request('POST', path, { stars: 5 }, 'rider', 200, key),
+  ]);
+  assert.deepEqual(results[0].data, results[1].data);
+  assert.equal(results[0].data.stars, 5);
+  assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.ride_ratings')).rows[0].n, 1);
+  const receipt = (
+    await f.owner.query(
+      "SELECT input_hash FROM app.membership_commands WHERE operation='rateReservation' AND resource_id=$1",
+      [f.reservation.id],
+    )
+  ).rows[0];
+  assert.equal(receipt.input_hash, createHash('sha256').update('ride-rating').digest('hex'));
+  await f.request('POST', path, { stars: 2 }, 'rider', 409, key);
+  await f.request('POST', path, { stars: 2 }, 'rider', 409);
+  assert.equal((await f.request('POST', path, { stars: 5 }, 'rider')).data.stars, 5);
+  const detail = (await f.request('GET', detailPath, undefined, 'rider')).data;
+  assert.deepEqual(detail.rating, results[0].data);
+  assert.equal(detail.reservation.tripStatus, 'completed');
+  const list = (
+    await f.request(
+      'GET',
+      '/v1/me/reservations?fromDate=2026-01-02&toDate=2026-01-02',
+      undefined,
+      'rider',
+    )
+  ).data;
+  assert.equal(list[0].tripStatus, 'completed');
+  assert.deepEqual(await f.counts(), before, 'feedback changes no boarding or financial record');
+  await f.owner.query('UPDATE app.test_fin_sessions SET active=false WHERE user_id=$1', [
+    f.actor.userId,
+  ]);
+  await f.request('POST', path, { stars: 5 }, 'rider', 401, key);
+});
+
+test('RATING-02: a completed trip does not let an unboarded or missed rider submit feedback', async (t) => {
+  const f = await seat(t);
+  await f.owner.query(
+    "UPDATE app.trips SET status='active',started_at=clock_timestamp() WHERE id=$1",
+    [f.run.id],
+  );
+  await f.owner.query(
+    "UPDATE app.trips SET status='completed',completed_at=clock_timestamp() WHERE id=$1",
+    [f.run.id],
+  );
+  const result = await f.request(
+    'POST',
+    `/v1/me/reservations/${f.reservation.id}/rating`,
+    { stars: 1 },
+    'rider',
+    409,
+  );
+  assert.equal(result.error.code, 'rating_not_available');
+  assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.ride_ratings')).rows[0].n, 0);
+});
 
 test('BRD-01: issued pass binds reservation/trip and QR commits exactly one owned ride with attendance', async (t) => {
   const f = await seat(t),
@@ -615,6 +694,8 @@ test('BRD-17: 014 to 015 upgrade preserves funded reservations and recorded migr
     '046_decision_reasons.sql',
     '047_commuter_email_auth.sql',
     '048_phone_password_registration.sql',
+    '049_ride_ratings.sql',
+    '050_commute_plan_intervals.sql',
   ]);
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.reservations')).rows, before);

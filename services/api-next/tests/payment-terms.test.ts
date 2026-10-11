@@ -62,3 +62,17 @@ test('FIN-U02: monthly/annual UTC periods clamp end of month and preserve time',
     '2025-02-28T00:00:00.000Z',
   );
 });
+
+test('FIN-U03: weekly and biweekly are seven and fourteen UTC days across month and year boundaries', () => {
+  for (const start of ['2026-12-28T12:34:56.789Z', '2024-02-26T12:34:56.789Z']) {
+    for (const [plan, days] of [
+      ['weekly', 7],
+      ['biweekly', 14],
+    ] as const) {
+      assert.equal(
+        billingEnd(plan, new Date(start)).getTime() - Date.parse(start),
+        days * 86400000,
+      );
+    }
+  }
+});

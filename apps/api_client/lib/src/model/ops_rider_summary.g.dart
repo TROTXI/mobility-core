@@ -16,6 +16,10 @@ class _$OpsRiderSummary extends OpsRiderSummary {
   @override
   final int lapsed;
   @override
+  final int weekly;
+  @override
+  final int biweekly;
+  @override
   final int monthly;
   @override
   final int annual;
@@ -32,6 +36,8 @@ class _$OpsRiderSummary extends OpsRiderSummary {
       required this.active,
       required this.paused,
       required this.lapsed,
+      required this.weekly,
+      required this.biweekly,
       required this.monthly,
       required this.annual,
       required this.creditOutstanding,
@@ -52,6 +58,8 @@ class _$OpsRiderSummary extends OpsRiderSummary {
         active == other.active &&
         paused == other.paused &&
         lapsed == other.lapsed &&
+        weekly == other.weekly &&
+        biweekly == other.biweekly &&
         monthly == other.monthly &&
         annual == other.annual &&
         creditOutstanding == other.creditOutstanding &&
@@ -65,6 +73,8 @@ class _$OpsRiderSummary extends OpsRiderSummary {
     _$hash = $jc(_$hash, active.hashCode);
     _$hash = $jc(_$hash, paused.hashCode);
     _$hash = $jc(_$hash, lapsed.hashCode);
+    _$hash = $jc(_$hash, weekly.hashCode);
+    _$hash = $jc(_$hash, biweekly.hashCode);
     _$hash = $jc(_$hash, monthly.hashCode);
     _$hash = $jc(_$hash, annual.hashCode);
     _$hash = $jc(_$hash, creditOutstanding.hashCode);
@@ -80,6 +90,8 @@ class _$OpsRiderSummary extends OpsRiderSummary {
           ..add('active', active)
           ..add('paused', paused)
           ..add('lapsed', lapsed)
+          ..add('weekly', weekly)
+          ..add('biweekly', biweekly)
           ..add('monthly', monthly)
           ..add('annual', annual)
           ..add('creditOutstanding', creditOutstanding)
@@ -107,6 +119,14 @@ class OpsRiderSummaryBuilder
   int? _lapsed;
   int? get lapsed => _$this._lapsed;
   set lapsed(int? lapsed) => _$this._lapsed = lapsed;
+
+  int? _weekly;
+  int? get weekly => _$this._weekly;
+  set weekly(int? weekly) => _$this._weekly = weekly;
+
+  int? _biweekly;
+  int? get biweekly => _$this._biweekly;
+  set biweekly(int? biweekly) => _$this._biweekly = biweekly;
 
   int? _monthly;
   int? get monthly => _$this._monthly;
@@ -138,6 +158,8 @@ class OpsRiderSummaryBuilder
       _active = $v.active;
       _paused = $v.paused;
       _lapsed = $v.lapsed;
+      _weekly = $v.weekly;
+      _biweekly = $v.biweekly;
       _monthly = $v.monthly;
       _annual = $v.annual;
       _creditOutstanding = $v.creditOutstanding.toBuilder();
@@ -173,6 +195,10 @@ class OpsRiderSummaryBuilder
                 paused, r'OpsRiderSummary', 'paused'),
             lapsed: BuiltValueNullFieldError.checkNotNull(
                 lapsed, r'OpsRiderSummary', 'lapsed'),
+            weekly: BuiltValueNullFieldError.checkNotNull(
+                weekly, r'OpsRiderSummary', 'weekly'),
+            biweekly: BuiltValueNullFieldError.checkNotNull(
+                biweekly, r'OpsRiderSummary', 'biweekly'),
             monthly: BuiltValueNullFieldError.checkNotNull(
                 monthly, r'OpsRiderSummary', 'monthly'),
             annual: BuiltValueNullFieldError.checkNotNull(

@@ -6,6 +6,10 @@ part of 'purchase_quote.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
+const PurchaseQuotePlanEnum _$purchaseQuotePlanEnum_weekly =
+    const PurchaseQuotePlanEnum._('weekly');
+const PurchaseQuotePlanEnum _$purchaseQuotePlanEnum_biweekly =
+    const PurchaseQuotePlanEnum._('biweekly');
 const PurchaseQuotePlanEnum _$purchaseQuotePlanEnum_monthly =
     const PurchaseQuotePlanEnum._('monthly');
 const PurchaseQuotePlanEnum _$purchaseQuotePlanEnum_annual =
@@ -13,6 +17,10 @@ const PurchaseQuotePlanEnum _$purchaseQuotePlanEnum_annual =
 
 PurchaseQuotePlanEnum _$purchaseQuotePlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$purchaseQuotePlanEnum_weekly;
+    case 'biweekly':
+      return _$purchaseQuotePlanEnum_biweekly;
     case 'monthly':
       return _$purchaseQuotePlanEnum_monthly;
     case 'annual':
@@ -24,6 +32,8 @@ PurchaseQuotePlanEnum _$purchaseQuotePlanEnumValueOf(String name) {
 
 final BuiltSet<PurchaseQuotePlanEnum> _$purchaseQuotePlanEnumValues =
     BuiltSet<PurchaseQuotePlanEnum>(const <PurchaseQuotePlanEnum>[
+  _$purchaseQuotePlanEnum_weekly,
+  _$purchaseQuotePlanEnum_biweekly,
   _$purchaseQuotePlanEnum_monthly,
   _$purchaseQuotePlanEnum_annual,
 ]);
@@ -56,10 +66,14 @@ Serializer<PurchaseQuoteRenewalModeEnum>
 class _$PurchaseQuotePlanEnumSerializer
     implements PrimitiveSerializer<PurchaseQuotePlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };

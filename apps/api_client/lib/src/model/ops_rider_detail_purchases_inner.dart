@@ -28,7 +28,7 @@ abstract class OpsRiderDetailPurchasesInner
 
   @BuiltValueField(wireName: r'plan')
   OpsRiderDetailPurchasesInnerPlanEnum get plan;
-  // enum planEnum {  monthly,  annual,  };
+  // enum planEnum {  weekly,  biweekly,  monthly,  annual,  };
 
   @BuiltValueField(wireName: r'state')
   String get state;
@@ -184,6 +184,12 @@ class _$OpsRiderDetailPurchasesInnerSerializer
 }
 
 class OpsRiderDetailPurchasesInnerPlanEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'weekly')
+  static const OpsRiderDetailPurchasesInnerPlanEnum weekly =
+      _$opsRiderDetailPurchasesInnerPlanEnum_weekly;
+  @BuiltValueEnumConst(wireName: r'biweekly')
+  static const OpsRiderDetailPurchasesInnerPlanEnum biweekly =
+      _$opsRiderDetailPurchasesInnerPlanEnum_biweekly;
   @BuiltValueEnumConst(wireName: r'monthly')
   static const OpsRiderDetailPurchasesInnerPlanEnum monthly =
       _$opsRiderDetailPurchasesInnerPlanEnum_monthly;

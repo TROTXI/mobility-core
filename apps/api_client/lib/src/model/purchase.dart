@@ -34,7 +34,7 @@ abstract class Purchase implements Built<Purchase, PurchaseBuilder> {
 
   @BuiltValueField(wireName: r'plan')
   PurchasePlanEnum get plan;
-  // enum planEnum {  monthly,  annual,  };
+  // enum planEnum {  weekly,  biweekly,  monthly,  annual,  };
 
   @BuiltValueField(wireName: r'state')
   PurchaseStateEnum get state;
@@ -302,6 +302,10 @@ class _$PurchaseSerializer implements PrimitiveSerializer<Purchase> {
 }
 
 class PurchasePlanEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'weekly')
+  static const PurchasePlanEnum weekly = _$purchasePlanEnum_weekly;
+  @BuiltValueEnumConst(wireName: r'biweekly')
+  static const PurchasePlanEnum biweekly = _$purchasePlanEnum_biweekly;
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchasePlanEnum monthly = _$purchasePlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')

@@ -5,6 +5,32 @@ export const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export const futureDate = (days: number) =>
   new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
+export const planLabel = (plan: string) =>
+  ({
+    weekly: 'Weekly',
+    biweekly: 'Biweekly',
+    monthly: 'Monthly',
+    annual: 'Annual (previous plan)',
+  })[plan] ?? plan;
+
+/** Suggested exclusive end. Ops still reviews exact dates and price before sending. */
+export function suggestedCoverageEnd(start: string, plan: string): string {
+  const date = new Date(`${start}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return '';
+  if (plan === 'weekly' || plan === 'biweekly') {
+    date.setUTCDate(date.getUTCDate() + (plan === 'weekly' ? 7 : 14));
+  } else {
+    const day = date.getUTCDate();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() + 1);
+    const last = new Date(date);
+    last.setUTCMonth(last.getUTCMonth() + 1);
+    last.setUTCDate(0);
+    date.setUTCDate(Math.min(day, last.getUTCDate()));
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 export function pesewas(value: string) {
   if (!/^\d+(\.\d{1,2})?$/.test(value))
     throw new Error('Enter amounts in GHS, with at most two decimal places.');

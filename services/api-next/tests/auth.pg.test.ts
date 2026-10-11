@@ -895,14 +895,14 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   ]);
   assert.deepEqual(pageTwo.routeDemand, pageOne.routeDemand);
   await owner.query(
-    "UPDATE app.standby_applications SET travel_days=ARRAY[1,3]::smallint[], selection=jsonb_set(selection,'{plan}','\"annual\"') WHERE user_id=$1",
+    "UPDATE app.standby_applications SET travel_days=ARRAY[1,3]::smallint[], selection=jsonb_set(selection,'{plan}','\"biweekly\"') WHERE user_id=$1",
     [otherRider],
   );
   const pending = (
     await standby.list(adminActor, true, {
       routeId: route,
       state: 'submitted',
-      plan: 'annual',
+      plan: 'biweekly',
       day: '3',
       q: 'other',
     })
@@ -918,7 +918,7 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   for (const filter of [
     { routeId: 'bad' },
     { state: 'bogus' },
-    { plan: 'weekly' },
+    { plan: 'annual' },
     { day: '8' },
     { day: '1.5' },
   ])
@@ -929,7 +929,7 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   for (const filter of [
     { routeId: route },
     { state: 'submitted' },
-    { plan: 'annual' },
+    { plan: 'biweekly' },
     { day: '1' },
     { q: 'Other' },
   ])

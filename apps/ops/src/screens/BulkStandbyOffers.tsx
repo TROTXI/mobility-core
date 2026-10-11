@@ -11,6 +11,8 @@ import {
   futureDate,
   pesewas,
   weekdays,
+  planLabel,
+  suggestedCoverageEnd,
   type StandbyApplication,
 } from './standby-offers';
 import { useStandbyPricing } from './useStandbyPricing';
@@ -53,7 +55,10 @@ export function BulkStandbyOffers({
     Object.fromEntries(applications.map((a) => [a.id, { price: '', outbound: '', return: '' }])),
   );
   const [start, setStart] = useState(futureDate(3));
-  const [end, setEnd] = useState(futureDate(33));
+  const [end, setEnd] = useState(() =>
+    suggestedCoverageEnd(futureDate(3), applications[0]?.selection.plan ?? 'monthly'),
+  );
+  const mixedPlans = new Set(applications.map((a) => a.selection.plan)).size > 1;
   const [days, setDays] = useState(2);
   const [reason, setReason] = useState('');
   const [reviewed, setReviewed] = useState(false);
@@ -95,7 +100,12 @@ export function BulkStandbyOffers({
       description="Each rider receives their own immutable offer. Review stops, days, price and credits separately. Sending an offer does not reserve bus seats. A partial failure does not undo offers already sent."
       confirmLabel={started ? 'Retry unsent offers' : 'Send reviewed offers'}
       confirmDisabled={
-        !reviewed || !reason.trim() || pricing.loading || !!pricing.error || unavailable
+        !reviewed ||
+        !reason.trim() ||
+        pricing.loading ||
+        !!pricing.error ||
+        unavailable ||
+        mixedPlans
       }
       onClose={started ? onClose : onDiscard}
       onConfirm={async () => {
@@ -214,6 +224,9 @@ export function BulkStandbyOffers({
         }
       }}
     >
+      {mixedPlans && (
+        <p role="alert">Select riders with the same plan duration to send offers together.</p>
+      )}
       <p>
         <strong>{applications[0]?.routeName}</strong>. Amounts entered in GHS are sent as whole
         pesewas.
@@ -267,7 +280,7 @@ export function BulkStandbyOffers({
           <section className="bulk-offer-row" key={a.id} aria-label={`Offer for ${a.riderName}`}>
             <h3>{a.riderName}</h3>
             <p>
-              {a.selection.plan} · {a.travelDays.map((d) => weekdays[d - 1]).join(', ')}
+              {planLabel(a.selection.plan)} · {a.travelDays.map((d) => weekdays[d - 1]).join(', ')}
             </p>
             {es.map((e) => (
               <p key={e.direction}>

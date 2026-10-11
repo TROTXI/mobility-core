@@ -10,6 +10,8 @@ class _$ReservationDetail extends ReservationDetail {
   @override
   final Reservation reservation;
   @override
+  final ReservationDetailRating? rating;
+  @override
   final ReservationDetailRoute? route;
   @override
   final ReservationDetailTrip? trip;
@@ -24,6 +26,7 @@ class _$ReservationDetail extends ReservationDetail {
 
   _$ReservationDetail._(
       {required this.reservation,
+      this.rating,
       this.route,
       this.trip,
       this.pickupStop,
@@ -42,6 +45,7 @@ class _$ReservationDetail extends ReservationDetail {
     if (identical(other, this)) return true;
     return other is ReservationDetail &&
         reservation == other.reservation &&
+        rating == other.rating &&
         route == other.route &&
         trip == other.trip &&
         pickupStop == other.pickupStop &&
@@ -52,6 +56,7 @@ class _$ReservationDetail extends ReservationDetail {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, reservation.hashCode);
+    _$hash = $jc(_$hash, rating.hashCode);
     _$hash = $jc(_$hash, route.hashCode);
     _$hash = $jc(_$hash, trip.hashCode);
     _$hash = $jc(_$hash, pickupStop.hashCode);
@@ -64,6 +69,7 @@ class _$ReservationDetail extends ReservationDetail {
   String toString() {
     return (newBuiltValueToStringHelper(r'ReservationDetail')
           ..add('reservation', reservation)
+          ..add('rating', rating)
           ..add('route', route)
           ..add('trip', trip)
           ..add('pickupStop', pickupStop)
@@ -81,6 +87,11 @@ class ReservationDetailBuilder
       _$this._reservation ??= ReservationBuilder();
   set reservation(ReservationBuilder? reservation) =>
       _$this._reservation = reservation;
+
+  ReservationDetailRatingBuilder? _rating;
+  ReservationDetailRatingBuilder get rating =>
+      _$this._rating ??= ReservationDetailRatingBuilder();
+  set rating(ReservationDetailRatingBuilder? rating) => _$this._rating = rating;
 
   ReservationDetailRouteBuilder? _route;
   ReservationDetailRouteBuilder get route =>
@@ -112,6 +123,7 @@ class ReservationDetailBuilder
     final $v = _$v;
     if ($v != null) {
       _reservation = $v.reservation.toBuilder();
+      _rating = $v.rating?.toBuilder();
       _route = $v.route?.toBuilder();
       _trip = $v.trip?.toBuilder();
       _pickupStop = $v.pickupStop?.toBuilder();
@@ -140,6 +152,7 @@ class ReservationDetailBuilder
       _$result = _$v ??
           _$ReservationDetail._(
             reservation: reservation.build(),
+            rating: _rating?.build(),
             route: _route?.build(),
             trip: _trip?.build(),
             pickupStop: _pickupStop?.build(),
@@ -150,6 +163,8 @@ class ReservationDetailBuilder
       try {
         _$failedField = 'reservation';
         reservation.build();
+        _$failedField = 'rating';
+        _rating?.build();
         _$failedField = 'route';
         _route?.build();
         _$failedField = 'trip';

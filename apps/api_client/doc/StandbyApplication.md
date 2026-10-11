@@ -13,11 +13,9 @@ Name | Type | Description | Notes
 **riderName** | **String** |  |
 **routeName** | **String** |  |
 **state** | **String** |  |
-**selection** | [**PurchaseInput**](PurchaseInput.md) |  |
+**selection** | [**PurchaseSelection**](PurchaseSelection.md) |  |
 **travelDays** | **BuiltList&lt;int&gt;** |  |
 **offer** | [**StandbyApplicationOffer**](StandbyApplicationOffer.md) |  |
 **createdAt** | [**DateTime**](DateTime.md) |  |
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
-

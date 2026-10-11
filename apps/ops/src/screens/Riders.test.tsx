@@ -39,6 +39,8 @@ beforeEach(() => {
           data: {
             active: 1,
             paused: 0,
+            weekly: 0,
+            biweekly: 0,
             monthly: 0,
             annual: 0,
             creditOutstanding: rider.availableCredit,

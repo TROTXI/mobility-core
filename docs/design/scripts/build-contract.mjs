@@ -142,7 +142,7 @@ for (const o of operations) {
         : m[1] === 'app'
           ? { type: 'string', enum: ['commuter', 'driver'] }
           : m[1] === 'plan'
-            ? { type: 'string', enum: ['monthly', 'annual'] }
+            ? { type: 'string', enum: ['weekly', 'biweekly', 'monthly'] }
             : str,
   }));
   if (o.list)
@@ -203,7 +203,7 @@ for (const o of operations) {
         },
         'Application state. Omit for all states.',
       ),
-      query('plan', { type: 'string', enum: ['monthly', 'annual'] }, 'Requested plan.'),
+      query('plan', { type: 'string', enum: ['weekly', 'biweekly', 'monthly'] }, 'Requested plan.'),
       query(
         'day',
         { type: 'integer', minimum: 1, maximum: 7 },

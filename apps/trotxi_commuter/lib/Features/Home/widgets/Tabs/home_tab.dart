@@ -11,6 +11,7 @@ import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_details_page.da
 import 'package:trotxi_commuter/Features/Home/widgets/home_overview.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/widgets/figma_commuter_icon.dart';
+import '../Trips/ride_rating_card.dart';
 
 // ---------------------------------------------------------------------
 // Models
@@ -189,9 +190,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
     final lifecycleAsync = ref.watch(rideLifecycleProvider);
-    final detail = lifecycleAsync.asData?.value is RideReserved
-        ? ref.watch(homeReservationDetailProvider).asData?.value
-        : null;
+    final detail = ref.watch(homeReservationDetailProvider).asData?.value;
 
     return Scaffold(
       backgroundColor: context.appColors.backgroundDefault,
@@ -246,6 +245,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     final subtitle = switch (state) {
       RideReserved() => 'Your seat is confirmed for this departure.',
       RideBoarded() => 'You have boarded this departure.',
+      RideCompleted() => 'Your commute is complete.',
       _ => 'Your commute at a glance.',
     };
 
@@ -342,6 +342,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       ],
 
       RideBoarded() => [_buildBoardedCard()],
+      RideCompleted(:final reservationId) => _buildCompletedSection(
+        reservationId,
+      ),
 
       RideDeclined() => [
         _buildStatusCard(
@@ -738,6 +741,46 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildCompletedSection(String reservationId) {
+    final colors = context.appColors;
+    final details = ref.watch(homeReservationDetailProvider);
+    final detail = details.asData?.value;
+    return [
+      _buildStatusCard(
+        icon: Icons.check_circle_outline_rounded,
+        title: 'Trip completed',
+        message: detail?.pickupStop != null && detail?.dropoffStop != null
+            ? '${detail!.pickupStop!.name} → ${detail.dropoffStop!.name}'
+            : 'Thank you for riding with Trotxi.',
+        accentColor: colors.actionSecondary,
+      ),
+      if (detail != null &&
+          detail.reservation.id == reservationId &&
+          detail.reservation.status == wire.ReservationStatusEnum.boarded &&
+          detail.trip?.status ==
+              wire.ReservationDetailTripStatusEnum.completed) ...[
+        const SizedBox(height: 24),
+        RideRatingCard(
+          key: ValueKey(reservationId),
+          client: widget.client,
+          reservationId: reservationId,
+          initialStars: detail.rating?.stars,
+          onSubmitted: () => ref.invalidate(
+            homeDetailProvider((widget.client, reservationId)),
+          ),
+        ),
+      ] else if (details.hasError) ...[
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => ref.invalidate(
+            homeDetailProvider((widget.client, reservationId)),
+          ),
+          child: const Text('Load ride feedback'),
+        ),
+      ],
+    ];
   }
 
   Widget _buildStatusCard({

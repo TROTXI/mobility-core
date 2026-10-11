@@ -8,7 +8,14 @@ import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../com
 import { ActionDialog } from '../components/ActionDialog';
 import { ReasonField } from '../components/ReasonField';
 import { BulkStandbyOffers } from './BulkStandbyOffers';
-import { estimateOffers, futureDate, pesewas, weekdays } from './standby-offers';
+import {
+  estimateOffers,
+  futureDate,
+  pesewas,
+  weekdays,
+  planLabel,
+  suggestedCoverageEnd,
+} from './standby-offers';
 import { useStandbyPricing } from './useStandbyPricing';
 
 type Application = components['schemas']['StandbyApplication'];
@@ -18,7 +25,7 @@ export function Standby() {
   const { session, account } = useAuth();
   const [routeId, setRouteId] = useState('');
   const [state, setState] = useState<Application['state'] | ''>('submitted');
-  const [plan, setPlan] = useState<'' | 'monthly' | 'annual'>('');
+  const [plan, setPlan] = useState<'' | 'weekly' | 'biweekly' | 'monthly'>('');
   const [day, setDay] = useState('');
   const [search, setSearch] = useState('');
   const [name, setName] = useState('');
@@ -112,8 +119,9 @@ export function Standby() {
           Plan
           <select value={plan} onChange={(e) => setPlan(e.target.value as typeof plan)}>
             <option value="">All plans</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Biweekly</option>
             <option value="monthly">Monthly</option>
-            <option value="annual">Annual</option>
           </select>
         </label>
         <label>
@@ -288,7 +296,7 @@ export function Standby() {
                       {application.travelDays.map((d) => weekdays[d - 1]).join(', ') ||
                         'New request needed'}
                     </td>
-                    <td>{application.selection.plan}</td>
+                    <td>{planLabel(application.selection.plan)}</td>
                     <td>
                       <StatusBadge value={application.state} />
                     </td>
@@ -308,6 +316,9 @@ export function Standby() {
                             setOutboundCredit('');
                             setReturnCredit('');
                             setReason('');
+                            const start = futureDate(3);
+                            setCoverageStart(start);
+                            setCoverageEnd(suggestedCoverageEnd(start, application.selection.plan));
                             setSelected(application);
                           }}
                         >

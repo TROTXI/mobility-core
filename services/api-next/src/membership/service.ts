@@ -25,6 +25,7 @@ export const membershipOperations = [
   'retireCommuteSlot',
   'listReservations',
   'getReservation',
+  'rateReservation',
   'decideReservation',
   'createAccountRestriction',
   'releaseAccountRestriction',
@@ -443,6 +444,7 @@ export class MembershipService {
     return {
       id: r.id,
       tripId: r.trip_id,
+      tripStatus: r.trip_status ?? null,
       travelDate: dayString(r.service_date),
       direction: r.direction,
       status: r.status,
@@ -464,6 +466,15 @@ export class MembershipService {
     };
   }
   private async render(c: PoolClient, op: string, resource: string, admin: boolean) {
+    if (op === 'rateReservation') {
+      const rating = (
+        await c.query('SELECT stars,rated_at FROM app.ride_ratings WHERE reservation_id=$1', [
+          resource,
+        ])
+      ).rows[0];
+      if (!rating?.stars) fail(404, 'not_found', 'Rating unavailable.');
+      return { stars: rating.stars, ratedAt: iso(rating.rated_at) };
+    }
     if (op === 'createPersonalPause' || op === 'resumePersonalPause')
       return this.personalPauseView(c, resource);
     if (op.includes('CommuteSlot'))
@@ -552,6 +563,16 @@ export class MembershipService {
         fail(404, 'not_found', 'Restriction not found.');
       // Foreign rider resources are refused before receipt lookup or If-Match.
       if (
+        op === 'rateReservation' &&
+        !(
+          await c.query('SELECT 1 FROM app.reservations WHERE id=$1 AND user_id=$2', [
+            scope,
+            actor.userId,
+          ])
+        ).rowCount
+      )
+        fail(404, 'not_found', 'Reservation not found.');
+      if (
         (op === 'withdrawCommuteRequest' || op === 'resumePersonalPause') &&
         !(
           await c.query(
@@ -564,7 +585,9 @@ export class MembershipService {
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         JSON.stringify([actor.userId, op, scope, digest(key)]),
       ]);
-      const hash = digest(canonical(normalized));
+      // A hash of one of five scores would disclose the score after erasure.
+      // Rating replays compare against the erasable source row instead.
+      const hash = digest(op === 'rateReservation' ? 'ride-rating' : canonical(normalized));
       const old = (
         await c.query(
           'SELECT * FROM app.membership_commands WHERE actor_user_id=$1 AND operation=$2 AND target=$3 AND key_hash=$4',
@@ -574,6 +597,14 @@ export class MembershipService {
       if (old) {
         if (old.input_hash !== hash)
           fail(409, 'idempotency_conflict', 'This key was used for different input.');
+        if (op === 'rateReservation') {
+          const rating = (
+            await c.query('SELECT stars FROM app.ride_ratings WHERE reservation_id=$1', [scope])
+          ).rows[0];
+          if (rating?.stars == null) fail(404, 'not_found', 'Rating unavailable.');
+          if (rating.stars !== normalized.stars)
+            fail(409, 'idempotency_conflict', 'This key was used for different input.');
+        }
         if (Date.now() - old.created_at.getTime() >= 7 * 86400000)
           fail(409, 'idempotency_expired', 'Use a new request key.');
         return this.commandOutcome(c, op, old.resource_id);
@@ -609,6 +640,45 @@ export class MembershipService {
     match?: string,
   ): Promise<string> {
     const now = this.now();
+    if (op === 'rateReservation') {
+      const stars = input.stars;
+      if (typeof stars !== 'number' || !Number.isInteger(stars) || stars < 1 || stars > 5)
+        fail(400, 'invalid_request', 'Choose a rating from one to five stars.');
+      // Own-rider lock is already held. Trip lock precedes reservation lock,
+      // as in boarding and reservation coordination.
+      const reservation = (
+        await c.query('SELECT trip_id FROM app.reservations WHERE id=$1 AND user_id=$2', [
+          target,
+          actor.userId,
+        ])
+      ).rows[0];
+      if (!reservation) fail(404, 'not_found', 'Reservation not found.');
+      const trip = (
+        await c.query('SELECT status FROM app.trips WHERE id=$1 FOR SHARE', [reservation.trip_id])
+      ).rows[0];
+      const row = (
+        await c.query('SELECT status FROM app.reservations WHERE id=$1 FOR UPDATE', [target])
+      ).rows[0];
+      if (row.status !== 'boarded' || trip?.status !== 'completed')
+        fail(
+          409,
+          'rating_not_available',
+          'You can rate a ride after you have boarded and the trip is complete.',
+        );
+      const previous = (
+        await c.query('SELECT stars FROM app.ride_ratings WHERE reservation_id=$1', [target])
+      ).rows[0];
+      if (previous) {
+        if (previous.stars !== stars)
+          fail(409, 'rating_already_submitted', 'You have already rated this ride.');
+        return target;
+      }
+      await c.query(
+        'INSERT INTO app.ride_ratings(reservation_id,stars,rated_at) VALUES ($1,$2,$3)',
+        [target, stars, now],
+      );
+      return target;
+    }
     if (op === 'createPersonalPause')
       return (await this.insertPersonalPause(c, actor.userId, input)).id;
     if (op === 'resumePersonalPause') {
@@ -1136,6 +1206,7 @@ export class MembershipService {
           await c.query(
             `SELECT r.*,t.id AS detail_trip_id,t.scheduled_at AS trip_scheduled_at,
               t.status AS trip_status,v.label AS vehicle_label,v.plate AS vehicle_plate,
+              rating.stars AS rating_stars,rating.rated_at,
               rt.id AS route_id,rt.name AS route_name,
               pickup.name AS pickup_name,pickup.latitude AS pickup_latitude,
               pickup.longitude AS pickup_longitude,pickup.ordinal AS pickup_ordinal,
@@ -1143,6 +1214,7 @@ export class MembershipService {
               dropoff.longitude AS dropoff_longitude,dropoff.ordinal AS dropoff_ordinal
             FROM app.reservations r
             LEFT JOIN app.trips t ON t.id=r.trip_id
+            LEFT JOIN app.ride_ratings rating ON rating.reservation_id=r.id
             LEFT JOIN app.vehicles v ON v.id=t.vehicle_id
             LEFT JOIN app.route_pattern_versions pv ON pv.id=r.pattern_version_id
             LEFT JOIN app.route_patterns p ON p.id=pv.pattern_id
@@ -1174,6 +1246,10 @@ export class MembershipService {
           body: {
             data: {
               reservation: this.reservationView(row),
+              rating:
+                row.rating_stars === null
+                  ? null
+                  : { stars: row.rating_stars, ratedAt: iso(row.rated_at) },
               route: row.route_id === null ? null : { id: row.route_id, name: row.route_name },
               trip:
                 row.detail_trip_id === null
@@ -1283,7 +1359,7 @@ export class MembershipService {
       args.push(limit + 1);
       const rows = (
         await c.query(
-          `SELECT x.*,to_char(x.${clock} AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM app.${table} x WHERE ${where} ORDER BY x.${clock} DESC,x.id DESC LIMIT $${args.length}`,
+          `SELECT x.*,${table === 'reservations' ? '(SELECT status FROM app.trips WHERE id=x.trip_id) AS trip_status,' : ''}to_char(x.${clock} AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM app.${table} x WHERE ${where} ORDER BY x.${clock} DESC,x.id DESC LIMIT $${args.length}`,
           args,
         )
       ).rows;

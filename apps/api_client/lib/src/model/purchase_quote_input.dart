@@ -20,7 +20,7 @@ abstract class PurchaseQuoteInput
     implements Built<PurchaseQuoteInput, PurchaseQuoteInputBuilder> {
   @BuiltValueField(wireName: r'plan')
   PurchaseQuoteInputPlanEnum get plan;
-  // enum planEnum {  monthly,  annual,  };
+  // enum planEnum {  weekly,  biweekly,  monthly,  };
 
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
@@ -145,12 +145,15 @@ class _$PurchaseQuoteInputSerializer
 }
 
 class PurchaseQuoteInputPlanEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'weekly')
+  static const PurchaseQuoteInputPlanEnum weekly =
+      _$purchaseQuoteInputPlanEnum_weekly;
+  @BuiltValueEnumConst(wireName: r'biweekly')
+  static const PurchaseQuoteInputPlanEnum biweekly =
+      _$purchaseQuoteInputPlanEnum_biweekly;
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchaseQuoteInputPlanEnum monthly =
       _$purchaseQuoteInputPlanEnum_monthly;
-  @BuiltValueEnumConst(wireName: r'annual')
-  static const PurchaseQuoteInputPlanEnum annual =
-      _$purchaseQuoteInputPlanEnum_annual;
 
   static Serializer<PurchaseQuoteInputPlanEnum> get serializer =>
       _$purchaseQuoteInputPlanEnumSerializer;

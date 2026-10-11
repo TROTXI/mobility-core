@@ -228,6 +228,7 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**markNotificationRead**](doc/RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPersonalPause**](doc/RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPurchase**](doc/RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**rateReservation**](doc/RiderOwnApi.md#ratereservation) | **POST** /v1/me/reservations/{id}/rating | rate Reservation
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**removeAutoRenewalCard**](doc/RiderOwnApi.md#removeautorenewalcard) | **DELETE** /v1/me/auto-renewal/card | remove Auto Renewal Card
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**resumePersonalPause**](doc/RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**setAutoRenewal**](doc/RiderOwnApi.md#setautorenewal) | **PUT** /v1/me/auto-renewal | set Auto Renewal
@@ -515,6 +516,7 @@ Class | Method | HTTP request | Description
  - [PurchaseQuoteInput](doc/PurchaseQuoteInput.md)
  - [PurchaseQuoteResponse](doc/PurchaseQuoteResponse.md)
  - [PurchaseResponse](doc/PurchaseResponse.md)
+ - [PurchaseSelection](doc/PurchaseSelection.md)
  - [ReasonInput](doc/ReasonInput.md)
  - [ReceivePaystackWebhookRequest](doc/ReceivePaystackWebhookRequest.md)
  - [RefreshInput](doc/RefreshInput.md)
@@ -530,6 +532,7 @@ Class | Method | HTTP request | Description
  - [ReservationDecisionResultResponse](doc/ReservationDecisionResultResponse.md)
  - [ReservationDetail](doc/ReservationDetail.md)
  - [ReservationDetailPickupStop](doc/ReservationDetailPickupStop.md)
+ - [ReservationDetailRating](doc/ReservationDetailRating.md)
  - [ReservationDetailResponse](doc/ReservationDetailResponse.md)
  - [ReservationDetailRoute](doc/ReservationDetailRoute.md)
  - [ReservationDetailTrip](doc/ReservationDetailTrip.md)
@@ -540,6 +543,9 @@ Class | Method | HTTP request | Description
  - [ReviewDecision](doc/ReviewDecision.md)
  - [RideEntry](doc/RideEntry.md)
  - [RideEntryPage](doc/RideEntryPage.md)
+ - [RideRating](doc/RideRating.md)
+ - [RideRatingInput](doc/RideRatingInput.md)
+ - [RideRatingResponse](doc/RideRatingResponse.md)
  - [RiderErasureInput](doc/RiderErasureInput.md)
  - [RiderNotification](doc/RiderNotification.md)
  - [RiderNotificationPage](doc/RiderNotificationPage.md)

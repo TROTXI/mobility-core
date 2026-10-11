@@ -7,8 +7,18 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 /// The plan the purchase bought.
+String commutePlanLabel(String plan) => switch (plan) {
+  'weekly' => 'Weekly',
+  'biweekly' => 'Biweekly',
+  'monthly' => 'Monthly',
+  'annual' => 'Annual (previous plan)',
+  _ => 'Commute',
+};
+
 String purchasePlanLabel(PurchasePlanEnum plan) =>
-    plan == PurchasePlanEnum.annual ? 'Annual plan' : 'Monthly plan';
+    plan == PurchasePlanEnum.annual
+    ? 'Annual plan (previous)'
+    : '${commutePlanLabel(plan.name)} plan';
 
 String purchaseCashLabel(PurchaseCollectionStateEnum state) =>
     state == PurchaseCollectionStateEnum.successful

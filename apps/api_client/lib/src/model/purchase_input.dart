@@ -22,7 +22,7 @@ abstract class PurchaseInput
     implements Built<PurchaseInput, PurchaseInputBuilder> {
   @BuiltValueField(wireName: r'plan')
   PurchaseInputPlanEnum get plan;
-  // enum planEnum {  monthly,  annual,  };
+  // enum planEnum {  weekly,  biweekly,  monthly,  };
 
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
@@ -161,10 +161,13 @@ class _$PurchaseInputSerializer implements PrimitiveSerializer<PurchaseInput> {
 }
 
 class PurchaseInputPlanEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'weekly')
+  static const PurchaseInputPlanEnum weekly = _$purchaseInputPlanEnum_weekly;
+  @BuiltValueEnumConst(wireName: r'biweekly')
+  static const PurchaseInputPlanEnum biweekly =
+      _$purchaseInputPlanEnum_biweekly;
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchaseInputPlanEnum monthly = _$purchaseInputPlanEnum_monthly;
-  @BuiltValueEnumConst(wireName: r'annual')
-  static const PurchaseInputPlanEnum annual = _$purchaseInputPlanEnum_annual;
 
   static Serializer<PurchaseInputPlanEnum> get serializer =>
       _$purchaseInputPlanEnumSerializer;

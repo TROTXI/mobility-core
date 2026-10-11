@@ -671,6 +671,24 @@ class CommuterDataClient {
               )))
           .data;
 
+  /// One private rating for this rider's boarded, completed reservation.
+  /// _command preserves the request key across an uncertain network result.
+  Future<RideRating> rateReservation(String id, int stars) async =>
+      (await _command(
+        'rateReservation',
+        {'id': id, 'stars': stars},
+        (key, extra) => client.getRiderOwnApi().rateReservation(
+              id: id,
+              idempotencyKey: key,
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              rideRatingInput: RideRatingInput((b) => b.stars = stars),
+              extra: extra,
+            ),
+      ))
+          .data;
+
   Future<List<CommuteRequest>> commuteRequests(
           {CommuteRequestStatusEnum? status}) =>
       _pages(

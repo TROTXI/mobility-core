@@ -49,7 +49,7 @@ abstract class OpsRider implements Built<OpsRider, OpsRiderBuilder> {
 
   @BuiltValueField(wireName: r'plan')
   OpsRiderPlanEnum? get plan;
-  // enum planEnum {  monthly,  annual,  };
+  // enum planEnum {  weekly,  biweekly,  monthly,  annual,  };
 
   @BuiltValueField(wireName: r'routeName')
   String? get routeName;
@@ -341,6 +341,10 @@ class OpsRiderStatusEnum extends EnumClass {
 }
 
 class OpsRiderPlanEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'weekly')
+  static const OpsRiderPlanEnum weekly = _$opsRiderPlanEnum_weekly;
+  @BuiltValueEnumConst(wireName: r'biweekly')
+  static const OpsRiderPlanEnum biweekly = _$opsRiderPlanEnum_biweekly;
   @BuiltValueEnumConst(wireName: r'monthly')
   static const OpsRiderPlanEnum monthly = _$opsRiderPlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')

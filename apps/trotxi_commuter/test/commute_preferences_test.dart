@@ -222,7 +222,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  for (final plan in ['monthly', 'annual']) {
+  for (final plan in ['weekly', 'biweekly', 'monthly']) {
     testWidgets('waitlist submits the selected $plan plan with travel days', (
       tester,
     ) async {
@@ -275,8 +275,14 @@ void main() {
         find.textContaining('Tell us when and where you travel'),
         findsOneWidget,
       );
-      if (plan == 'annual') {
-        await tester.tap(find.text('Annual'));
+      expect(find.text('Annual'), findsNothing);
+      final label = {
+        'weekly': 'Weekly',
+        'biweekly': 'Biweekly',
+        'monthly': 'Monthly',
+      }[plan]!;
+      if (plan != 'monthly') {
+        await tester.tap(find.text(label));
         await tester.pumpAndSettle();
       }
       await choose(tester, button: 'Choose a route', reveal: false);
@@ -288,10 +294,7 @@ void main() {
       expect(submitted?['selection']['plan'], plan);
       expect(submitted?['travelDays'], [1, 2, 3, 4, 5]);
       expect(submitted?['selection']['legs'], hasLength(2));
-      expect(
-        find.text('${plan == 'annual' ? 'Annual' : 'Monthly'} plan'),
-        findsOneWidget,
-      );
+      expect(find.text('$label plan'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       f.api.dispose();
     });

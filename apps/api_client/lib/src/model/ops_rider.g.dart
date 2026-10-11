@@ -65,6 +65,10 @@ final BuiltSet<OpsRiderStatusEnum> _$opsRiderStatusEnumValues =
   _$opsRiderStatusEnum_none,
 ]);
 
+const OpsRiderPlanEnum _$opsRiderPlanEnum_weekly =
+    const OpsRiderPlanEnum._('weekly');
+const OpsRiderPlanEnum _$opsRiderPlanEnum_biweekly =
+    const OpsRiderPlanEnum._('biweekly');
 const OpsRiderPlanEnum _$opsRiderPlanEnum_monthly =
     const OpsRiderPlanEnum._('monthly');
 const OpsRiderPlanEnum _$opsRiderPlanEnum_annual =
@@ -72,6 +76,10 @@ const OpsRiderPlanEnum _$opsRiderPlanEnum_annual =
 
 OpsRiderPlanEnum _$opsRiderPlanEnumValueOf(String name) {
   switch (name) {
+    case 'weekly':
+      return _$opsRiderPlanEnum_weekly;
+    case 'biweekly':
+      return _$opsRiderPlanEnum_biweekly;
     case 'monthly':
       return _$opsRiderPlanEnum_monthly;
     case 'annual':
@@ -83,6 +91,8 @@ OpsRiderPlanEnum _$opsRiderPlanEnumValueOf(String name) {
 
 final BuiltSet<OpsRiderPlanEnum> _$opsRiderPlanEnumValues =
     BuiltSet<OpsRiderPlanEnum>(const <OpsRiderPlanEnum>[
+  _$opsRiderPlanEnum_weekly,
+  _$opsRiderPlanEnum_biweekly,
   _$opsRiderPlanEnum_monthly,
   _$opsRiderPlanEnum_annual,
 ]);
@@ -159,10 +169,14 @@ class _$OpsRiderStatusEnumSerializer
 class _$OpsRiderPlanEnumSerializer
     implements PrimitiveSerializer<OpsRiderPlanEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
+    'weekly': 'weekly',
+    'biweekly': 'biweekly',
     'monthly': 'monthly',
     'annual': 'annual',
   };

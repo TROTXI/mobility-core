@@ -73,3 +73,40 @@ Code: [membership service](../../services/api-next/src/membership/service.ts).
 Tests: [membership](../../services/api-next/tests/membership.pg.test.ts) and
 [renewal booking](../../services/api-next/tests/pricing.pg.test.ts).
 Calls: [confirm and pass](../api/worked-examples.md#4-reserve-and-operate-the-trip).
+
+## Ride ratings
+
+After boarding a trip that has completed, the rider can submit one private
+rating from one to five stars. The commuter app shows the rating on completed
+trip details and on Home for the selected completed ride. Selecting stars does
+not submit them; the rider taps **Submit rating**. Saved ratings are read-only.
+
+`POST /v1/me/reservations/{id}/rating` accepts `{ "stars": 1..5 }` and an
+idempotency key. Only the reservation owner can submit. Pending, reserved,
+missed and cancelled rides cannot be rated; boarding alone is not completion.
+The response is `{ data: { stars, ratedAt } }`. Reservation details include the
+saved rating, and reservation lists include optional `tripStatus` so an active
+boarded ride is not labelled completed. Clients talking to an older server
+must not infer completion from boarding.
+
+There are no review comments, public driver scores or pricing changes in this
+feature. A rating never changes a reservation, ride charge or credit balance.
+The score and rating timestamp are cleared during account erasure. Existing
+membership command/audit identifiers follow their existing retention policy.
+No score-derived fingerprint is retained: rating replay compares the erasable
+score itself. Deployment requires migration 049 before the app
+can submit ratings.
+
+## Plan durations
+
+New requests support `weekly`, `biweekly` (every two weeks) and `monthly`.
+Annual is retained only to read historical purchases and requests. New annual
+requests, offers and checkout are refused. Existing paid coverage is preserved.
+Auto-renewal of a historical annual plan stops for a new offer instead of
+charging again.
+
+Ops still reviews the exact coverage dates, journey ride allowances, price and
+unused-ride credit. Default coverage suggestions are seven days, fourteen days
+or one calendar month, with month-end clamping. The agreed offer dates remain
+authoritative. There are no new self-service pricing pages or invented weekly
+prices. Migration 050 extends stored plan values without rewriting paid history.

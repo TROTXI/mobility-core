@@ -21,7 +21,9 @@ const point = named(
   'Point',
   obj({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) }),
 );
-const plan = z.enum(['monthly', 'annual']);
+// Legacy annual purchases remain readable, but cannot be requested again.
+const plan = z.enum(['weekly', 'biweekly', 'monthly', 'annual']);
+const availablePlan = z.enum(['weekly', 'biweekly', 'monthly']);
 const direction = z.enum(['outbound', 'return']);
 const periodState = z.enum(['open', 'closed', 'reversed']);
 const tripState = z.enum(['scheduled', 'active', 'completed', 'cancelled']);
@@ -624,8 +626,14 @@ named(
 );
 named(
   'PurchaseInput',
-  obj({ plan, routeId: id, legs: z.array(schemas.CommuteLeg).length(2), useCredit: z.boolean() }),
+  obj({
+    plan: availablePlan,
+    routeId: id,
+    legs: z.array(schemas.CommuteLeg).length(2),
+    useCredit: z.boolean(),
+  }),
 );
+named('PurchaseSelection', schemas.PurchaseInput.extend({ plan }));
 named(
   'SubscriptionOfferLeg',
   schemas.CommuteLeg.extend({
@@ -672,7 +680,7 @@ named(
     riderName: text(),
     routeName: text(),
     state: z.enum(['submitted', 'offered', 'withdrawn', 'checkout_open', 'completed']),
-    selection: schemas.PurchaseInput,
+    selection: schemas.PurchaseSelection,
     travelDays: z.array(z.int().min(1).max(7)),
     offer: schemas.StandbyOffer.nullable(),
     createdAt: instant,
@@ -713,7 +721,7 @@ named(
     createdAt: instant,
   }),
 );
-named('PurchaseQuoteInput', obj({ plan, routeId: id, useCredit: z.boolean() }));
+named('PurchaseQuoteInput', obj({ plan: availablePlan, routeId: id, useCredit: z.boolean() }));
 named('PersonalPauseInput', obj({ startDate: date, resumeDate: date }));
 named('PersonalResumeInput', obj({ resumeDate: date }));
 named(
@@ -845,6 +853,7 @@ named(
     id,
     tripId: id.nullable(),
     travelDate: date,
+    tripStatus: tripState.nullable().optional(),
     direction,
     status: z.enum([
       'pending',
@@ -867,10 +876,13 @@ const reservationStop = obj({
   location: point,
   ordinal: z.int().nonnegative(),
 });
+named('RideRatingInput', obj({ stars: z.int().min(1).max(5) }));
+named('RideRating', obj({ stars: z.int().min(1).max(5), ratedAt: instant }));
 named(
   'ReservationDetail',
   obj({
     reservation: schemas.Reservation,
+    rating: schemas.RideRating.nullable().optional(),
     // Pending and declined decisions have no trip or selected stop yet.
     route: obj({ id, name: text() })
       .nullable()
@@ -1267,7 +1279,7 @@ named(
 named(
   'PlanPricing',
   obj({
-    plan,
+    plan: availablePlan,
     ridesPerPeriod: z.int().positive(),
     priceMultiplierBp: z.int().positive(),
     takeRateBp: z.int().min(0).max(10000),
@@ -1615,6 +1627,8 @@ named(
     active: count,
     paused: count,
     lapsed: count,
+    weekly: count,
+    biweekly: count,
     monthly: count,
     annual: count,
     // Money riders can still spend, net of credit already held for checkout.
@@ -2044,6 +2058,9 @@ for (const [path, name, type] of [
     get(`/v1/me/${path}/{id}`, `get${type}`, type, { access: 'rider_own' });
 }
 get('/v1/me/reservations/{id}', 'getReservation', 'ReservationDetail', {
+  access: 'rider_own',
+});
+post('/v1/me/reservations/{id}/rating', 'rateReservation', 'RideRatingInput', 'RideRating', {
   access: 'rider_own',
 });
 for (const [path, name, type] of [

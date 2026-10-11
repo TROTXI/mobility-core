@@ -505,7 +505,29 @@ test('ACC-07 erasure clears what a rider had booked and keeps what accounting ne
   const before = (await f.owner.query('SELECT * FROM app.ride_entries')).rows;
   assert.ok(before.length, 'the rider has a ledger');
 
+  // Feedback is erasable even though the reservation and its accounting remain.
+  const reservation = (
+    await f.owner.query(
+      `INSERT INTO app.reservations(user_id,service_date,direction,status,source)
+      VALUES ($1,CURRENT_DATE,'outbound','declined','confirmation') RETURNING id`,
+      [f.actor.userId],
+    )
+  ).rows[0];
+  await f.owner.query(
+    'INSERT INTO app.ride_ratings(reservation_id,stars,rated_at) VALUES ($1,4,clock_timestamp())',
+    [reservation.id],
+  );
+
   assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
+
+  assert.deepEqual(
+    (
+      await f.owner.query('SELECT stars,rated_at FROM app.ride_ratings WHERE reservation_id=$1', [
+        reservation.id,
+      ])
+    ).rows,
+    [{ stars: null, rated_at: null }],
+  );
 
   assert.deepEqual(
     (await f.owner.query('SELECT * FROM app.ride_entries')).rows,

@@ -49,6 +49,11 @@ class RideBoarded extends RideLifecycleState {
   const RideBoarded({required this.tripId});
 }
 
+class RideCompleted extends RideLifecycleState {
+  const RideCompleted({required this.reservationId});
+  final String reservationId;
+}
+
 class RideDeclined extends RideLifecycleState {
   const RideDeclined();
 }
@@ -130,6 +135,12 @@ class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
       );
     }
     if (r.status == wire.ReservationStatusEnum.boarded) {
+      if (r.tripStatus == wire.ReservationTripStatusEnum.completed) {
+        return RideCompleted(reservationId: r.id);
+      }
+      if (r.tripStatus == wire.ReservationTripStatusEnum.cancelled) {
+        return const RideOperatorCancelled();
+      }
       return RideBoarded(tripId: r.tripId!);
     }
     if (r.status == wire.ReservationStatusEnum.declined) {
@@ -160,12 +171,13 @@ final homeReservationDetailProvider =
     FutureProvider.autoDispose<wire.ReservationDetail?>((ref) async {
       final client = ref.watch(trotxiClientProvider);
       final lifecycle = await ref.watch(rideLifecycleProvider.future);
-      if (lifecycle is! RideReserved || lifecycle.reservationId == null) {
-        return null;
-      }
-      return ref.watch(
-        homeDetailProvider((client, lifecycle.reservationId!)).future,
-      );
+      final reservationId = switch (lifecycle) {
+        RideReserved(:final reservationId) => reservationId,
+        RideCompleted(:final reservationId) => reservationId,
+        _ => null,
+      };
+      if (reservationId == null) return null;
+      return ref.watch(homeDetailProvider((client, reservationId)).future);
     });
 
 // The hero and upcoming card can refer to the same reservation. Share that
