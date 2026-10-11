@@ -32,17 +32,17 @@ class DriverHeader extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
+        AppSpacing.space24,
         AppSpacing.space8,
-        AppSpacing.space16,
+        AppSpacing.space24,
         AppSpacing.space8,
       ),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space12,
+        horizontal: 0,
+        vertical: AppSpacing.space8,
       ),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colors.page,
         borderRadius: AppRadii.circular(AppRadii.lg),
       ),
       child: Row(
@@ -54,7 +54,7 @@ class DriverHeader extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: AppTypography.title.copyWith(
+                  style: AppTypography.label.copyWith(
                     color: colors.textPrimary,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -113,8 +113,8 @@ class _CircleButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Container(
-          width: 40,
-          height: 40,
+          width: 48,
+          height: 48,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: colors.surfaceSelected,

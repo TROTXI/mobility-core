@@ -56,7 +56,7 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.space20),
+          padding: const EdgeInsets.all(AppSpacing.space24),
           children: [
             Text(
               'Trip completed',
@@ -257,7 +257,8 @@ class _Metric extends StatelessWidget {
     final colors = context.driverColors;
     return Expanded(
       child: Container(
-        height: 66,
+        constraints: const BoxConstraints(minHeight: 66),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: colors.field,

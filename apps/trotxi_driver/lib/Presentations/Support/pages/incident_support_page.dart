@@ -38,8 +38,8 @@ class IncidentSupportPage extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space8,
+        horizontal: AppSpacing.space24,
+        vertical: AppSpacing.space20,
       ),
       children: [
         if (showHeading) ...[
@@ -85,12 +85,13 @@ class IncidentSupportPage extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space16),
 
-        Container(
-          decoration: BoxDecoration(
-            color: colors.surface,
+        Material(
+          color: colors.surface,
+          shape: RoundedRectangleBorder(
             borderRadius: AppRadii.circular(AppRadii.lg),
-            border: Border.all(color: colors.border),
+            side: BorderSide(color: colors.border),
           ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
               ListTile(
@@ -264,7 +265,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
       appBar: AppBar(title: const Text('Report an incident')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.space16),
+          padding: const EdgeInsets.all(AppSpacing.space24),
           children: [
             Text(
               'What happened?',
@@ -279,12 +280,13 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
             ),
             const SizedBox(height: AppSpacing.space16),
 
-            Container(
-              decoration: BoxDecoration(
-                color: colors.surface,
+            Material(
+              color: colors.surface,
+              shape: RoundedRectangleBorder(
                 borderRadius: AppRadii.circular(AppRadii.lg),
-                border: Border.all(color: colors.border),
+                side: BorderSide(color: colors.border),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   for (final category in IncidentCategory.values) ...[
@@ -640,7 +642,7 @@ class _MyReportsPageState extends State<MyReportsPage> {
               return const _Message(text: 'You have not sent any reports.');
             }
             return ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.space16),
+              padding: const EdgeInsets.all(AppSpacing.space24),
               itemCount: reports.length,
               separatorBuilder: (_, _) =>
                   const SizedBox(height: AppSpacing.space12),

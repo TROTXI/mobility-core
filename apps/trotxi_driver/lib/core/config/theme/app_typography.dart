@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 /// The driver type scale.
 ///
-/// Shares the commuter app's bundled Poppins family. One difference:
+/// Shares the commuter app's bundled Inter family. One difference:
 /// [runTitle] and [counter] exist because the active-trip frames lean on two
 /// numbers a driver reads at a glance while moving — seats boarded against
 /// capacity, and stop N of M. Those are not body text and should not inherit
 /// body's line height.
 abstract final class AppTypography {
-  static const String fontFamily = 'Poppins';
+  static const String fontFamily = 'Inter';
 
   static const heading1 = TextStyle(
     fontFamily: fontFamily,
@@ -172,9 +172,9 @@ abstract final class AppTypography {
   /// wordmark, so the title sits under a logo rather than carrying the page.
   static const screenTitle = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 26,
-    fontWeight: FontWeight.w600,
-    height: 39 / 26,
+    fontSize: 30,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
   );
 
   /// The one explanatory line under [screenTitle].
@@ -197,9 +197,9 @@ abstract final class AppTypography {
   /// the placeholder at 400 and the entered value at 500.
   static const fieldText = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: FontWeight.w400,
-    height: 21 / 14,
+    height: 1.4,
   );
 
   /// The label on the primary action. 16/700, heavier than [label].

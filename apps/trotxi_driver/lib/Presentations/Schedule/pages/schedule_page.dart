@@ -123,8 +123,8 @@ class _SchedulePageState extends State<SchedulePage> {
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space8,
+          horizontal: AppSpacing.space24,
+          vertical: AppSpacing.space20,
         ),
         children: [
           if (widget.showHeading) ...[
@@ -365,9 +365,9 @@ class _MonthGrid extends StatelessWidget {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
-            childAspectRatio: 1,
+            mainAxisExtent: 32 + MediaQuery.textScalerOf(context).scale(20),
           ),
           itemCount: leading + daysInMonth,
           itemBuilder: (context, index) {
@@ -380,13 +380,13 @@ class _MonthGrid extends StatelessWidget {
 
             return InkWell(
               onTap: () => onSelect(day),
-              customBorder: const CircleBorder(),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
                 margin: const EdgeInsets.all(2),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? colors.action : Colors.transparent,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(12),
                   border: isToday && !isSelected
                       ? Border.all(color: colors.action)
                       : null,
@@ -394,12 +394,16 @@ class _MonthGrid extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      '${day.day}',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: isSelected
-                            ? colors.onAction
-                            : colors.textPrimary,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${day.day}',
+                        maxLines: 1,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: isSelected
+                              ? colors.onAction
+                              : colors.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 2),

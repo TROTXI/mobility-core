@@ -281,7 +281,7 @@ class _ProfilePageState extends State<ProfilePage> {
               pageTitle: 'Incident & support',
               page: const IncidentSupportPage(showHeading: false),
               colors: colors,
-              danger: true,
+              danger: false,
             ),
           ],
         ),
@@ -289,7 +289,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     final help = _ProfileSection(
-      label: 'Help & privacy',
+      label: 'Help & information',
       colors: colors,
       child: _Card(
         colors: colors,
@@ -377,7 +377,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: AppSpacing.space8),
         Text(
-          'Signing out on a shared vehicle phone is what stops the next driver boarding riders as you.',
+          'Using a shared phone? Sign out at the end of your shift.',
           textAlign: TextAlign.center,
           style: AppTypography.caption.copyWith(color: colors.textSecondary),
         ),
@@ -435,7 +435,7 @@ class _ProfilePageState extends State<ProfilePage> {
           onRefresh: _readDeviceState,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.space20),
+            padding: const EdgeInsets.all(AppSpacing.space24),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -553,8 +553,8 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: AppSpacing.space8),
     child: Text(
-      text.toUpperCase(),
-      style: AppTypography.caption.copyWith(color: colors.textSecondary),
+      text,
+      style: AppTypography.title.copyWith(color: colors.textSecondary),
     ),
   );
 }

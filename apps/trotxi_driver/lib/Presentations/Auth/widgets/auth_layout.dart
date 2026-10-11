@@ -5,14 +5,8 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/widgets/trotxi_wordmark.dart';
 
-/// The frame every sign-in, account and device-readiness screen shares
-/// (design pages 05 and 06): the wordmark, an optional back control, a centred
-/// title and one line under it, the screen's content, and its actions held to
-/// the bottom of the screen when there is room for them.
-///
-/// One frame so the screens cannot drift apart again. They had: each set its
-/// own padding, title gap and footer, which is most of why moving from one to
-/// the next felt like moving between apps.
+/// Fixed navigation above scrollable account and device-readiness content.
+/// Footer actions sit at the bottom when there is room and scroll when needed.
 class AuthLayout extends StatelessWidget {
   const AuthLayout({
     super.key,
@@ -29,7 +23,7 @@ class AuthLayout extends StatelessWidget {
   final String title;
   final String? subtitle;
 
-  /// Shows the round back control beside the wordmark when set.
+  /// Shows a fixed back control beside the wordmark when set.
   final VoidCallback? onBack;
   final String backTooltip;
 
@@ -47,86 +41,62 @@ class AuthLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.driverColors;
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, box) {
-            final gutter = box.maxWidth >= 800
-                ? AppSpacing.space40
-                : AppSpacing.space20;
-            return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: gutter,
-                vertical: AppSpacing.space16,
+      appBar: AppBar(
+        leading: onBack == null
+            ? null
+            : IconButton(
+                onPressed: onBack,
+                tooltip: backTooltip,
+                icon: const Icon(Icons.arrow_back_rounded),
               ),
-              child: Center(
+        title: const TrotxiWordmark(height: 28),
+        actions: [
+          if (trailing != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 24),
+              child: trailing!,
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: LayoutBuilder(
+              builder: (context, box) => SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: 560,
-                    minHeight: (box.maxHeight - AppSpacing.space32).clamp(
-                      0,
-                      double.infinity,
-                    ),
+                    minHeight: (box.maxHeight - 56).clamp(0, double.infinity),
                   ),
                   child: IntrinsicHeight(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SizedBox(
-                          height: 56,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              TrotxiWordmark(height: onBack == null ? 46 : 40),
-                              if (onBack != null)
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: IconButton.outlined(
-                                    onPressed: onBack,
-                                    tooltip: backTooltip,
-                                    style: IconButton.styleFrom(
-                                      fixedSize: const Size.square(44),
-                                      side: BorderSide(color: colors.border),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.chevron_left_rounded,
-                                    ),
-                                  ),
-                                ),
-                              if (trailing != null)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: trailing,
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space32),
                         if (hero != null) ...[
-                          Center(child: hero),
-                          const SizedBox(height: AppSpacing.space20),
+                          Align(alignment: Alignment.centerLeft, child: hero!),
+                          const SizedBox(height: 24),
                         ],
                         Text(
                           title,
-                          textAlign: TextAlign.center,
                           style: AppTypography.screenTitle.copyWith(
                             color: colors.textPrimary,
                           ),
                         ),
                         if (subtitle != null) ...[
-                          const SizedBox(height: AppSpacing.space4),
+                          const SizedBox(height: 10),
                           Text(
                             subtitle!,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.authRowDetail.copyWith(
+                            style: AppTypography.body.copyWith(
                               color: colors.textSecondary,
                             ),
                           ),
                         ],
-                        const SizedBox(height: AppSpacing.space24),
+                        const SizedBox(height: 32),
                         ...children,
                         const Spacer(),
                         if (footer.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.space24),
+                          const SizedBox(height: 24),
                           ...footer,
                         ],
                       ],
@@ -134,19 +104,24 @@ class AuthLayout extends StatelessWidget {
                   ),
                 ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// The main action on an auth screen: a 56-high pill.
+/// Main auth action with a 56dp minimum target.
 ButtonStyle authPrimaryButton(AppColors colors) => FilledButton.styleFrom(
   minimumSize: const Size.fromHeight(56),
-  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-  shape: const StadiumBorder(),
+  padding: const EdgeInsets.symmetric(
+    horizontal: AppSpacing.space16,
+    vertical: 16,
+  ),
+  shape: RoundedRectangleBorder(
+    borderRadius: AppRadii.circular(AppRadii.button),
+  ),
   textStyle: AppTypography.actionLabel,
   backgroundColor: colors.action,
   foregroundColor: colors.onAction,
@@ -154,12 +129,16 @@ ButtonStyle authPrimaryButton(AppColors colors) => FilledButton.styleFrom(
   disabledForegroundColor: colors.textSecondary,
 );
 
-/// The alternative beside or under [authPrimaryButton]: the same pill,
-/// outlined, so a pair of choices reads as a pair.
+/// Outlined alternative to [authPrimaryButton].
 ButtonStyle authSecondaryButton(AppColors colors) => OutlinedButton.styleFrom(
   minimumSize: const Size.fromHeight(56),
-  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-  shape: const StadiumBorder(),
+  padding: const EdgeInsets.symmetric(
+    horizontal: AppSpacing.space16,
+    vertical: 16,
+  ),
+  shape: RoundedRectangleBorder(
+    borderRadius: AppRadii.circular(AppRadii.button),
+  ),
   textStyle: AppTypography.actionLabel.copyWith(fontWeight: FontWeight.w600),
   foregroundColor: colors.textPrimary,
   side: BorderSide(color: colors.borderStrong),
@@ -168,8 +147,13 @@ ButtonStyle authSecondaryButton(AppColors colors) => OutlinedButton.styleFrom(
 /// A small pill for an action inside a card row: "Allow camera".
 ButtonStyle authRowButton(AppColors colors) => OutlinedButton.styleFrom(
   minimumSize: const Size(0, 40),
-  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-  shape: const StadiumBorder(),
+  padding: const EdgeInsets.symmetric(
+    horizontal: AppSpacing.space16,
+    vertical: 16,
+  ),
+  shape: RoundedRectangleBorder(
+    borderRadius: AppRadii.circular(AppRadii.button),
+  ),
   textStyle: AppTypography.authRowValue.copyWith(fontSize: 13),
   foregroundColor: colors.textPrimary,
   side: BorderSide(color: colors.borderStrong),
@@ -184,10 +168,7 @@ class AuthButtonLabel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => FittedBox(
-    fit: BoxFit.scaleDown,
-    child: Text(text, maxLines: 1, softWrap: false),
-  );
+  Widget build(BuildContext context) => Text(text, textAlign: TextAlign.center);
 }
 
 /// The rounded panel the auth screens group details in.
@@ -308,10 +289,14 @@ class AuthDetailRow extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            value,
-            style: AppTypography.authRowValue.copyWith(
-              color: colors.textPrimary,
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: AppTypography.authRowValue.copyWith(
+                color: colors.textPrimary,
+              ),
             ),
           ),
         ],

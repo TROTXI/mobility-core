@@ -36,7 +36,7 @@ void main() {
       expect(AppTheme.darkTheme.scaffoldBackgroundColor, AppColors.dark.page);
     });
 
-    test('all Material text roles use the commuter app Poppins family', () {
+    test('all Material text roles use the commuter app Inter family', () {
       for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
         for (final text in [theme.textTheme, theme.primaryTextTheme]) {
           for (final style in [
@@ -56,7 +56,7 @@ void main() {
             text.labelMedium,
             text.labelSmall,
           ]) {
-            expect(style?.fontFamily, 'Poppins');
+            expect(style?.fontFamily, 'Inter');
           }
         }
       }
@@ -66,7 +66,7 @@ void main() {
       for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
         final colors = theme.extension<AppColors>()!;
         expect(theme.dialogTheme.backgroundColor, colors.surface);
-        expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'Poppins');
+        expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'Inter');
         expect(theme.bottomSheetTheme.backgroundColor, colors.surface);
         expect(
           theme.listTileTheme.subtitleTextStyle?.color,
@@ -138,11 +138,24 @@ void main() {
     });
   });
 
-  group('values come from the file, not from guesswork', () {
-    // Read from "02 — Driver Colour System" via the Figma API. Pinned because
-    // the first pass at this app invented a navy/periwinkle palette that looked
-    // plausible and was wrong in every role.
-    test('the action colour is the muted off-blue, in both modes', () {
+  group('original driver palette', () {
+    test('actions and primary/secondary text meet normal-text contrast', () {
+      for (final colors in [AppColors.light, AppColors.dark]) {
+        for (final pair in [
+          (colors.action, colors.onAction),
+          (colors.page, colors.textPrimary),
+          (colors.surface, colors.textSecondary),
+        ]) {
+          final a = pair.$1.computeLuminance();
+          final b = pair.$2.computeLuminance();
+          final contrast = a > b
+              ? (a + .05) / (b + .05)
+              : (b + .05) / (a + .05);
+          expect(contrast, greaterThanOrEqualTo(4.5));
+        }
+      }
+    });
+    test('primary actions retain the driver muted off-blue palette', () {
       expect(AppColors.light.action, const Color(0xFF5B7896));
       expect(AppColors.dark.action, const Color(0xFF7A9AB8));
     });

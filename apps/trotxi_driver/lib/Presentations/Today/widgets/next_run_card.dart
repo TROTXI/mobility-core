@@ -1,23 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
-import 'package:trotxi_driver/core/config/theme/app_radii.dart';
-import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
-/// The run that dominates Today.
-///
-/// Filled with the action colour rather than outlined, which is the file's
-/// hierarchy rule made visual: "the next required trip dominates; later
-/// assignments remain visible without competing for attention." A driver
-/// glancing at a mounted phone should not have to read to find the one thing
-/// they are meant to do next.
-///
-/// The button inverts against the fill — light on the card in light mode, dark
-/// in dark — because a button in the action colour ON the action colour is not
-/// a button.
+/// One clear next action. Starting and ending remain inside the trip workflow.
 class NextRunCard extends StatelessWidget {
   const NextRunCard({
     super.key,
@@ -27,7 +15,6 @@ class NextRunCard extends StatelessWidget {
     this.isBusy = false,
     this.onTap,
   });
-
   final DriverRun run;
   final VoidCallback onPrimary;
   final RunHeadline? headline;
@@ -37,94 +24,113 @@ class NextRunCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final onFill = colors.onAction;
-
+    final ink = colors.onAction;
     return Material(
       color: colors.action,
-      borderRadius: AppRadii.circular(AppRadii.xl),
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadii.circular(AppRadii.xl),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space20),
+          padding: const EdgeInsets.all(24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: Text(
-                      '${CorridorTime.hhmm(run.scheduledAt)}  ${run.routeName}',
-                      style: AppTypography.heading3.copyWith(color: onFill),
-                    ),
+                  Text(
+                    run.isActive ? 'IN PROGRESS' : 'YOUR NEXT TRIP',
+                    style: AppTypography.chipLabel.copyWith(color: ink),
                   ),
-                  // Operations moved this run (#233). Read from the trip rather
-                  // than from the push that announced it, so a phone that was
-                  // off at 04:00 still finds out.
                   if (run.wasRecentlyChanged)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space8,
-                        vertical: AppSpacing.space4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: onFill.withValues(alpha: 0.2),
-                        borderRadius: AppRadii.circular(AppRadii.full),
-                      ),
-                      child: Text(
-                        'CHANGED',
-                        style: AppTypography.caption.copyWith(color: onFill),
-                      ),
+                    Text(
+                      'Assignment updated',
+                      style: AppTypography.caption.copyWith(color: ink),
                     ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.space16),
-              _StatusStrip(
-                run: run,
-                headline: headline,
-                colors: colors,
-                isDark: isDark,
-                onFill: onFill,
+              const SizedBox(height: 20),
+              Text(
+                CorridorTime.hhmm(run.scheduledAt),
+                style: AppTypography.heading1.copyWith(
+                  color: ink,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
-              if (headline != null) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Text(
-                  [
-                    '${headline!.stops} stops',
-                    '${headline!.riders} confirmed',
-                  ].join(' · '),
-                  style: AppTypography.bodySmall.copyWith(
-                    color: onFill.withValues(alpha: 0.85),
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                run.routeName,
+                style: AppTypography.heading3.copyWith(color: ink),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ink.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
-              const SizedBox(height: AppSpacing.space20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: isBusy ? null : onPrimary,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isDark ? colors.page : Colors.white,
-                    foregroundColor: isDark
-                        ? colors.textPrimary
-                        : colors.action,
-                    minimumSize: const Size.fromHeight(56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadii.circular(AppRadii.full),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (run.vehicleRegistration != null) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.directions_bus_outlined,
+                            color: ink,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              run.vehicleRegistration!,
+                              style: AppTypography.label.copyWith(color: ink),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      _timing(run),
+                      style: AppTypography.bodySmall.copyWith(color: ink),
                     ),
-                  ),
-                  child: isBusy
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          run.isActive ? 'End trip' : 'Start trip',
-                          style: AppTypography.label,
-                        ),
+                    if (headline != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '${headline!.riders} confirmed ${headline!.riders == 1 ? 'rider' : 'riders'} · ${headline!.stops} ${headline!.stops == 1 ? 'stop' : 'stops'}',
+                        style: AppTypography.bodySmall.copyWith(color: ink),
+                      ),
+                    ],
+                  ],
                 ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: isBusy ? null : onPrimary,
+                style: FilledButton.styleFrom(
+                  backgroundColor: ink,
+                  foregroundColor: colors.action,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: isBusy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        run.isActive
+                            ? Icons.route_outlined
+                            : Icons.checklist_rounded,
+                      ),
+                label: Text(run.isActive ? 'Continue trip' : 'Review trip'),
               ),
             ],
           ),
@@ -132,94 +138,13 @@ class NextRunCard extends StatelessWidget {
       ),
     );
   }
-}
 
-/// The inset row the frame puts inside the card: state on the left, headcount
-/// on the right, on a surface that reads as a panel within the fill.
-class _StatusStrip extends StatelessWidget {
-  const _StatusStrip({
-    required this.run,
-    required this.headline,
-    required this.colors,
-    required this.isDark,
-    required this.onFill,
-  });
-
-  final DriverRun run;
-  final RunHeadline? headline;
-  final AppColors colors;
-  final bool isDark;
-  final Color onFill;
-
-  @override
-  Widget build(BuildContext context) {
-    final panel = isDark ? colors.page : Colors.white;
-    final ink = isDark ? colors.textPrimary : colors.textPrimary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space12,
-        vertical: AppSpacing.space8,
-      ),
-      decoration: BoxDecoration(
-        color: panel,
-        borderRadius: AppRadii.circular(AppRadii.md),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _state(run),
-                  style: AppTypography.caption.copyWith(color: ink),
-                ),
-                if (run.vehicleRegistration != null)
-                  Text(
-                    run.vehicleRegistration!,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (headline != null)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space12,
-                vertical: AppSpacing.space4,
-              ),
-              decoration: BoxDecoration(
-                color: colors.surfaceSelected,
-                borderRadius: AppRadii.circular(AppRadii.full),
-              ),
-              child: Text(
-                headline!.riders == 1
-                    ? '1 rider'
-                    : '${headline!.riders} riders',
-                style: AppTypography.caption.copyWith(color: ink),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// "RUNNING" once started, otherwise how long until it should.
-  ///
-  /// Counted rather than shown as a clock time, because the card already says
-  /// 06:30 and what a driver wants from a second line is the gap, not the same
-  /// number again.
-  static String _state(DriverRun run) {
-    if (run.isActive) return 'RUNNING NOW';
+  static String _timing(DriverRun run) {
+    if (run.isActive) return 'Trip underway';
     final minutes = run.scheduledAt.difference(DateTime.now()).inMinutes;
-    if (minutes < -1) return 'NEXT · OVERDUE';
-    if (minutes < 1) return 'NEXT · DUE NOW';
-    if (minutes < 60) return 'NEXT · IN $minutes MIN';
-    final hours = (minutes / 60).floor();
-    return 'NEXT · IN ${hours}H ${minutes % 60}M';
+    if (minutes < -1) return 'Scheduled departure has passed';
+    if (minutes < 1) return 'Departure due now';
+    if (minutes < 60) return 'Departs in $minutes min';
+    return 'Departs in ${minutes ~/ 60}h ${minutes % 60}m';
   }
 }

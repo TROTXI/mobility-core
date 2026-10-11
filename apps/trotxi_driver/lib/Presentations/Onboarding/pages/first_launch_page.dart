@@ -126,7 +126,7 @@ class DriverFirstLaunchPage extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 1194),
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    wide ? AppSpacing.space48 : AppSpacing.space20,
+                    wide ? AppSpacing.space48 : AppSpacing.space24,
                     AppSpacing.space24,
                     wide ? AppSpacing.space48 : AppSpacing.space20,
                     AppSpacing.space24,
@@ -156,23 +156,18 @@ class _WelcomeLead extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [TrotxiWordmark(height: 42), _DriverPill()],
       ),
-      const SizedBox(height: AppSpacing.space40),
+      const SizedBox(height: 28),
+      const _RouteHero(),
+      const SizedBox(height: 28),
       Text(
-        'Hi Captain',
-        style: AppTypography.body.copyWith(color: colors.textSecondary),
-      ),
-      const SizedBox(height: AppSpacing.space4),
-      Text(
-        'Welcome to Trotxi Driver',
+        'Ready for the road.',
         style: AppTypography.heading1.copyWith(color: colors.textPrimary),
       ),
-      const SizedBox(height: AppSpacing.space8),
+      const SizedBox(height: 12),
       Text(
-        'Your assignments, passenger boarding and trip support—all in one workspace.',
+        'Your next trip. Your passengers. Your team. Everything you need for the day ahead.',
         style: AppTypography.body.copyWith(color: colors.textSecondary),
       ),
-      const SizedBox(height: AppSpacing.space24),
-      const _RouteHero(),
     ],
   );
 }
@@ -192,7 +187,7 @@ class _WelcomeActions extends StatelessWidget {
       children: [
         const _FeatureCard(
           icon: Icons.assignment_outlined,
-          title: 'See today’s assignments',
+          title: 'Know your next trip',
           detail: 'Route, vehicle and departure details',
         ),
         const SizedBox(height: AppSpacing.space12),
@@ -205,7 +200,7 @@ class _WelcomeActions extends StatelessWidget {
         const _FeatureCard(
           icon: Icons.route_outlined,
           title: 'Stay connected on route',
-          detail: 'Navigation, GPS and operations support',
+          detail: 'Route guidance and help from your team',
         ),
         const SizedBox(height: AppSpacing.space24),
         FilledButton(onPressed: onContinue, child: const Text('Continue')),
@@ -478,33 +473,6 @@ class _RouteHeroState extends State<_RouteHero> with TickerProviderStateMixin {
                         road: road,
                         colors: colors,
                         lap: _idle,
-                      ),
-                    ),
-                  ),
-                  // The file's own sizes and places (11/600 at 18,18; 19/600 at
-                  // 18,41), scaled with the card so the title still ends
-                  // just short of the stop.
-                  Positioned(
-                    left: 18 * road.scale,
-                    top: 18 * road.scale,
-                    child: Text(
-                      'Ready for today\u2019s run',
-                      style: AppTypography.fieldLabel.copyWith(
-                        fontSize: 11 * road.scale,
-                        height: 16.5 / 11,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 18 * road.scale,
-                    top: 41 * road.scale,
-                    child: Text(
-                      'Everything the driver needs',
-                      style: AppTypography.title.copyWith(
-                        fontSize: 19 * road.scale,
-                        height: 28.5 / 19,
-                        color: colors.textPrimary,
                       ),
                     ),
                   ),

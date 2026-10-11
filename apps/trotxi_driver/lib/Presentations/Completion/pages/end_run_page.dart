@@ -86,7 +86,7 @@ class _EndRunPageState extends State<EndRunPage> {
       appBar: AppBar(title: const Text('End trip?')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.space16),
+          padding: const EdgeInsets.all(AppSpacing.space24),
           children: [
             Text(
               'End trip?',
@@ -261,8 +261,8 @@ class _EndRunPageState extends State<EndRunPage> {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 56,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 56),
                     child: FilledButton(
                       onPressed: _ready && !_ending ? _end : null,
                       style: FilledButton.styleFrom(
@@ -288,8 +288,8 @@ class _EndRunPageState extends State<EndRunPage> {
                 ),
                 const SizedBox(width: AppSpacing.space12),
                 Expanded(
-                  child: SizedBox(
-                    height: 56,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 56),
                     child: OutlinedButton(
                       onPressed: _ending
                           ? null

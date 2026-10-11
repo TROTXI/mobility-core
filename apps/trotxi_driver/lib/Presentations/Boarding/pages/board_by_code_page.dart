@@ -107,16 +107,15 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
     final result = _result;
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.space20),
+      padding: const EdgeInsets.all(AppSpacing.space24),
       children: [
         Text(
-          'Board by code',
+          'Enter boarding code',
           style: AppTypography.heading3.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(height: AppSpacing.space4),
         Text(
-          'Four characters, read out by the rider. The code identifies their '
-          'reservation on this run.',
+          'Ask the rider for the four-character code on their boarding pass.',
           style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.space20),

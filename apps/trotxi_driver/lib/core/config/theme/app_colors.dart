@@ -1,39 +1,24 @@
 import 'package:flutter/material.dart';
 
-/// Raw palette for the driver app, read from the "Blue Black" prototype.
-///
-/// Deliberately NOT shared with the commuter app. That app is built on a dark
-/// green identity; this one is navy, and the two sets of frames disagree on
-/// almost every role. Sharing values would mean one app silently restyling the
-/// other every time a token moved.
-///
-/// Naming is `role + weight`, so a designer changing "the 700 navy" changes one
-/// line here rather than a search across screens.
+/// Original driver palette, distinct from the commuter app's green identity.
 abstract final class AppPrimitiveColors {
-  // Read from the file's own "02 — Driver Colour System" page via the Figma
-  // API, not eyedropped. Its stated intent: "Muted off-blue signals brand and
-  // action. Semantic status colours remain distinct and are used only for
-  // operational meaning."
-
-  // Blue-black — navigation, structure, text hierarchy, dark surfaces.
+  // Blue-black neutrals from the driver design.
   static const ink900 = Color(0xFF09131D); // dark page
   static const ink800 = Color(0xFF0E1B28); // dark surface
   static const ink700 = Color(0xFF152235); // light text primary
   static const ink600 = Color(0xFF466681); // footnote / muted
   static const ink500 = Color(0xFF46596D); // light text secondary
 
-  // Muted off-blue — the primary action, in BOTH themes. Not navy in light and
-  // something else in dark: the file's rule is one action colour per mode of
-  // the same hue, so a driver learns one shape of "this is the button".
+  // Muted off-blue actions in both themes.
   static const action = Color(0xFF5B7896);
   static const actionDark = Color(0xFF7A9AB8);
 
   // Surfaces and text on the light side.
   static const paper = Color(0xFFF7F9FB); // light page
   static const paperRaised = Color(0xFFEDF2F6); // light surface
-  /// The stronger off-blue the file uses where a surface has to carry weight:
-  /// the next-stop card, and the selected pill in the phone nav.
+  /// Selected navigation and next-stop surfaces.
   static const paperStrong = Color(0xFFDCE6EF);
+
   /// Hairlines. Previously borders were drawn in `paperRaised`, which is the
   /// surface colour — so every border in light mode was invisible against the
   /// thing it was meant to bound.
@@ -48,8 +33,7 @@ abstract final class AppPrimitiveColors {
   static const mist = Color(0xFFBAC5D0); // dark text secondary
   static const frost = Color(0xFFF2F5F8); // dark text primary
 
-  // Status. Reserved for operational meaning, never decoration: green is
-  // "verified success, live connectivity and completed boarding".
+  // Status always includes a label or icon, never colour alone.
   static const successLight = Color(0xFF147A3B);
   static const successDark = Color(0xFF4FD37A);
   static const errorLight = Color(0xFFB42318);

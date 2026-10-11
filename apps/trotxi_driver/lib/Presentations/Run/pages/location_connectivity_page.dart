@@ -28,7 +28,7 @@ class LocationConnectivityPage extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
             child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.space20),
+              padding: const EdgeInsets.all(AppSpacing.space24),
               children: [
                 Text(
                   run.routeName,

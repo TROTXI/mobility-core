@@ -21,3 +21,32 @@ See [driver operations](../../docs/features/driver-operations.md),
 [reliability](../../docs/driver-reliability.md) and
 [onboarding](../../docs/driver-onboarding.md).
 Physical-device GPS/push and store-signing checks remain release gates.
+
+## Visual system
+
+The driver app keeps its original blue-black and muted off-blue palette in
+light and dark themes. It shares the commuter app's bundled Inter typeface
+and improved component patterns, not its green brand colours. Driver-specific controls
+keep large tap targets and explicit start, boarding and completion steps.
+Entering a complete PIN only enables Sign in; it never submits automatically.
+Today opens the trip workflow instead of starting or completing a trip directly.
+
+The design research used [Uber's driver app guide](https://www.uber.com/us/en/drive/driver-app/)
+for current-work hierarchy and quick access to support,
+[Lyft's trip-detail guidance](https://help.lyft.com/hc/en-us/driver/articles/8668928544-Upfront-pay)
+for readable information before an action, and
+[Component Gallery](https://component.gallery/components/) for consistent component patterns.
+These inform presentation only. Trotxi does not expose ride-hailing earnings,
+ratings or unimplemented dispatch features.
+
+`test/approved_design_test.dart` exercises 28 screen states in both themes at
+320px width with enlarged text, plus the active-trip navigation safeguard.
+For review PNGs of the real Flutter widgets using fixture data:
+
+```sh
+flutter test test/approved_design_test.dart --update-goldens \
+  --dart-define=DESIGN_OUTPUT=/absolute/path/to/driver-previews
+```
+
+Preview fixtures deliberately do not provide a live map or GPS position.
+Native camera, background location and push still require device acceptance.
