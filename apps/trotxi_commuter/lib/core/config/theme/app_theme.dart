@@ -48,7 +48,7 @@ class AppTheme {
       brightness: brightness,
       colorScheme:
           ColorScheme.fromSeed(
-            seedColor: const Color(0xFF155C3E),
+            seedColor: AppPrimitiveColors.homeGreen,
             brightness: brightness,
           ).copyWith(
             primary: colors.actionPrimaryDefault,
@@ -136,7 +136,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: colors.actionPrimaryDefault,
+          foregroundColor: colors.actionSecondary,
           minimumSize: const Size(44, 44),
           textStyle: AppTypography.buttonAction,
         ),

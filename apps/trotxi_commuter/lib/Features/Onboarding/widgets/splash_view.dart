@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 /// Shown only while session restoration is in flight. No artificial delay.
 class SplashView extends StatelessWidget {
@@ -8,7 +9,7 @@ class SplashView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF244B38),
+    backgroundColor: AppPrimitiveColors.homeDarkPage,
     body: SafeArea(
       child: Center(
         child: Padding(
@@ -26,7 +27,7 @@ class SplashView extends StatelessWidget {
                 'A better way to move every day.',
                 textAlign: TextAlign.center,
                 style: AppTypography.bodySmall.copyWith(
-                  color: const Color(0xFFE7EFD9),
+                  color: AppPrimitiveColors.homeDarkTextSecondary,
                 ),
               ),
               const SizedBox(height: 36),
@@ -35,7 +36,7 @@ class SplashView extends StatelessWidget {
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFFDDF7A4),
+                  color: AppPrimitiveColors.homeGreen,
                   semanticsLabel: 'Restoring your session',
                 ),
               ),

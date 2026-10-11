@@ -7,17 +7,27 @@ import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/notifications_inbox_page.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_details_page.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/home_overview.dart';
+import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
+import 'package:trotxi_commuter/core/widgets/figma_commuter_icon.dart';
 
 // ---------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------
 
 class QuickAction {
-  const QuickAction({required this.icon, required this.label, this.onTap});
+  const QuickAction({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.figmaIcon,
+  });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
+  final CommuterIcon? figmaIcon;
 }
 
 // ---------------------------------------------------------------------
@@ -34,6 +44,8 @@ class HomeTab extends ConsumerStatefulWidget {
     this.onShowRoutes,
     this.onShowWallet,
     this.onShowSupport,
+    this.onShowProfile,
+    this.isActive = true,
   });
 
   final CommuterApi client;
@@ -45,35 +57,73 @@ class HomeTab extends ConsumerStatefulWidget {
   final VoidCallback? onShowRoutes;
   final VoidCallback? onShowWallet;
   final VoidCallback? onShowSupport;
+  final VoidCallback? onShowProfile;
+  final bool isActive;
 
   @override
   ConsumerState<HomeTab> createState() => _HomeTabState();
 }
 
 class _HomeTabState extends ConsumerState<HomeTab> {
-  List<QuickAction> get _quickActions => [
-    QuickAction(
-      icon: Icons.confirmation_number_outlined,
-      label: 'My trips',
-      onTap: widget.onShowTrips,
-    ),
+  @override
+  void didUpdateWidget(covariant HomeTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) refreshHomeOverview(ref, widget.client);
+      });
+    }
+  }
+
+  List<QuickAction> _quickActions(wire.ReservationDetail? detail) => [
+    if (detail?.pickupStop != null)
+      QuickAction(
+        icon: Icons.info_outline,
+        figmaIcon: CommuterIcon.info,
+        label: 'Pickup info',
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TripDetailsPage(
+                client: widget.client,
+                reservationId: detail!.reservation.id,
+              ),
+            ),
+          );
+          if (mounted) refreshHomeOverview(ref, widget.client);
+        },
+      ),
     QuickAction(
       icon: Icons.route_outlined,
       label: 'Routes',
       onTap: widget.onShowRoutes,
     ),
     QuickAction(
-      icon: Icons.account_balance_wallet_rounded,
-      label: 'Wallet',
-      onTap: widget.onShowWallet,
+      icon: Icons.notifications_none_rounded,
+      label: 'Updates',
+      onTap: _showInbox,
     ),
     QuickAction(
-      icon: Icons.support_agent_rounded,
+      icon: Icons.help_outline_rounded,
       label: 'Support',
       onTap: widget.onShowSupport,
     ),
   ];
   bool _deciding = false;
+
+  Future<void> _showInbox() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => NotificationsInboxPage(client: widget.client),
+      ),
+    );
+    if (mounted) refreshHomeOverview(ref, widget.client);
+  }
+
+  Future<void> _refresh() async {
+    refreshHomeOverview(ref, widget.client);
+    await ref.read(rideLifecycleProvider.future);
+  }
 
   String get _firstName {
     final displayName = widget.userData.displayName;
@@ -116,7 +166,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 : wire.ReservationDecisionDecisionEnum.decline,
         ),
       );
-      if (mounted) ref.invalidate(rideLifecycleProvider);
+      if (mounted) {
+        refreshHomeOverview(ref, widget.client);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +189,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
     final lifecycleAsync = ref.watch(rideLifecycleProvider);
+    final detail = lifecycleAsync.asData?.value is RideReserved
+        ? ref.watch(homeReservationDetailProvider).asData?.value
+        : null;
 
     return Scaffold(
       backgroundColor: context.appColors.backgroundDefault,
@@ -149,19 +204,30 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 512),
             child: RefreshIndicator(
-              onRefresh: () => ref.refresh(rideLifecycleProvider.future),
+              onRefresh: _refresh,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
                   _buildGreetingHeader(lifecycleAsync.asData?.value),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   ...lifecycleAsync.when(
                     data: (state) => _buildLifecycleSection(state),
                     loading: () => [_buildLoadingCard()],
                     error: (err, st) => [_buildErrorCard()],
                   ),
-                  const SizedBox(height: 24),
-                  _buildQuickActionsRow(),
+                  const SizedBox(height: 16),
+                  HomePlanSummary(
+                    client: widget.client,
+                    onOpen: widget.onShowWallet,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildQuickActionsRow(detail),
+                  const SizedBox(height: 16),
+                  HomeUpcoming(
+                    client: widget.client,
+                    onSeeAll: widget.onShowTrips,
+                  ),
                 ],
               ),
             ),
@@ -197,6 +263,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.heading1.copyWith(
+                    fontSize: 22,
+                    letterSpacing: -.4,
                     color: colors.textPrimary,
                   ),
                 ),
@@ -210,34 +278,39 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               ],
             ),
           ),
-          _buildNotificationButton(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationButton() {
-    final colors = context.appColors;
-    return Material(
-      color: colors.surfaceElevated,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => NotificationsInboxPage(client: widget.client),
+          if (AppThemeControllerScope.maybeOf(context) case final controller?)
+            IconButton(
+              tooltip: Theme.of(context).brightness == Brightness.dark
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode',
+              onPressed: () => controller.toggle(Theme.of(context).brightness),
+              icon: FigmaCommuterIcon(
+                Theme.of(context).brightness == Brightness.dark
+                    ? CommuterIcon.sun
+                    : CommuterIcon.moon,
+              ),
             ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(
-            Icons.notifications_none_rounded,
-            color: colors.iconDefault,
-            size: 24,
-          ),
-        ),
+          if (widget.onShowProfile != null)
+            IconButton(
+              tooltip: 'Open profile',
+              onPressed: widget.onShowProfile,
+              icon: CircleAvatar(
+                radius: 16,
+                backgroundColor: colors.actionPrimaryDefault,
+                backgroundImage: widget.userData.avatarUrl?.isNotEmpty == true
+                    ? NetworkImage(widget.userData.avatarUrl!)
+                    : null,
+                child: widget.userData.avatarUrl?.isNotEmpty == true
+                    ? null
+                    : Text(
+                        _firstName[0].toUpperCase(),
+                        style: AppTypography.label.copyWith(
+                          color: colors.actionOnPrimary,
+                        ),
+                      ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -486,7 +559,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: colors.surfaceStrong,
@@ -495,63 +568,76 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'Your seat is reserved',
-                  style: TextStyle(
-                    color: colors.onSurfaceStrong,
-                    fontSize: 17,
-                    fontFamily: AppTypography.fontFamily,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final title = Text(
+                'Your seat is reserved',
+                style: TextStyle(
+                  color: colors.onSurfaceStrong,
+                  fontSize: 17,
+                  fontFamily: AppTypography.fontFamily,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
                 ),
-              ),
-              const SizedBox(width: 12),
-              _buildEtaChip(etaLabel),
-            ],
+              );
+              if (constraints.maxWidth < 280 ||
+                  MediaQuery.textScalerOf(context).scale(17) > 24) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title,
+                    const SizedBox(height: 8),
+                    _buildEtaChip(etaLabel),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: title),
+                  const SizedBox(width: 12),
+                  _buildEtaChip(etaLabel),
+                ],
+              );
+            },
           ),
           if (departure != null) ...[
-            const SizedBox(height: 24),
-            Text(
-              DateFormat('EEEE, d MMM').format(departure.toUtc()).toUpperCase(),
-              style: AppTypography.caption.copyWith(
-                color: colors.onSurfaceStrong.withValues(alpha: .8),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('HH:mm').format(departure.toUtc()),
-              style: AppTypography.display.copyWith(
-                fontSize: 48,
-                color: colors.onSurfaceStrong,
-              ),
-            ),
-            Text(
-              'Scheduled departure',
-              style: AppTypography.caption.copyWith(
-                color: colors.onSurfaceStrong,
-              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Departs ${DateFormat('h:mm a').format(departure.toUtc())}',
+                  style: AppTypography.title.copyWith(
+                    color: colors.onSurfaceStrong,
+                  ),
+                ),
+                Text(
+                  DateFormat('EEE, d MMM').format(departure.toUtc()),
+                  style: AppTypography.caption.copyWith(
+                    color: colors.onSurfaceStrong.withValues(alpha: .8),
+                  ),
+                ),
+              ],
             ),
           ],
           if (detail?.route?.name case final name?) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               name,
               style: AppTypography.title.copyWith(
+                fontSize: 16,
                 color: colors.onSurfaceStrong,
               ),
             ),
           ],
           if (detail?.pickupStop != null || detail?.dropoffStop != null) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
             for (final stop in [detail?.pickupStop, detail?.dropoffStop])
               if (stop != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
                       Icon(
@@ -564,6 +650,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                         child: Text(
                           stop.name,
                           style: AppTypography.body.copyWith(
+                            fontSize: 13,
                             color: colors.onSurfaceStrong,
                           ),
                         ),
@@ -584,39 +671,26 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               ),
             ),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: Material(
-              color: const Color(0xFFDDF7A4),
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: _onShowBoardingPass,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.qr_code_2_rounded,
-                        color: const Color(0xFF183622),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'View boarding pass',
-                        style: TextStyle(
-                          color: const Color(0xFF183622),
-                          fontSize: 16,
-                          fontFamily: AppTypography.fontFamily,
-                          fontWeight: FontWeight.w600,
-                          height: 1.33,
-                        ),
-                      ),
-                    ],
-                  ),
+            child: FilledButton.icon(
+              onPressed: _onShowBoardingPass,
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.actionPrimaryDefault,
+                foregroundColor: colors.actionOnPrimary,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 12,
                 ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.qr_code_2_rounded, size: 20),
+              label: const Text(
+                'View boarding pass',
+                textAlign: TextAlign.center,
               ),
             ),
           ),
@@ -739,13 +813,13 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFDDF7A4),
+        color: const Color(0xFF1A5933),
         borderRadius: BorderRadius.circular(50),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: const Color(0xFF183622),
+          color: Colors.white,
           fontSize: 13,
           fontFamily: AppTypography.fontFamily,
           fontWeight: FontWeight.w600,
@@ -790,26 +864,40 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   // ---------------------------------------------------------------------
   // Quick Actions
   // ---------------------------------------------------------------------
-  Widget _buildQuickActionsRow() {
+  Widget _buildQuickActionsRow(wire.ReservationDetail? detail) {
     final colors = context.appColors;
+    final actions = _quickActions(detail);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Quick links',
-          style: AppTypography.title.copyWith(color: colors.textPrimary),
+          'Quick actions',
+          style: AppTypography.label.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
         ),
         const SizedBox(height: 12),
-        for (int i = 0; i < _quickActions.length; i += 2) ...[
-          Row(
-            children: [
-              Expanded(child: _buildQuickActionButton(_quickActions[i])),
-              const SizedBox(width: 10),
-              Expanded(child: _buildQuickActionButton(_quickActions[i + 1])),
-            ],
-          ),
-          if (i + 2 < _quickActions.length) const SizedBox(height: 10),
-        ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = MediaQuery.textScalerOf(context).scale(12) > 18
+                ? 2
+                : actions.length;
+            final width = (constraints.maxWidth - (columns - 1) * 8) / columns;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final action in actions)
+                  SizedBox(
+                    width: width,
+                    child: _buildQuickActionButton(action),
+                  ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
@@ -826,18 +914,23 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       child: InkWell(
         onTap: action.onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 94),
+          constraints: const BoxConstraints(minHeight: 76),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(action.icon, color: colors.actionPrimaryDefault, size: 22),
-                const SizedBox(height: 12),
+                if (action.figmaIcon case final icon?)
+                  FigmaCommuterIcon(icon, color: colors.iconDefault)
+                else
+                  Icon(action.icon, color: colors.iconDefault, size: 24),
+                const SizedBox(height: 8),
                 Text(
                   action.label,
+                  textAlign: TextAlign.center,
                   style: AppTypography.label.copyWith(
+                    fontSize: 11,
                     color: colors.textPrimary,
                   ),
                 ),

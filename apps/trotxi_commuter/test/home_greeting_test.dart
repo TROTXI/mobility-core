@@ -40,9 +40,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Quick links'));
+    await tester.ensureVisible(find.text('Quick actions'));
     await tester.pumpAndSettle();
-    expect(find.text('My trips'), findsOneWidget);
+    expect(find.text('Routes'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     fixture.api.dispose();

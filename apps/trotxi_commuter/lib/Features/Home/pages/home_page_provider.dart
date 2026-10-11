@@ -163,5 +163,18 @@ final homeReservationDetailProvider =
       if (lifecycle is! RideReserved || lifecycle.reservationId == null) {
         return null;
       }
-      return client.reservationDetail(lifecycle.reservationId!);
+      return ref.watch(
+        homeDetailProvider((client, lifecycle.reservationId!)).future,
+      );
+    });
+
+// The hero and upcoming card can refer to the same reservation. Share that
+// request rather than fetching it twice; session scope is part of the key.
+final homeDetailProvider = FutureProvider.autoDispose
+    .family<wire.ReservationDetail, (CommuterApi, String)>((ref, key) async {
+      final (client, id) = key;
+      final generation = client.sessionGeneration;
+      final detail = await client.reservationDetail(id);
+      client.ensureSession(generation);
+      return detail;
     });

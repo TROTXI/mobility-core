@@ -1,0 +1,13 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Sun icon &#226;&#128;&#148; switch to Light">
+<circle id="Sun center" cx="10" cy="10" r="3.4" fill="#D99720"/>
+<line id="Sun ray 1" x1="17.45" y1="9.25" x2="17.95" y2="9.25" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 2" x1="14.7376" y1="13.677" x2="15.0912" y2="13.3234" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 3" x1="9.25" y1="15.95" x2="9.25" y2="15.45" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 4" x1="4.20172" y1="14.7376" x2="3.84817" y2="14.3841" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 5" x1="2.55" y1="10.75" x2="2.05" y2="10.75" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 6" x1="5.26238" y1="6.32304" x2="4.90883" y2="6.6766" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 7" x1="10.75" y1="4.05" x2="10.75" y2="4.55" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+<line id="Sun ray 8" x1="15.7983" y1="5.26238" x2="16.1518" y2="5.61594" stroke="#D99720" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+</svg>

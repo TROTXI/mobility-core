@@ -1,0 +1,7 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Icon / Info">
+<circle id="Supplied info ring" cx="12" cy="12" r="9.1" stroke="#061421" stroke-width="1.8"/>
+<circle id="Info dot" cx="12" cy="7.2" r="1.6" fill="#061421"/>
+<rect id="Info stem" x="10.4" y="10.8" width="3.2" height="7.6" rx="1.6" fill="#061421"/>
+</g>
+</svg>

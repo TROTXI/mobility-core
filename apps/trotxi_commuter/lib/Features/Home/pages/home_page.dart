@@ -309,12 +309,14 @@ class _HomePageState extends State<HomePage> {
     final pages = [
       HomeTab(
         client: widget.client,
+        isActive: _selected == CommuterDestination.home,
         userData: userData,
         onShowBoardingPass: _showBoardingPass,
         onShowTrips: () => _goToDestination(CommuterDestination.trips),
         onShowRoutes: _showRoutes,
         onShowWallet: () => _goToDestination(CommuterDestination.wallet),
         onShowSupport: _showSupport,
+        onShowProfile: () => _goToDestination(CommuterDestination.profile),
       ),
       ReservationTripsTab(client: widget.client),
       WalletTab(client: widget.client),
@@ -322,16 +324,18 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      appBar: Navbar(
-        userData: userData,
-        userName: userData.displayName,
-        onProfile: () => _goToDestination(CommuterDestination.profile),
-        onSearch: () => showCommuterSearch(
-          context,
-          client: widget.client,
-          onDestination: _goToDestination,
-        ),
-      ),
+      appBar: _selected == CommuterDestination.home
+          ? null
+          : Navbar(
+              userData: userData,
+              userName: userData.displayName,
+              onProfile: () => _goToDestination(CommuterDestination.profile),
+              onSearch: () => showCommuterSearch(
+                context,
+                client: widget.client,
+                onDestination: _goToDestination,
+              ),
+            ),
       // None of the 4 tabs hosts a TextField directly (edits happen in
       // pushed pages/dialogs, which have their own Scaffolds), so this
       // Scaffold never needs to shrink for the keyboard — and a stuck/
@@ -342,6 +346,11 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: CommuterNavigation(
         selected: _selected,
         onDestinationSelected: _goToDestination,
+        onSearch: () => showCommuterSearch(
+          context,
+          client: widget.client,
+          onDestination: _goToDestination,
+        ),
       ),
     );
   }

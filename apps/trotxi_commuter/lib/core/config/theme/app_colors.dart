@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 // Legacy aliases for screens that have not yet moved to semantic roles.
 class AppColors {
-  static const primary = Color(0xFF155C3E);
-  static const lightBackground = Color(0xFFFAFBF8);
+  static const primary = AppPrimitiveColors.homeGreen;
+  static const lightBackground = Color(0xFFF8FAF9);
   static const buttontext = AppPrimitiveColors.neutral0;
 
   static const alert = Color.fromARGB(255, 216, 59, 32);
@@ -45,8 +45,8 @@ abstract final class AppPrimitiveColors {
   // values across individual lifecycle screens.
   static const homeGreen = Color(0xFF058740);
   static const homeDarkPage = Color(0xFF0E110F);
-  static const homeDarkPrimaryCard = Color(0xFF121C17);
-  static const homeDarkConfirmedCard = Color(0xFF111B16);
+  static const homeDarkPrimaryCard = Color(0xFF1F2822);
+  static const homeDarkConfirmedCard = Color(0xFF1F2822);
   static const homeDarkSecondaryCard = Color(0xFF131614);
   static const homeDarkSecondaryBorder = Color(0xFF292E2B);
   static const homeDarkNavigation = Color(0xFF151B17);
@@ -59,8 +59,8 @@ abstract final class AppPrimitiveColors {
   // (2444:35 Light and 2444:613 Dark). The Dark role aliases the approved
   // commuter page primitive so Auth and Home cannot drift to different dark
   // page colors while retaining separate semantic ownership in screen code.
-  static const authLightPage = Color(0xFFFAFBF8);
-  static const authDarkPage = Color(0xFF111B16);
+  static const authLightPage = Color(0xFFF8FAF9);
+  static const authDarkPage = homeDarkPage;
 
   static Color authPage(Brightness brightness) =>
       brightness == Brightness.dark ? authDarkPage : authLightPage;
@@ -194,27 +194,27 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   final Color mapHighlight;
 
   static const light = AppSemanticColors(
-    backgroundDefault: Color(0xFFFAFBF8),
-    backgroundSubtle: Color(0xFFEEF2E9),
+    backgroundDefault: Color(0xFFF8FAF9),
+    backgroundSubtle: Color(0xFFE8F7ED),
     surfaceDefault: AppPrimitiveColors.neutral0,
     surfaceElevated: AppPrimitiveColors.neutral0,
-    surfaceStrong: Color(0xFF244B38),
+    surfaceStrong: Color(0xFF061421),
     onSurfaceStrong: AppPrimitiveColors.neutral0,
     borderDefault: Color(0xFF87968A),
-    borderSubtle: Color(0xFFE2E8DF),
-    textPrimary: Color(0xFF132D24),
-    textSecondary: Color(0xFF59685F),
+    borderSubtle: Color(0xFFE0E5E3),
+    textPrimary: Color(0xFF061421),
+    textSecondary: Color(0xFF636E69),
     textTertiary: AppPrimitiveColors.neutral600,
     textInverse: AppPrimitiveColors.neutral0,
-    iconDefault: Color(0xFF132D24),
+    iconDefault: Color(0xFF061421),
     iconSubtle: AppPrimitiveColors.neutral600,
-    actionPrimaryDefault: Color(0xFF155C3E),
+    actionPrimaryDefault: AppPrimitiveColors.homeGreen,
     actionPrimaryHover: AppPrimitiveColors.green800,
     actionPrimaryPressed: AppPrimitiveColors.green900,
     actionPrimaryDisabled: AppPrimitiveColors.neutral200,
     actionOnPrimary: AppPrimitiveColors.neutral0,
     actionOnDisabled: AppPrimitiveColors.neutral600,
-    actionSecondary: Color(0xFF132D24),
+    actionSecondary: Color(0xFF067647),
     focus: AppPrimitiveColors.yellow700,
     success: AppPrimitiveColors.green700,
     warning: AppPrimitiveColors.yellow800,
@@ -225,29 +225,29 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   );
 
   static const dark = AppSemanticColors(
-    backgroundDefault: Color(0xFF111B16),
-    backgroundSubtle: Color(0xFF223226),
-    surfaceDefault: Color(0xFF1B2920),
-    surfaceElevated: Color(0xFF1B2920),
-    surfaceStrong: Color(0xFF244B38),
-    onSurfaceStrong: Color(0xFFF1F5ED),
+    backgroundDefault: AppPrimitiveColors.homeDarkPage,
+    backgroundSubtle: Color(0xFF172B1F),
+    surfaceDefault: AppPrimitiveColors.homeDarkSecondaryCard,
+    surfaceElevated: AppPrimitiveColors.homeDarkSecondaryCard,
+    surfaceStrong: AppPrimitiveColors.homeDarkPrimaryCard,
+    onSurfaceStrong: Colors.white,
     borderDefault: Color(0xFF7C8D7E),
-    borderSubtle: Color(0xFF354438),
-    textPrimary: Color(0xFFF1F5ED),
-    textSecondary: Color(0xFFB0BDAE),
+    borderSubtle: AppPrimitiveColors.homeDarkSecondaryBorder,
+    textPrimary: Colors.white,
+    textSecondary: AppPrimitiveColors.homeDarkTextSecondary,
     textTertiary: Color(0xFFA5B3A3),
-    textInverse: Color(0xFF111B16),
-    iconDefault: Color(0xFFF1F5ED),
-    iconSubtle: Color(0xFFB0BDAE),
-    actionPrimaryDefault: Color(0xFFC9EC9B),
-    actionPrimaryHover: Color(0xFFDDF7A4),
-    actionPrimaryPressed: Color(0xFFB2D385),
+    textInverse: AppPrimitiveColors.homeDarkPage,
+    iconDefault: Colors.white,
+    iconSubtle: Color(0xFFAAB3AD),
+    actionPrimaryDefault: AppPrimitiveColors.homeGreen,
+    actionPrimaryHover: Color(0xFF067647),
+    actionPrimaryPressed: Color(0xFF075E3B),
     actionPrimaryDisabled: Color(0xFF354438),
-    actionOnPrimary: Color(0xFF183622),
+    actionOnPrimary: Colors.white,
     actionOnDisabled: Color(0xFFA5B3A3),
-    actionSecondary: Color(0xFFF1F5ED),
+    actionSecondary: Color(0xFF7DD199),
     focus: Color(0xFFD99720),
-    success: Color(0xFFC9EC9B),
+    success: Color(0xFF7DD199),
     warning: Color(0xFFF3C57E),
     error: Color(0xFFFFB8AA),
     routeActive: Color(0xFF00A651),
