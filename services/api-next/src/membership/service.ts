@@ -310,7 +310,9 @@ export class MembershipService {
       'INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,purchase_id,effective_from) VALUES ($1,$2,$3,$4,$5,$6)',
       [b.userId, b.membershipId, b.periodId, selection, b.purchaseId, date(b.now)],
     );
-    await this.askIfLate(c, b.userId, b.now);
+    // Not b.now: for an offered purchase that is the coverage start, midnight,
+    // not the moment the payment landed. The ask cut-off is about the clock.
+    await this.askIfLate(c, b.userId, this.now());
   };
   // Caller already owns rider/period locks. No nested transaction or ledger write.
   reversePeriod = async (

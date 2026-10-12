@@ -37,11 +37,14 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
     authorizeSession: f.dependencies.authorizeSession,
     cursorSecret: Buffer.alloc(32, 11),
   });
+  // Real time unless a test sets it: the late-ask cut-off reads this clock.
+  let membershipClock: Date | null = null;
   const membership = new MembershipService({
     pool: f.runtime,
     authorizeSession: f.dependencies.authorizeSession,
     cursorSecret: Buffer.alloc(32, 11),
     fareForSelection: pricing.fareForSelection,
+    now: () => membershipClock ?? new Date(),
   });
   const financial = new FinancialFoundation({
     ...f.dependencies,
@@ -133,6 +136,9 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
     });
   return {
     ...f,
+    setMembershipClock: (at: Date | null) => {
+      membershipClock = at;
+    },
     admin,
     app,
     pricing,
@@ -2245,3 +2251,61 @@ function withReason(url: string, payload: unknown): unknown {
     return { ...payload, reason: 'Test reason' };
   return payload;
 }
+
+test('OFFER-12 an offered purchase paid after 21:00 asks about the next travel day', async (t) => {
+  const f = await offeredFixture(t);
+  await f.verify();
+  const app = await f.join();
+  await f.offer(app.id);
+  const purchase = expectStatus(await f.accept(app.id), 201);
+  // The first of the rider's travel days (Mon, Wed, Fri) inside coverage.
+  let day = new Date(`${f.start}T00:00:00Z`);
+  while (![1, 3, 5].includes(day.getUTCDay() || 7)) day = new Date(day.getTime() + 86400000);
+  const travel = day.toISOString().slice(0, 10);
+  const vehicle = (
+    await f.owner.query(
+      "INSERT INTO app.vehicles(plate,capacity) VALUES ('LATE ASK',18) RETURNING id",
+    )
+  ).rows[0].id;
+  const driver = (
+    await f.owner.query("INSERT INTO app.drivers(name) VALUES ('Late ask') RETURNING id")
+  ).rows[0].id;
+  for (const leg of f.input.legs)
+    await f.owner.query(
+      `INSERT INTO app.trips(schedule_id,departure_id,pattern_version_id,service_date,scheduled_at,assigned_driver_id,vehicle_id)
+      SELECT id,departure_id,pattern_version_id,$2::date,$2::date+local_departure,$3,$4
+      FROM app.service_schedules WHERE id=$1`,
+      [leg.scheduleId, travel, driver, vehicle],
+    );
+  // 21:30 the evening before: fulfilment hands membership the coverage start
+  // (midnight), so only the clock can tell that the 21:00 ask has passed.
+  f.setMembershipClock(new Date(day.getTime() - 2.5 * 3600000));
+  const attempt = (
+    await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  assert.equal(
+    await f.financial.fulfill({
+      reference: attempt.reference,
+      environment: 'test',
+      amountPesewas: 7000,
+      currency: 'GHS',
+      transactionId: randomUUID(),
+      paidAt: new Date(),
+      channel: null,
+      feesPesewas: 0,
+    }),
+    'fulfilled',
+  );
+  const asked = (
+    await f.owner.query(
+      `SELECT r.direction,r.status,r.service_date::text AS day,
+        EXISTS(SELECT 1 FROM app.reservation_prompts p WHERE p.reservation_id=r.id) AS prompted
+       FROM app.reservations r WHERE r.user_id=$1 ORDER BY r.direction`,
+      [f.actor.userId],
+    )
+  ).rows;
+  assert.deepEqual(asked, [
+    { direction: 'outbound', status: 'pending', day: travel, prompted: true },
+    { direction: 'return', status: 'pending', day: travel, prompted: true },
+  ]);
+});
