@@ -146,7 +146,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Geometry.serializer)
       ..add(GeometryResponse.serializer)
       ..add(GeometrySource_Enum.serializer)
-      ..add(GeometryStopDistancesInner.serializer)
       ..add(GoogleSignIn.serializer)
       ..add(Health.serializer)
       ..add(HealthStatusEnum.serializer)
@@ -243,9 +242,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsPurchaseCheckout.serializer)
       ..add(OpsPurchaseCollectionStateEnum.serializer)
       ..add(OpsPurchaseOfferTerms.serializer)
-      ..add(OpsPurchasePage.serializer)
       ..add(OpsPurchasePlanEnum.serializer)
       ..add(OpsPurchaseResponse.serializer)
+      ..add(OpsPurchaseRow.serializer)
+      ..add(OpsPurchaseRowCollectionStateEnum.serializer)
+      ..add(OpsPurchaseRowPage.serializer)
+      ..add(OpsPurchaseRowPlanEnum.serializer)
+      ..add(OpsPurchaseRowStateEnum.serializer)
       ..add(OpsPurchaseStateEnum.serializer)
       ..add(OpsReportSummary.serializer)
       ..add(OpsReportSummaryDelivery.serializer)
@@ -617,12 +620,12 @@ Serializers _$serializers = (Serializers().toBuilder()
               BuiltList, const [const FullType(OpsOverviewTripsInner)]),
           () => ListBuilder<OpsOverviewTripsInner>())
       ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(OpsPurchase)]),
-          () => ListBuilder<OpsPurchase>())
-      ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType(OpsPurchaseAttemptsInner)]),
           () => ListBuilder<OpsPurchaseAttemptsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsPurchaseRow)]),
+          () => ListBuilder<OpsPurchaseRow>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsRider)]),
           () => ListBuilder<OpsRider>())
@@ -692,10 +695,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Point)]),
           () => ListBuilder<Point>())
-      ..addBuilderFactory(
-          const FullType(
-              BuiltList, const [const FullType(GeometryStopDistancesInner)]),
-          () => ListBuilder<GeometryStopDistancesInner>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Point)]),
           () => ListBuilder<Point>())

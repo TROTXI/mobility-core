@@ -1,32 +1,37 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'ops_purchase_page.dart';
+part of 'ops_purchase_row_page.dart';
 
 // **************************************************************************
 // BuiltValueGenerator
 // **************************************************************************
 
-class _$OpsPurchasePage extends OpsPurchasePage {
+class _$OpsPurchaseRowPage extends OpsPurchaseRowPage {
   @override
-  final BuiltList<OpsPurchase> data;
+  final BuiltList<OpsPurchaseRow> data;
   @override
   final CommuteRequestPagePage page;
 
-  factory _$OpsPurchasePage([void Function(OpsPurchasePageBuilder)? updates]) =>
-      (OpsPurchasePageBuilder()..update(updates))._build();
+  factory _$OpsPurchaseRowPage(
+          [void Function(OpsPurchaseRowPageBuilder)? updates]) =>
+      (OpsPurchaseRowPageBuilder()..update(updates))._build();
 
-  _$OpsPurchasePage._({required this.data, required this.page}) : super._();
+  _$OpsPurchaseRowPage._({required this.data, required this.page}) : super._();
   @override
-  OpsPurchasePage rebuild(void Function(OpsPurchasePageBuilder) updates) =>
+  OpsPurchaseRowPage rebuild(
+          void Function(OpsPurchaseRowPageBuilder) updates) =>
       (toBuilder()..update(updates)).build();
 
   @override
-  OpsPurchasePageBuilder toBuilder() => OpsPurchasePageBuilder()..replace(this);
+  OpsPurchaseRowPageBuilder toBuilder() =>
+      OpsPurchaseRowPageBuilder()..replace(this);
 
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is OpsPurchasePage && data == other.data && page == other.page;
+    return other is OpsPurchaseRowPage &&
+        data == other.data &&
+        page == other.page;
   }
 
   @override
@@ -40,32 +45,32 @@ class _$OpsPurchasePage extends OpsPurchasePage {
 
   @override
   String toString() {
-    return (newBuiltValueToStringHelper(r'OpsPurchasePage')
+    return (newBuiltValueToStringHelper(r'OpsPurchaseRowPage')
           ..add('data', data)
           ..add('page', page))
         .toString();
   }
 }
 
-class OpsPurchasePageBuilder
-    implements Builder<OpsPurchasePage, OpsPurchasePageBuilder> {
-  _$OpsPurchasePage? _$v;
+class OpsPurchaseRowPageBuilder
+    implements Builder<OpsPurchaseRowPage, OpsPurchaseRowPageBuilder> {
+  _$OpsPurchaseRowPage? _$v;
 
-  ListBuilder<OpsPurchase>? _data;
-  ListBuilder<OpsPurchase> get data =>
-      _$this._data ??= ListBuilder<OpsPurchase>();
-  set data(ListBuilder<OpsPurchase>? data) => _$this._data = data;
+  ListBuilder<OpsPurchaseRow>? _data;
+  ListBuilder<OpsPurchaseRow> get data =>
+      _$this._data ??= ListBuilder<OpsPurchaseRow>();
+  set data(ListBuilder<OpsPurchaseRow>? data) => _$this._data = data;
 
   CommuteRequestPagePageBuilder? _page;
   CommuteRequestPagePageBuilder get page =>
       _$this._page ??= CommuteRequestPagePageBuilder();
   set page(CommuteRequestPagePageBuilder? page) => _$this._page = page;
 
-  OpsPurchasePageBuilder() {
-    OpsPurchasePage._defaults(this);
+  OpsPurchaseRowPageBuilder() {
+    OpsPurchaseRowPage._defaults(this);
   }
 
-  OpsPurchasePageBuilder get _$this {
+  OpsPurchaseRowPageBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
       _data = $v.data.toBuilder();
@@ -76,23 +81,23 @@ class OpsPurchasePageBuilder
   }
 
   @override
-  void replace(OpsPurchasePage other) {
-    _$v = other as _$OpsPurchasePage;
+  void replace(OpsPurchaseRowPage other) {
+    _$v = other as _$OpsPurchaseRowPage;
   }
 
   @override
-  void update(void Function(OpsPurchasePageBuilder)? updates) {
+  void update(void Function(OpsPurchaseRowPageBuilder)? updates) {
     if (updates != null) updates(this);
   }
 
   @override
-  OpsPurchasePage build() => _build();
+  OpsPurchaseRowPage build() => _build();
 
-  _$OpsPurchasePage _build() {
-    _$OpsPurchasePage _$result;
+  _$OpsPurchaseRowPage _build() {
+    _$OpsPurchaseRowPage _$result;
     try {
       _$result = _$v ??
-          _$OpsPurchasePage._(
+          _$OpsPurchaseRowPage._(
             data: data.build(),
             page: page.build(),
           );
@@ -105,7 +110,7 @@ class OpsPurchasePageBuilder
         page.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
-            r'OpsPurchasePage', _$failedField, e.toString());
+            r'OpsPurchaseRowPage', _$failedField, e.toString());
       }
       rethrow;
     }

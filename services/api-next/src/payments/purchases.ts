@@ -108,6 +108,45 @@ export class Purchases {
     };
   }
 
+  /**
+   * The ops list row: the table's columns and the latest collection state,
+   * from one query. Attempts, checkout sessions and offer deadlines are the
+   * detail view's, not something to fetch for every row of a page.
+   */
+  private async rows(c: PoolClient, rows: Row[]): Promise<Body[]> {
+    if (!rows.length) return [];
+    const ids = rows.map((r) => r.id);
+    const latest = new Map<string, string>(
+      (
+        await c.query(
+          `SELECT DISTINCT ON (purchase_id) purchase_id,state FROM app.payment_attempts
+          WHERE purchase_id=ANY($1::uuid[]) ORDER BY purchase_id,created_at DESC,id DESC`,
+          [ids],
+        )
+      ).rows.map((a) => [a.purchase_id, a.state]),
+    );
+    const riders = new Map<string, string | null>(
+      (
+        await c.query('SELECT id,display_name FROM app.users WHERE id=ANY($1::uuid[])', [
+          [...new Set(rows.map((p) => p.user_id))],
+        ])
+      ).rows.map((u) => [u.id, u.display_name]),
+    );
+    return rows.map((p) => ({
+      id: p.id,
+      plan: p.plan,
+      state: p.state,
+      collectionState: latest.get(p.id) ?? 'pending',
+      price: money(p.price_pesewas),
+      appliedCredit: money(p.applied_credit_pesewas),
+      cashDue: money(p.cash_due_pesewas),
+      failureCode: p.failure_code ?? null,
+      createdAt: iso(p.created_at),
+      riderId: p.user_id,
+      riderName: riders.get(p.user_id) ?? null,
+    }));
+  }
+
   private async compose(c: PoolClient, rows: Row[], admin: boolean): Promise<Body[]> {
     if (!rows.length) return [];
     const ids = rows.map((r) => r.id);
@@ -295,7 +334,10 @@ export class Purchases {
       return {
         status: 200,
         body: {
-          data: await this.compose(c, page, admin),
+          data:
+            operation === 'listOpsPurchases'
+              ? await this.rows(c, page)
+              : await this.compose(c, page, admin),
           page: {
             nextCursor:
               rows.length > limit && last

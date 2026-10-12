@@ -322,8 +322,17 @@ test('CAT-01 HTTP creates the entire route -> stops -> loop version -> publicati
       200,
     );
     assert.equal(geometry.source, 'configured');
+    // Distances stay server-side for arrival estimates; the map gets the line.
+    assert.equal('stopDistances' in geometry, false);
     assert.deepEqual(
-      geometry.stopDistances.map((d: { stopOccurrenceId: string }) => d.stopOccurrenceId),
+      (
+        await c.owner.query(
+          `SELECT d.stop_occurrence_id FROM app.geometry_stop_distances d
+           JOIN app.route_pattern_stops s ON s.id=d.stop_occurrence_id
+           WHERE d.geometry_id=$1 ORDER BY s.ordinal`,
+          [f.version.geometryId],
+        )
+      ).rows.map((r) => r.stop_occurrence_id),
       f.version.stops.map((s: { id: string }) => s.id),
     );
     const schedule = await c.schedule(f.version.id);

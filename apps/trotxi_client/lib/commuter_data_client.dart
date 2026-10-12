@@ -716,6 +716,17 @@ class CommuterDataClient {
       (page) => page.data,
       (page) => page.page.nextCursor);
 
+  /// The newest purchases, one page only. For lists a rider scans, where
+  /// [purchases] with no dates would page through their whole history.
+  Future<List<Purchase>> recentPurchases({int limit = 20}) async {
+    final page = await _read((extra) => client.getRiderOwnApi().listPurchases(
+        xTrotxiClient: metadata.app,
+        xTrotxiBuild: metadata.build,
+        limit: limit,
+        extra: extra));
+    return List.unmodifiable(page.data);
+  }
+
   /// The caller must persist this key BEFORE sending; never auto-generate a
   /// new key when the result is uncertain or a provider URL is not yet ready.
   Future<Purchase> createPurchase(PurchaseInput input,

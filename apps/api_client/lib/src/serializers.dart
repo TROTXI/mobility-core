@@ -111,7 +111,6 @@ import 'package:trotxi_api_client/src/model/flag_page.dart';
 import 'package:trotxi_api_client/src/model/flag_response.dart';
 import 'package:trotxi_api_client/src/model/geometry.dart';
 import 'package:trotxi_api_client/src/model/geometry_response.dart';
-import 'package:trotxi_api_client/src/model/geometry_stop_distances_inner.dart';
 import 'package:trotxi_api_client/src/model/google_sign_in.dart';
 import 'package:trotxi_api_client/src/model/health.dart';
 import 'package:trotxi_api_client/src/model/incident.dart';
@@ -178,8 +177,9 @@ import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner_received_amount.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_checkout.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_offer_terms.dart';
-import 'package:trotxi_api_client/src/model/ops_purchase_page.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_response.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_row.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_row_page.dart';
 import 'package:trotxi_api_client/src/model/ops_report_summary.dart';
 import 'package:trotxi_api_client/src/model/ops_report_summary_delivery.dart';
 import 'package:trotxi_api_client/src/model/ops_report_summary_payments.dart';
@@ -473,7 +473,6 @@ part 'serializers.g.dart';
   FlagResponse,
   Geometry,
   GeometryResponse,
-  GeometryStopDistancesInner,
   GoogleSignIn,
   Health,
   Incident,
@@ -540,8 +539,9 @@ part 'serializers.g.dart';
   OpsPurchaseAttemptsInnerReceivedAmount,
   OpsPurchaseCheckout,
   OpsPurchaseOfferTerms,
-  OpsPurchasePage,
   OpsPurchaseResponse,
+  OpsPurchaseRow,
+  OpsPurchaseRowPage,
   OpsReportSummary,
   OpsReportSummaryDelivery,
   OpsReportSummaryPayments,

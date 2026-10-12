@@ -503,13 +503,8 @@ export class Catalog {
         )
       ).rows[0];
       if (!g) return notFound();
-      const distances = (
-        await client.query(
-          `SELECT d.stop_occurrence_id AS "stopOccurrenceId",d.distance_meters AS "distanceMeters"
-        FROM app.geometry_stop_distances d JOIN app.route_pattern_stops s ON s.id=d.stop_occurrence_id WHERE geometry_id=$1 ORDER BY s.ordinal`,
-          [target],
-        )
-      ).rows;
+      // Stop distances stay server-side: they drive arrival estimates, and no
+      // client draws them, so the map response carries only the line.
       return {
         status: 200,
         headers: { etag: `"geometry:${g.id}"` },
@@ -523,7 +518,6 @@ export class Catalog {
               latitude,
               longitude,
             })),
-            stopDistances: distances,
           },
         },
       };
