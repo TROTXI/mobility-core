@@ -11,6 +11,7 @@ import { BulkStandbyOffers } from './BulkStandbyOffers';
 import {
   estimateOffers,
   futureDate,
+  nextTravelDay,
   pesewas,
   weekdays,
   planLabel,
@@ -316,7 +317,7 @@ export function Standby() {
                             setOutboundCredit('');
                             setReturnCredit('');
                             setReason('');
-                            const start = futureDate(3);
+                            const start = nextTravelDay(application.travelDays);
                             setCoverageStart(start);
                             setCoverageEnd(suggestedCoverageEnd(start, application.selection.plan));
                             setSelected(application);

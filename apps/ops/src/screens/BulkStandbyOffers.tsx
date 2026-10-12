@@ -8,7 +8,7 @@ import { ErrorState } from '../components/Page';
 import { ReasonField } from '../components/ReasonField';
 import {
   estimateOffers,
-  futureDate,
+  nextTravelDay,
   pesewas,
   weekdays,
   planLabel,
@@ -54,9 +54,12 @@ export function BulkStandbyOffers({
   const [terms, setTerms] = useState<Record<string, Terms>>(() =>
     Object.fromEntries(applications.map((a) => [a.id, { price: '', outbound: '', return: '' }])),
   );
-  const [start, setStart] = useState(futureDate(3));
+  // The earliest day any selected rider travels; each rider's own rides are
+  // still counted from their own days.
+  const firstStart = nextTravelDay([...new Set(applications.flatMap((a) => a.travelDays))]);
+  const [start, setStart] = useState(firstStart);
   const [end, setEnd] = useState(() =>
-    suggestedCoverageEnd(futureDate(3), applications[0]?.selection.plan ?? 'monthly'),
+    suggestedCoverageEnd(firstStart, applications[0]?.selection.plan ?? 'monthly'),
   );
   const mixedPlans = new Set(applications.map((a) => a.selection.plan)).size > 1;
   const [days, setDays] = useState(2);

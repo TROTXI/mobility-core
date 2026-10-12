@@ -5,6 +5,32 @@ export const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export const futureDate = (days: number) =>
   new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
+/** Offers sent after this hour (Accra) start one travel day later. */
+const LATE_OFFER_HOUR = 18;
+
+/**
+ * The first day a new offer should cover: the rider's next travel day after
+ * today. Coverage starts at midnight and must be in the future, so today is
+ * never possible; tomorrow is, if the rider travels then. After 18:00 the
+ * suggestion moves one travel day on, so a rider who sees the offer that
+ * evening still has a working day to pay before coverage begins.
+ *
+ * Accra keeps UTC all year, so UTC dates are Accra dates. Days are ISO
+ * weekdays, 1 Monday to 7 Sunday, as in the rider's request.
+ */
+export function nextTravelDay(travelDays: readonly number[], now = new Date()): string {
+  const days = travelDays.length ? travelDays : [1, 2, 3, 4, 5, 6, 7];
+  let skip = now.getUTCHours() >= LATE_OFFER_HOUR ? 1 : 0;
+  const tomorrow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  for (let i = 0; i < 21; i++) {
+    const day = new Date(tomorrow + i * 86400000);
+    if (!days.includes(day.getUTCDay() || 7)) continue;
+    if (skip-- > 0) continue;
+    return day.toISOString().slice(0, 10);
+  }
+  return new Date(tomorrow).toISOString().slice(0, 10);
+}
+
 export const planLabel = (plan: string) =>
   ({
     weekly: 'Weekly',
