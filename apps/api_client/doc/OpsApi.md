@@ -90,6 +90,19 @@ Method | HTTP request | Description
 [**updateVehicle**](OpsApi.md#updatevehicle) | **PATCH** /v1/ops/vehicles/{id} | update Vehicle
 
 
+# **eraseCommuter**
+> OperatorCommandResultResponse eraseCommuter(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, riderErasureInput, xTrotxiPlatform)
+
+Closes a commuter account after a verified deletion request. Superadmin access
+and a recent passkey check are required. The request body contains a reason
+and a `confirmAccountId` matching the path ID. The command is idempotent and
+records an attributed Ops event. See [RiderErasureInput](RiderErasureInput.md).
+
+**POST** `/v1/ops/riders/{id}/erase`
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+
+
 # **assignTrip**
 > OpsTripResponse assignTrip(id, ifMatch, idempotencyKey, xTrotxiClient, xTrotxiBuild, tripAssignment, xTrotxiPlatform)
 
@@ -1091,57 +1104,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OpsIncidentResponse**](OpsIncidentResponse.md)
-
-### Authorization
-
-[bearerAuth](../README.md#bearerAuth)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **eraseCommuter**
-> OperatorCommandResultResponse eraseCommuter(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, riderErasureInput, xTrotxiPlatform)
-
-erase Commuter
-
-### Example
-```dart
-import 'package:trotxi_api_client/api.dart';
-
-final api = TrotxiApiClient().getOpsApi();
-final String id = id_example; // String |
-final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
-final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
-final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final RiderErasureInput riderErasureInput = ; // RiderErasureInput |
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
-
-try {
-    final response = api.eraseCommuter(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, riderErasureInput, xTrotxiPlatform);
-    print(response);
-} on DioException catch (e) {
-    print('Exception when calling OpsApi->eraseCommuter: $e\n');
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
- **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **riderErasureInput** | [**RiderErasureInput**](RiderErasureInput.md)|  |
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
-
-### Return type
-
-[**OperatorCommandResultResponse**](OperatorCommandResultResponse.md)
 
 ### Authorization
 
@@ -4108,4 +4070,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
