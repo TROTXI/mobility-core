@@ -113,10 +113,10 @@ void main() {
       expect(find.byType(EndRunPage), findsOneWidget);
       expect(find.byType(RunSummaryPage), findsNothing);
       expect(find.text('No internet connection.'), findsOneWidget);
-      // Let the error snackbar clear the bottom action before retrying.
-      await tester.pump(const Duration(seconds: 5));
-      await tester.pumpAndSettle();
+      // The error sits above the actions; nothing covers END TRIP.
       trips.failCompletion = false;
+      await tester.ensureVisible(find.text('END TRIP'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('END TRIP'));
       await tester.pumpAndSettle();
       expect(find.byType(RunSummaryPage), findsOneWidget);

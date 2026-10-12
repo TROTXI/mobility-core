@@ -227,8 +227,9 @@ void main() {
                   statusCode: 409,
                   data: {
                     'error': {
-                      'code': 'capture_before_start',
-                      'message': 'This fix predates the start of the run.',
+                      'code': 'capture_too_old',
+                      'message':
+                          'This fix is older than the accepted upload window.',
                     },
                   },
                 ),
@@ -252,6 +253,57 @@ void main() {
       await publisher.acknowledgeRejections();
       await publisher.flushBeforeComplete('trip-1');
       expect(queue.rows, isEmpty);
+    },
+  );
+
+  test(
+    'a fix from before the trip started is dropped, not held against ending it',
+    () async {
+      final queue = PositionQueue();
+      final now = DateTime.now();
+      for (final id in ['refused', 'valid']) {
+        await queue.add({
+          'tripId': 'trip-1',
+          'clientFixId': id,
+          'capturedAt': now.toUtc().toIso8601String(),
+          'accuracyMeters': 5.0,
+          'latitude': 5.57,
+          'longitude': -0.21,
+        });
+      }
+      final publisher = PositionPublisher(
+        queue: queue,
+        client: client((o, h) {
+          if ((o.data as Map)['clientFixId'] == 'refused') {
+            h.reject(
+              DioException(
+                requestOptions: o,
+                response: Response(
+                  requestOptions: o,
+                  statusCode: 409,
+                  data: {
+                    'error': {
+                      'code': 'capture_before_start',
+                      'message': 'This fix predates the start of the run.',
+                    },
+                  },
+                ),
+              ),
+              true,
+            );
+          } else {
+            accept(o, h);
+          }
+        }),
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      await reaches(publisher, PositionSharing.live);
+      // The phone's pre-trip location is not evidence: nothing to review.
+      expect(queue.rows, isEmpty);
+      expect(publisher.rejectedFixes, 0);
+      expect(publisher.uploadError, isNull);
+      await publisher.flushBeforeComplete('trip-1');
     },
   );
 
