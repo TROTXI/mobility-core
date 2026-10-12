@@ -5,7 +5,12 @@ import { trotxiLight } from '../theme';
 import { BulkStandbyOffers } from './BulkStandbyOffers';
 import { Standby } from './Standby';
 import type { StandbyApplication } from './standby-offers';
-import { futureDate, suggestedCoverageEnd } from './standby-offers';
+import { futureDate, nextTravelDay, suggestedCoverageEnd } from './standby-offers';
+
+// The dialog opens on the riders' next travel day (Ama travels Mon, Wed, Fri).
+const defaultStart = () => nextTravelDay([1, 3, 5]);
+const daysAfterStart = (days: number) =>
+  new Date(Date.parse(defaultStart()) + days * 86400000).toISOString().slice(0, 10);
 
 const { session } = vi.hoisted(() => ({
   session: { account: { id: 'admin' }, client: { GET: vi.fn(), POST: vi.fn() } },
@@ -179,12 +184,13 @@ it.each([
           ...response.data,
           data: response.data.data.map((schedule) => ({
             ...schedule,
-            effectiveFrom: futureDate(from),
+            // `from` 3 is the default start itself; 4 is the day after it.
+            effectiveFrom: daysAfterStart(from - 3),
             effectiveTo:
               to === null
                 ? null
                 : new Date(
-                    Date.parse(suggestedCoverageEnd(futureDate(3), 'monthly')) -
+                    Date.parse(suggestedCoverageEnd(defaultStart(), 'monthly')) -
                       (33 - to) * 86400000,
                   )
                     .toISOString()
