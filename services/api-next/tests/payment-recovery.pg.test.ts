@@ -897,3 +897,28 @@ test('REC-16: refund arriving before charge stays retryable; refund of a late un
     2,
   );
 });
+
+test('REC-20: a webhook settles its payment on arrival, once, without waiting for the inbox run', async (t) => {
+  const f = await fixture(t);
+  const recovery = new PaymentRecovery({ ...f.options, settleOnReceipt: true });
+  const p = await f.buy();
+  const raw = Buffer.from(JSON.stringify(f.success(p)));
+  const signature = createHmac('sha512', secret).update(raw).digest('hex');
+  // Paystack retries are common; both copies arrive together.
+  await Promise.all([
+    recovery.acceptWebhook(raw, signature),
+    recovery.acceptWebhook(raw, signature),
+  ]);
+  await recovery.settled();
+  assert.equal((await f.owner.query('SELECT state FROM app.purchases')).rows[0].state, 'fulfilled');
+  assert.deepEqual(
+    (await f.owner.query('SELECT state FROM app.payment_events')).rows.map((r) => r.state),
+    ['processed'],
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.billing_periods')).rows[0].n,
+    1,
+  );
+  // The inbox run that follows finds nothing left to do.
+  assert.equal((await recovery.processInbox()).considered, 0);
+});

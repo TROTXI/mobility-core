@@ -49,6 +49,8 @@ export interface Backend {
   maintenanceUserId: string;
   maintenanceAudit: MaintenanceAudit;
   email?: TransactionalEmail;
+  /** Settles Paystack webhook events; absent when payments are not configured. */
+  payments?: PaymentRecovery;
   sms?: DriverSms;
   push?: PushNotifications;
   close(): Promise<void>;
@@ -171,6 +173,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
     };
     // Filled by compose below, which runs before the application is built.
     let identity: { auth: AuthService; membership: MembershipService; account: AccountService };
+    let paymentRecovery: PaymentRecovery | undefined;
     const built = () => {
       if (!identity) throw new Error('The backend was used before it finished composing');
       return identity;
@@ -313,7 +316,9 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           authorizeSession,
           cursorSecret: config.keys.cursorSecret,
           reversePeriod: membership.reversePeriod,
+          settleOnReceipt: true,
         });
+        paymentRecovery = recovery;
         const cards = cardBox(config.keys.paystackEvidence);
         autoRenewals = new AutoRenewals({
           pool,
@@ -373,6 +378,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       pool,
       auth: built().auth,
       account: built().account,
+      payments: paymentRecovery,
       admission,
       maintenanceUserId: config.maintenanceUserId,
       maintenanceAudit,

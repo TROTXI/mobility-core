@@ -847,15 +847,17 @@ test('ASM-20 money, coverage and a seat are one flow through the assembled backe
     },
   });
   assert.equal(delivered.statusCode, 200, delivered.body);
-  // Nothing is granted by delivery alone: the inbox is durable and the worker
-  // owns the effect.
-  assert.equal(
-    (await f.owner.query('SELECT count(*)::int AS n FROM app.billing_periods')).rows[0].n,
-    0,
-    'coverage was granted before the inbox was worked',
-  );
+  // Delivery settles the payment straight after the acknowledgement; the
+  // payments job that follows is the safety net and finds nothing left.
+  await backend.payments?.settled();
   const worked = await runJob(backend, { job: 'payments', limit: 10 });
   assert.equal(worked.status, 200, JSON.stringify(worked.body));
+  assert.equal(
+    (await f.owner.query("SELECT count(*)::int AS n FROM app.payment_events WHERE state='ready'"))
+      .rows[0].n,
+    0,
+    'the webhook event was left for the inbox run',
+  );
   // Payments granted coverage; membership materialised the commute the rider
   // paid for. Neither domain was called directly.
   const period = (

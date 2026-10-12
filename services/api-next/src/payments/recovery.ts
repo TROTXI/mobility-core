@@ -28,6 +28,12 @@ export interface RecoveryDependencies {
   ) => Promise<void>;
   // Deliberately bounded metadata, never raw provider payloads or credentials.
   onFailure?: (event: { resourceId: string; reason: string }) => void;
+  /**
+   * Settle each webhook event as soon as it is acknowledged instead of leaving
+   * it for the next inbox run. On in the running service; tests that drive the
+   * inbox step by step leave it off.
+   */
+  settleOnReceipt?: boolean;
 }
 export interface MaintenanceResult {
   considered: number;
@@ -150,9 +156,37 @@ export class PaymentRecovery {
   async acceptWebhook(raw: Buffer, signature: unknown) {
     if (!this.options.provider.authenticate(raw, signature))
       fail(401, 'invalid_signature', 'Invalid webhook signature.');
-    await this.enqueue(raw, 'webhook');
-    // Durable acknowledgement only. Processing happens in the bounded worker.
+    const id = await this.enqueue(raw, 'webhook');
+    // The event is durable before Paystack hears back, then settled at once
+    // rather than waiting for the next inbox run. A rider who has just paid
+    // should not wait on a cron schedule. The inbox worker stays the safety
+    // net: whatever this misses, it finds the row still ready.
+    if (this.options.settleOnReceipt) this.processSoon(id);
     return { received: true };
+  }
+
+  /** Webhook events being settled right now, so shutdown can wait for them. */
+  private readonly inFlight = new Set<Promise<void>>();
+
+  private processSoon(id: string) {
+    // After the acknowledgement is on its way, not ahead of it. process()
+    // locks the row (SKIP LOCKED) and is idempotent, so racing the worker or
+    // a retried webhook settles the event once.
+    const run: Promise<void> = new Promise<void>((resolve) => setImmediate(resolve))
+      .then(() => this.process(id))
+      .then(
+        () => undefined,
+        // process() records its own failures and schedules a retry; this only
+        // catches the database being unreachable, which the worker retries.
+        () => undefined,
+      )
+      .finally(() => this.inFlight.delete(run));
+    this.inFlight.add(run);
+  }
+
+  /** Resolves once every webhook event already accepted has been tried. */
+  async settled(): Promise<void> {
+    await Promise.allSettled([...this.inFlight]);
   }
   private async finish(
     c: PoolClient,
