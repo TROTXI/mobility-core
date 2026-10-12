@@ -100,7 +100,6 @@ doc/FlagPage.md
 doc/FlagResponse.md
 doc/Geometry.md
 doc/GeometryResponse.md
-doc/GeometryStopDistancesInner.md
 doc/GoogleSignIn.md
 doc/Health.md
 doc/Incident.md
@@ -170,8 +169,9 @@ doc/OpsPurchaseAttemptsInner.md
 doc/OpsPurchaseAttemptsInnerReceivedAmount.md
 doc/OpsPurchaseCheckout.md
 doc/OpsPurchaseOfferTerms.md
-doc/OpsPurchasePage.md
 doc/OpsPurchaseResponse.md
+doc/OpsPurchaseRow.md
+doc/OpsPurchaseRowPage.md
 doc/OpsReportSummary.md
 doc/OpsReportSummaryDelivery.md
 doc/OpsReportSummaryPayments.md
@@ -485,7 +485,6 @@ lib/src/model/flag_page.dart
 lib/src/model/flag_response.dart
 lib/src/model/geometry.dart
 lib/src/model/geometry_response.dart
-lib/src/model/geometry_stop_distances_inner.dart
 lib/src/model/google_sign_in.dart
 lib/src/model/health.dart
 lib/src/model/incident.dart
@@ -552,8 +551,9 @@ lib/src/model/ops_purchase_attempts_inner.dart
 lib/src/model/ops_purchase_attempts_inner_received_amount.dart
 lib/src/model/ops_purchase_checkout.dart
 lib/src/model/ops_purchase_offer_terms.dart
-lib/src/model/ops_purchase_page.dart
 lib/src/model/ops_purchase_response.dart
+lib/src/model/ops_purchase_row.dart
+lib/src/model/ops_purchase_row_page.dart
 lib/src/model/ops_report_summary.dart
 lib/src/model/ops_report_summary_delivery.dart
 lib/src/model/ops_report_summary_payments.dart

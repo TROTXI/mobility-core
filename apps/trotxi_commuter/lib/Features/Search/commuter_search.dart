@@ -193,7 +193,7 @@ class _SearchPanelState extends State<_SearchPanel> {
   });
 
   Future<void> _loadPurchases() => _load(() async {
-    final rows = await widget.client.purchases();
+    final rows = await widget.client.recentPurchases();
     if (!mounted) return;
     setState(
       () =>

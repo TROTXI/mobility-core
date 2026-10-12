@@ -2317,7 +2317,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **listOpsPurchases**
-> OpsPurchasePage listOpsPurchases(xTrotxiClient, xTrotxiBuild, cursor, limit, fromDate, toDate, xTrotxiPlatform)
+> OpsPurchaseRowPage listOpsPurchases(xTrotxiClient, xTrotxiBuild, cursor, limit, fromDate, toDate, xTrotxiPlatform)
 
 list Ops Purchases
 
@@ -2356,7 +2356,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OpsPurchasePage**](OpsPurchasePage.md)
+[**OpsPurchaseRowPage**](OpsPurchaseRowPage.md)
 
 ### Authorization
 

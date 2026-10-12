@@ -50,8 +50,8 @@ import 'package:trotxi_api_client/src/model/ops_incident_page.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_response.dart';
 import 'package:trotxi_api_client/src/model/ops_operator_page.dart';
 import 'package:trotxi_api_client/src/model/ops_overview_response.dart';
-import 'package:trotxi_api_client/src/model/ops_purchase_page.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_response.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_row_page.dart';
 import 'package:trotxi_api_client/src/model/ops_report_summary_response.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_detail_response.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_page.dart';
@@ -5107,9 +5107,9 @@ class OpsApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [OpsPurchasePage] as data
+  /// Returns a [Future] containing a [Response] with a [OpsPurchaseRowPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsPurchasePage>> listOpsPurchases({
+  Future<Response<OpsPurchaseRowPage>> listOpsPurchases({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -5170,7 +5170,7 @@ class OpsApi {
       onReceiveProgress: onReceiveProgress,
     );
 
-    OpsPurchasePage? _responseData;
+    OpsPurchaseRowPage? _responseData;
 
     try {
       final rawResponse = _response.data;
@@ -5178,8 +5178,8 @@ class OpsApi {
           ? null
           : _serializers.deserialize(
               rawResponse,
-              specifiedType: const FullType(OpsPurchasePage),
-            ) as OpsPurchasePage;
+              specifiedType: const FullType(OpsPurchaseRowPage),
+            ) as OpsPurchaseRowPage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5190,7 +5190,7 @@ class OpsApi {
       );
     }
 
-    return Response<OpsPurchasePage>(
+    return Response<OpsPurchaseRowPage>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

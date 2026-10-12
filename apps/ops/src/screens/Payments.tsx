@@ -19,6 +19,8 @@ import { opsHeaders } from '../api/session';
 import { ActionDialog } from '../components/ActionDialog';
 
 type Purchase = components['schemas']['OpsPurchase'];
+/** One row of the purchase list; the full purchase loads in the detail panel. */
+type PurchaseRow = components['schemas']['OpsPurchaseRow'];
 type Review = components['schemas']['PaymentReview'];
 type Refund = components['schemas']['RefundInitiation'];
 type Renewal = components['schemas']['OpsAutoRenewal'];
@@ -28,13 +30,13 @@ export function Payments() {
   const { session } = useAuth();
   const [tab, setTab] = useState<'purchases' | 'reviews' | 'renewals'>('purchases');
   const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>('attention');
-  const [purchase, setPurchase] = useState<Purchase | null>(null);
-  const [detailPurchase, setDetailPurchase] = useState<Purchase | null>(null);
+  const [purchase, setPurchase] = useState<PurchaseRow | null>(null);
+  const [detailPurchase, setDetailPurchase] = useState<PurchaseRow | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [decision, setDecision] = useState<'resolved' | 'waived'>('resolved');
-  const purchasesQuery = useQuery<Purchase[]>(
+  const purchasesQuery = useQuery<PurchaseRow[]>(
     async (signal) => {
       const response = await session.client.GET('/v1/ops/purchases', {
         params: { query: { limit: 200 }, header: opsHeaders },
@@ -290,9 +292,9 @@ function PurchaseRows({
   onDetail,
   onRefund,
 }: {
-  rows: Purchase[];
-  onDetail: (row: Purchase) => void;
-  onRefund: (row: Purchase) => void;
+  rows: PurchaseRow[];
+  onDetail: (row: PurchaseRow) => void;
+  onRefund: (row: PurchaseRow) => void;
 }) {
   if (!rows.length) return <Empty>No purchases match this view.</Empty>;
   return (
@@ -342,7 +344,7 @@ function PurchaseRows({
   );
 }
 
-function PurchaseDetail({ purchase, onClose }: { purchase: Purchase; onClose: () => void }) {
+function PurchaseDetail({ purchase, onClose }: { purchase: PurchaseRow; onClose: () => void }) {
   const { session } = useAuth();
   const query = useQuery<{ purchase: Purchase; refunds: Refund[] }>(
     async (signal) => {

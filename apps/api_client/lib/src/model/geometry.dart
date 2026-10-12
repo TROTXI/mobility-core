@@ -3,7 +3,6 @@
 //
 
 // ignore_for_file: unused_element
-import 'package:trotxi_api_client/src/model/geometry_stop_distances_inner.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/point.dart';
 import 'package:built_value/built_value.dart';
@@ -17,7 +16,6 @@ part 'geometry.g.dart';
 /// * [id]
 /// * [patternVersionId]
 /// * [points]
-/// * [stopDistances]
 /// * [source_]
 /// * [createdAt]
 @BuiltValue()
@@ -30,9 +28,6 @@ abstract class Geometry implements Built<Geometry, GeometryBuilder> {
 
   @BuiltValueField(wireName: r'points')
   BuiltList<Point> get points;
-
-  @BuiltValueField(wireName: r'stopDistances')
-  BuiltList<GeometryStopDistancesInner> get stopDistances;
 
   @BuiltValueField(wireName: r'source')
   GeometrySource_Enum get source_;
@@ -78,12 +73,6 @@ class _$GeometrySerializer implements PrimitiveSerializer<Geometry> {
     yield serializers.serialize(
       object.points,
       specifiedType: const FullType(BuiltList, [FullType(Point)]),
-    );
-    yield r'stopDistances';
-    yield serializers.serialize(
-      object.stopDistances,
-      specifiedType:
-          const FullType(BuiltList, [FullType(GeometryStopDistancesInner)]),
     );
     yield r'source';
     yield serializers.serialize(
@@ -140,14 +129,6 @@ class _$GeometrySerializer implements PrimitiveSerializer<Geometry> {
             specifiedType: const FullType(BuiltList, [FullType(Point)]),
           ) as BuiltList<Point>;
           result.points.replace(valueDes);
-          break;
-        case r'stopDistances':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(
-                BuiltList, [FullType(GeometryStopDistancesInner)]),
-          ) as BuiltList<GeometryStopDistancesInner>;
-          result.stopDistances.replace(valueDes);
           break;
         case r'source':
           final valueDes = serializers.deserialize(

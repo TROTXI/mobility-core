@@ -67,8 +67,6 @@ class _$Geometry extends Geometry {
   @override
   final BuiltList<Point> points;
   @override
-  final BuiltList<GeometryStopDistancesInner> stopDistances;
-  @override
   final GeometrySource_Enum source_;
   @override
   final DateTime createdAt;
@@ -80,7 +78,6 @@ class _$Geometry extends Geometry {
       {required this.id,
       required this.patternVersionId,
       required this.points,
-      required this.stopDistances,
       required this.source_,
       required this.createdAt})
       : super._();
@@ -98,7 +95,6 @@ class _$Geometry extends Geometry {
         id == other.id &&
         patternVersionId == other.patternVersionId &&
         points == other.points &&
-        stopDistances == other.stopDistances &&
         source_ == other.source_ &&
         createdAt == other.createdAt;
   }
@@ -109,7 +105,6 @@ class _$Geometry extends Geometry {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, patternVersionId.hashCode);
     _$hash = $jc(_$hash, points.hashCode);
-    _$hash = $jc(_$hash, stopDistances.hashCode);
     _$hash = $jc(_$hash, source_.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
@@ -122,7 +117,6 @@ class _$Geometry extends Geometry {
           ..add('id', id)
           ..add('patternVersionId', patternVersionId)
           ..add('points', points)
-          ..add('stopDistances', stopDistances)
           ..add('source_', source_)
           ..add('createdAt', createdAt))
         .toString();
@@ -145,12 +139,6 @@ class GeometryBuilder implements Builder<Geometry, GeometryBuilder> {
   ListBuilder<Point> get points => _$this._points ??= ListBuilder<Point>();
   set points(ListBuilder<Point>? points) => _$this._points = points;
 
-  ListBuilder<GeometryStopDistancesInner>? _stopDistances;
-  ListBuilder<GeometryStopDistancesInner> get stopDistances =>
-      _$this._stopDistances ??= ListBuilder<GeometryStopDistancesInner>();
-  set stopDistances(ListBuilder<GeometryStopDistancesInner>? stopDistances) =>
-      _$this._stopDistances = stopDistances;
-
   GeometrySource_Enum? _source_;
   GeometrySource_Enum? get source_ => _$this._source_;
   set source_(GeometrySource_Enum? source_) => _$this._source_ = source_;
@@ -169,7 +157,6 @@ class GeometryBuilder implements Builder<Geometry, GeometryBuilder> {
       _id = $v.id;
       _patternVersionId = $v.patternVersionId;
       _points = $v.points.toBuilder();
-      _stopDistances = $v.stopDistances.toBuilder();
       _source_ = $v.source_;
       _createdAt = $v.createdAt;
       _$v = null;
@@ -199,7 +186,6 @@ class GeometryBuilder implements Builder<Geometry, GeometryBuilder> {
             patternVersionId: BuiltValueNullFieldError.checkNotNull(
                 patternVersionId, r'Geometry', 'patternVersionId'),
             points: points.build(),
-            stopDistances: stopDistances.build(),
             source_: BuiltValueNullFieldError.checkNotNull(
                 source_, r'Geometry', 'source_'),
             createdAt: BuiltValueNullFieldError.checkNotNull(
@@ -210,8 +196,6 @@ class GeometryBuilder implements Builder<Geometry, GeometryBuilder> {
       try {
         _$failedField = 'points';
         points.build();
-        _$failedField = 'stopDistances';
-        stopDistances.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'Geometry', _$failedField, e.toString());

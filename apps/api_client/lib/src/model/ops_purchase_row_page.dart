@@ -3,72 +3,70 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/ops_purchase_row.dart';
+import 'package:trotxi_api_client/src/model/commute_request_page_page.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'geometry_stop_distances_inner.g.dart';
+part 'ops_purchase_row_page.g.dart';
 
-/// GeometryStopDistancesInner
+/// OpsPurchaseRowPage
 ///
 /// Properties:
-/// * [stopOccurrenceId]
-/// * [distanceMeters]
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class GeometryStopDistancesInner
-    implements
-        Built<GeometryStopDistancesInner, GeometryStopDistancesInnerBuilder> {
-  @BuiltValueField(wireName: r'stopOccurrenceId')
-  String get stopOccurrenceId;
+abstract class OpsPurchaseRowPage
+    implements Built<OpsPurchaseRowPage, OpsPurchaseRowPageBuilder> {
+  @BuiltValueField(wireName: r'data')
+  BuiltList<OpsPurchaseRow> get data;
 
-  @BuiltValueField(wireName: r'distanceMeters')
-  num get distanceMeters;
+  @BuiltValueField(wireName: r'page')
+  CommuteRequestPagePage get page;
 
-  GeometryStopDistancesInner._();
+  OpsPurchaseRowPage._();
 
-  factory GeometryStopDistancesInner(
-          [void updates(GeometryStopDistancesInnerBuilder b)]) =
-      _$GeometryStopDistancesInner;
+  factory OpsPurchaseRowPage([void updates(OpsPurchaseRowPageBuilder b)]) =
+      _$OpsPurchaseRowPage;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(GeometryStopDistancesInnerBuilder b) => b;
+  static void _defaults(OpsPurchaseRowPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<GeometryStopDistancesInner> get serializer =>
-      _$GeometryStopDistancesInnerSerializer();
+  static Serializer<OpsPurchaseRowPage> get serializer =>
+      _$OpsPurchaseRowPageSerializer();
 }
 
-class _$GeometryStopDistancesInnerSerializer
-    implements PrimitiveSerializer<GeometryStopDistancesInner> {
+class _$OpsPurchaseRowPageSerializer
+    implements PrimitiveSerializer<OpsPurchaseRowPage> {
   @override
-  final Iterable<Type> types = const [
-    GeometryStopDistancesInner,
-    _$GeometryStopDistancesInner
-  ];
+  final Iterable<Type> types = const [OpsPurchaseRowPage, _$OpsPurchaseRowPage];
 
   @override
-  final String wireName = r'GeometryStopDistancesInner';
+  final String wireName = r'OpsPurchaseRowPage';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    GeometryStopDistancesInner object, {
+    OpsPurchaseRowPage object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'stopOccurrenceId';
+    yield r'data';
     yield serializers.serialize(
-      object.stopOccurrenceId,
-      specifiedType: const FullType(String),
+      object.data,
+      specifiedType: const FullType(BuiltList, [FullType(OpsPurchaseRow)]),
     );
-    yield r'distanceMeters';
+    yield r'page';
     yield serializers.serialize(
-      object.distanceMeters,
-      specifiedType: const FullType(num),
+      object.page,
+      specifiedType: const FullType(CommuteRequestPagePage),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    GeometryStopDistancesInner object, {
+    OpsPurchaseRowPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object,
@@ -81,26 +79,27 @@ class _$GeometryStopDistancesInnerSerializer
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required GeometryStopDistancesInnerBuilder result,
+    required OpsPurchaseRowPageBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'stopOccurrenceId':
+        case r'data':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.stopOccurrenceId = valueDes;
+            specifiedType:
+                const FullType(BuiltList, [FullType(OpsPurchaseRow)]),
+          ) as BuiltList<OpsPurchaseRow>;
+          result.data.replace(valueDes);
           break;
-        case r'distanceMeters':
+        case r'page':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(num),
-          ) as num;
-          result.distanceMeters = valueDes;
+            specifiedType: const FullType(CommuteRequestPagePage),
+          ) as CommuteRequestPagePage;
+          result.page.replace(valueDes);
           break;
         default:
           unhandled.add(key);
@@ -111,12 +110,12 @@ class _$GeometryStopDistancesInnerSerializer
   }
 
   @override
-  GeometryStopDistancesInner deserialize(
+  OpsPurchaseRowPage deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = GeometryStopDistancesInnerBuilder();
+    final result = OpsPurchaseRowPageBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

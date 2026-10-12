@@ -3492,10 +3492,6 @@ export interface components {
       id: string;
       patternVersionId: string;
       points: components['schemas']['Point'][];
-      stopDistances: {
-        stopOccurrenceId: string;
-        distanceMeters: number;
-      }[];
       /** @enum {string} */
       source: 'observed' | 'configured';
       /** Format: date-time */
@@ -4049,14 +4045,37 @@ export interface components {
         } | null;
       }[];
     };
-    OpsPurchasePage: {
-      data: components['schemas']['OpsPurchase'][];
+    OpsPurchaseResponse: {
+      data: components['schemas']['OpsPurchase'];
+    };
+    OpsPurchaseRow: {
+      id: string;
+      /** @enum {string} */
+      plan: 'weekly' | 'biweekly' | 'monthly' | 'annual';
+      /** @enum {string} */
+      state:
+        | 'awaiting_payment'
+        | 'processing'
+        | 'fulfilled'
+        | 'failed'
+        | 'cancelled'
+        | 'review_required';
+      /** @enum {string} */
+      collectionState: 'pending' | 'successful' | 'failed' | 'unknown';
+      price: components['schemas']['Money'];
+      appliedCredit: components['schemas']['Money'];
+      cashDue: components['schemas']['Money'];
+      failureCode: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      riderId: string;
+      riderName: string | null;
+    };
+    OpsPurchaseRowPage: {
+      data: components['schemas']['OpsPurchaseRow'][];
       page: {
         nextCursor: string | null;
       };
-    };
-    OpsPurchaseResponse: {
-      data: components['schemas']['OpsPurchase'];
     };
     OpsReportSummary: {
       /** Format: date-time */
@@ -13878,7 +13897,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OpsPurchasePage'];
+          'application/json': components['schemas']['OpsPurchaseRowPage'];
         };
       };
       400: components['responses']['Error400'];

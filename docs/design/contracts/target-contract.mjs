@@ -444,7 +444,6 @@ named(
     id,
     patternVersionId: id,
     points: z.array(point),
-    stopDistances: z.array(obj({ stopOccurrenceId: id, distanceMeters: z.number().nonnegative() })),
     source: z.enum(['observed', 'configured']),
     createdAt: instant,
   }),
@@ -1471,6 +1470,17 @@ named(
   }),
 );
 
+// One row of the ops purchase list: what the table shows and nothing it does
+// not. Attempt history, offer terms and checkout links are per purchase, so
+// they stay on getOpsPurchase instead of riding along with up to 200 rows.
+named(
+  'OpsPurchaseRow',
+  schemas.Purchase.omit({ offerTerms: true, checkout: true, billingPeriodId: true }).extend({
+    riderId: id,
+    riderName: text().nullable(),
+  }),
+);
+
 // The live board (ops-console.md 4.1). One request, one snapshot: the console
 // must not list trips and then fan out per trip for positions and reservations,
 // or the screen slows with every bus and the numbers disagree with each other
@@ -2263,7 +2273,7 @@ edit(
   'MinimumVersion',
 );
 list('/v1/ops/payments/reviews', 'listPaymentReviews', 'PaymentReview');
-list('/v1/ops/purchases', 'listOpsPurchases', 'OpsPurchase');
+list('/v1/ops/purchases', 'listOpsPurchases', 'OpsPurchaseRow');
 list('/v1/ops/auto-renewals', 'listOpsAutoRenewals', 'OpsAutoRenewal');
 get('/v1/ops/purchases/{id}', 'getOpsPurchase', 'OpsPurchase');
 post(

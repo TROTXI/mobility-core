@@ -20073,7 +20073,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpsPurchasePage"
+                  "$ref": "#/components/schemas/OpsPurchaseRowPage"
                 }
               }
             },
@@ -24846,25 +24846,6 @@
               "$ref": "#/components/schemas/Point"
             }
           },
-          "stopDistances": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "stopOccurrenceId": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "distanceMeters": {
-                  "type": "number",
-                  "minimum": 0
-                }
-              },
-              "required": ["stopOccurrenceId", "distanceMeters"],
-              "additionalProperties": false
-            }
-          },
           "source": {
             "type": "string",
             "enum": ["observed", "configured"]
@@ -24875,7 +24856,7 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
-        "required": ["id", "patternVersionId", "points", "stopDistances", "source", "createdAt"],
+        "required": ["id", "patternVersionId", "points", "source", "createdAt"],
         "additionalProperties": false
       },
       "GeometryResponse": {
@@ -27036,13 +27017,97 @@
         ],
         "additionalProperties": false
       },
-      "OpsPurchasePage": {
+      "OpsPurchaseResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OpsPurchase"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "OpsPurchaseRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "plan": {
+            "type": "string",
+            "enum": ["weekly", "biweekly", "monthly", "annual"]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "awaiting_payment",
+              "processing",
+              "fulfilled",
+              "failed",
+              "cancelled",
+              "review_required"
+            ]
+          },
+          "collectionState": {
+            "type": "string",
+            "enum": ["pending", "successful", "failed", "unknown"]
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "appliedCredit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "cashDue": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "failureCode": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "riderId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "riderName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "plan",
+          "state",
+          "collectionState",
+          "price",
+          "appliedCredit",
+          "cashDue",
+          "failureCode",
+          "createdAt",
+          "riderId",
+          "riderName"
+        ],
+        "additionalProperties": false
+      },
+      "OpsPurchaseRowPage": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OpsPurchase"
+              "$ref": "#/components/schemas/OpsPurchaseRow"
             }
           },
           "page": {
@@ -27060,16 +27125,6 @@
           }
         },
         "required": ["data", "page"],
-        "additionalProperties": false
-      },
-      "OpsPurchaseResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/OpsPurchase"
-          }
-        },
-        "required": ["data"],
         "additionalProperties": false
       },
       "OpsReportSummary": {

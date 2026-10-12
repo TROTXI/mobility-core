@@ -66,8 +66,21 @@ export function Trips() {
   const [reason, setReason] = useState('');
   const [showEmptyMap, setShowEmptyMap] = useState(false);
 
-  const query = useQuery<{
-    trips: Trip[];
+  // The trips are per date range; the catalogue they are assigned from is not.
+  // Split so changing the dates refetches one list instead of six.
+  const tripsQuery = useQuery<Trip[]>(
+    async (signal) => {
+      const trips = await session.client.GET('/v1/ops/trips', {
+        params: { query: { fromDate, toDate, limit: 200 }, header: opsHeaders },
+        signal,
+      });
+      if (trips.error) throw new Error(trips.error.error.message);
+      if (!trips.data) throw new Error('The dispatch board returned an incomplete response.');
+      return trips.data.data;
+    },
+    [session, fromDate, toDate],
+  );
+  const catalogQuery = useQuery<{
     drivers: Driver[];
     vehicles: Vehicle[];
     schedules: Schedule[];
@@ -75,11 +88,7 @@ export function Trips() {
     patterns: Pattern[];
   }>(
     async (signal) => {
-      const [trips, drivers, vehicles, schedules, routes, patterns] = await Promise.all([
-        session.client.GET('/v1/ops/trips', {
-          params: { query: { fromDate, toDate, limit: 200 }, header: opsHeaders },
-          signal,
-        }),
+      const [drivers, vehicles, schedules, routes, patterns] = await Promise.all([
         session.client.GET('/v1/ops/drivers', {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
@@ -101,13 +110,12 @@ export function Trips() {
           signal,
         }),
       ]);
-      const failure = trips.error ?? drivers.error ?? vehicles.error ?? schedules.error;
+      const failure = drivers.error ?? vehicles.error ?? schedules.error;
       if (failure) throw new Error(failure.error.message);
-      if (!trips.data || !drivers.data || !vehicles.data || !schedules.data) {
+      if (!drivers.data || !vehicles.data || !schedules.data) {
         throw new Error('The dispatch board returned an incomplete response.');
       }
       return {
-        trips: trips.data.data,
         drivers: drivers.data.data,
         vehicles: vehicles.data.data,
         schedules: schedules.data.data,
@@ -116,8 +124,20 @@ export function Trips() {
         patterns: patterns.data?.data ?? [],
       };
     },
-    [session, fromDate, toDate],
+    [session],
   );
+  const query = {
+    data:
+      tripsQuery.data && catalogQuery.data
+        ? { trips: tripsQuery.data, ...catalogQuery.data }
+        : null,
+    loading: tripsQuery.loading || catalogQuery.loading,
+    error: tripsQuery.error || catalogQuery.error,
+    retry: () => {
+      tripsQuery.retry();
+      catalogQuery.retry();
+    },
+  };
 
   const liveQuery = useQuery<OverviewData['trips']>(
     async (signal) => {
