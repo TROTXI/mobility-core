@@ -45,6 +45,8 @@ export interface MembershipOptions {
 type Row = Record<string, any>;
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
 const date = (d: Date) => d.toISOString().slice(0, 10); // Africa/Accra is UTC.
+/** When the evening ask for tomorrow runs (service-maintenance.yml, 21:00 Accra). */
+const ASK_HOUR = 21;
 // pg parses DATE as local midnight; preserve its calendar fields on every host.
 const dayString = (d: Date | string) =>
   d instanceof Date
@@ -308,6 +310,7 @@ export class MembershipService {
       'INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,purchase_id,effective_from) VALUES ($1,$2,$3,$4,$5,$6)',
       [b.userId, b.membershipId, b.periodId, selection, b.purchaseId, date(b.now)],
     );
+    await this.askIfLate(c, b.userId, b.now);
   };
   // Caller already owns rider/period locks. No nested transaction or ledger write.
   reversePeriod = async (
@@ -1044,6 +1047,82 @@ export class MembershipService {
       )
     ).rows[0].id;
   }
+  /**
+   * Riders the evening ask should reach for one service day and direction:
+   * open coverage on that day's scheduled trip, a travel day in their offer,
+   * no reservation yet, and nothing pausing or blocking them. One query for
+   * the 21:00 batch and for a rider who pays after it ran.
+   */
+  private async askCandidates(
+    c: PoolClient,
+    day: string,
+    direction: string,
+    routeId: string | null,
+    limit: number,
+    now: Date,
+    userId: string | null = null,
+  ): Promise<{ id: string }[]> {
+    return (
+      await c.query(
+        `SELECT b.user_id AS id FROM app.billing_periods b JOIN app.memberships m ON m.id=b.membership_id AND m.lifecycle='open'
+        JOIN app.purchases purchase ON purchase.id=b.purchase_id
+        JOIN app.users u ON u.id=b.user_id AND u.deleted_at IS NULL
+        JOIN app.commute_assignments a ON a.period_id=b.id AND a.effective_from<=$1 AND (a.effective_to IS NULL OR $1<a.effective_to)
+        JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id AND l.direction=$2
+        JOIN app.commute_selections s ON s.id=l.selection_id
+        JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$1 AND t.status='scheduled' AND t.scheduled_at>$4
+        WHERE b.state='open' AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
+        AND (purchase.offer_terms IS NULL OR EXISTS(
+          SELECT 1 FROM jsonb_array_elements(purchase.offer_terms->'legs') ol
+          WHERE ol->>'direction'=$2 AND (ol->'travelDays') @> to_jsonb(ARRAY[extract(isodow FROM $1::date)::integer])))
+        AND ($3::uuid IS NULL OR s.route_id=$3)
+        AND NOT EXISTS(SELECT 1 FROM app.reservations r WHERE r.user_id=b.user_id AND r.service_date=$1 AND r.direction=$2)
+        AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
+        AND NOT app.personal_pause_blocks(b.id,$1::date::timestamp AT TIME ZONE 'Africa/Accra')
+        AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
+        AND NOT EXISTS(SELECT 1 FROM app.account_restrictions r WHERE r.user_id=b.user_id AND r.released_at IS NULL)
+        AND ($6::uuid IS NULL OR b.user_id=$6)
+        ORDER BY b.user_id LIMIT $5`,
+        [day, direction, routeId, now, limit, userId],
+      )
+    ).rows;
+  }
+
+  /**
+   * A rider who pays after the 21:00 ask for tomorrow would otherwise get no
+   * seat: the batch has passed them by and the midnight defaults only confirm
+   * reservations the ask created. So fulfilment asks them itself, with the
+   * batch's own eligibility. Before 21:00 the batch will reach them instead.
+   *
+   * Runs inside fulfilment, so it never throws: a full bus or any other
+   * refusal leaves the rider to book in the app, and the payment stands.
+   */
+  private async askIfLate(c: PoolClient, userId: string, now: Date) {
+    if (now.getUTCHours() < ASK_HOUR) return; // Africa/Accra is UTC.
+    const day = date(new Date(now.getTime() + 86400000));
+    for (const direction of ['outbound', 'return']) {
+      const eligible = await this.askCandidates(c, day, direction, null, 1, now, userId);
+      if (!eligible.length) continue;
+      await c.query('SAVEPOINT late_ask');
+      try {
+        const reservation = await this.reserve(
+          c,
+          { userId, sessionId: '' },
+          { travelDate: day, direction, decision: 'confirm' },
+          'ask',
+        );
+        // The rider's own purchase asked; there is no operator behind it.
+        await c.query(
+          'INSERT INTO app.reservation_prompts(reservation_id,requested_by) VALUES ($1,$2)',
+          [reservation, userId],
+        );
+        await c.query('RELEASE SAVEPOINT late_ask');
+      } catch {
+        await c.query('ROLLBACK TO SAVEPOINT late_ask');
+      }
+    }
+  }
+
   async maintenance(
     actor: Actor,
     op: 'runAskDispatch' | 'runReservationDefaults',
@@ -1070,29 +1149,7 @@ export class MembershipService {
             [day, input.direction, input.routeId ?? null, limit],
           )
         ).rows;
-      return (
-        await c.query(
-          `SELECT b.user_id AS id FROM app.billing_periods b JOIN app.memberships m ON m.id=b.membership_id AND m.lifecycle='open'
-        JOIN app.purchases purchase ON purchase.id=b.purchase_id
-        JOIN app.users u ON u.id=b.user_id AND u.deleted_at IS NULL
-        JOIN app.commute_assignments a ON a.period_id=b.id AND a.effective_from<=$1 AND (a.effective_to IS NULL OR $1<a.effective_to)
-        JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id AND l.direction=$2
-        JOIN app.commute_selections s ON s.id=l.selection_id
-        JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$1 AND t.status='scheduled' AND t.scheduled_at>$4
-        WHERE b.state='open' AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
-        AND (purchase.offer_terms IS NULL OR EXISTS(
-          SELECT 1 FROM jsonb_array_elements(purchase.offer_terms->'legs') ol
-          WHERE ol->>'direction'=$2 AND (ol->'travelDays') @> to_jsonb(ARRAY[extract(isodow FROM $1::date)::integer])))
-        AND ($3::uuid IS NULL OR s.route_id=$3)
-        AND NOT EXISTS(SELECT 1 FROM app.reservations r WHERE r.user_id=b.user_id AND r.service_date=$1 AND r.direction=$2)
-        AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
-        AND NOT app.personal_pause_blocks(b.id,$1::date::timestamp AT TIME ZONE 'Africa/Accra')
-        AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
-        AND NOT EXISTS(SELECT 1 FROM app.account_restrictions r WHERE r.user_id=b.user_id AND r.released_at IS NULL)
-        ORDER BY b.user_id LIMIT $5`,
-          [day, input.direction, input.routeId ?? null, this.now(), limit],
-        )
-      ).rows;
+      return this.askCandidates(c, day, input.direction, input.routeId ?? null, limit, this.now());
     });
     const result = {
       considered: candidates.length,

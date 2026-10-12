@@ -636,6 +636,44 @@ test('RES-07: unassigning the vehicle and moving funded departure outside covera
     0,
   );
 });
+test('RES-12: paying after the 21:00 ask still asks the rider about tomorrow, once', async (t) => {
+  const f = await fixture(t);
+  await f.trip(1);
+  // 21:30 the evening before the 2026-01-02 trip: the batch has already run.
+  f.setNow('2026-01-01T21:30:00Z');
+  await f.buy();
+  const asked = (
+    await f.owner.query(
+      `SELECT r.status,r.direction,r.service_date::text AS day,
+        EXISTS(SELECT 1 FROM app.reservation_prompts p WHERE p.reservation_id=r.id) AS prompted
+       FROM app.reservations r WHERE r.user_id=$1`,
+      [f.actor.userId],
+    )
+  ).rows;
+  assert.deepEqual(asked, [
+    { status: 'pending', direction: 'outbound', day: '2026-01-02', prompted: true },
+  ]);
+  // The batch, running late, finds nobody left to ask.
+  const batch = { travelDate: '2026-01-02', direction: 'outbound', limit: 100 };
+  assert.equal(
+    data(await f.membership.maintenance(f.admin, 'runAskDispatch', batch)).considered,
+    0,
+  );
+  // Midnight defaults then seat them like any other rider.
+  assert.equal(
+    data(await f.membership.maintenance(f.admin, 'runReservationDefaults', batch)).succeeded,
+    1,
+  );
+});
+
+test('RES-13: paying before 21:00 leaves the ask to the evening batch', async (t) => {
+  const f = await fixture(t);
+  await f.trip(1);
+  f.setNow('2026-01-01T12:00:00Z');
+  await f.buy();
+  assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.reservations')).rows[0].n, 0);
+});
+
 async function fixture(t: TestContext) {
   const f = await setup(t);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
