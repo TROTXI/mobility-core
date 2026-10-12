@@ -116,7 +116,10 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
         RiderNotificationTargetTypeEnum.standby) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => StandbyPage(client: widget.client),
+          builder: (_) => StandbyPage(
+            client: widget.client,
+            applicationId: notification.target.id,
+          ),
         ),
       );
     } else {

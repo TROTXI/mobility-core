@@ -101,12 +101,12 @@ Map<String, Object?> _application(String state) => {
         },
     ],
   },
-  'offer': state == 'offered'
+  'offer': state == 'offered' || state == 'completed'
       ? {
           'id': 'offer',
-          'state': 'offered',
+          'state': state == 'offered' ? 'offered' : 'checkout_open',
           'expiresAt': '2030-10-10T18:00:00Z',
-          'purchaseId': null,
+          'purchaseId': state == 'offered' ? null : 'purchase',
           'terms': _terms(),
         }
       : null,
@@ -263,6 +263,8 @@ Fixture _fixture(String pageName) {
               ? [_application('submitted')]
               : pageName == 'offer'
               ? [_application('offered')]
+              : pageName == 'paid'
+              ? [_application('completed')]
               : [],
         ),
       );
@@ -390,6 +392,30 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsOneWidget);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
+    },
+  );
+
+  testWidgets(
+    'reopening a paid offer from the inbox shows it as paid, not a blank form',
+    (tester) async {
+      final f = _fixture('paid');
+      addTearDown(f.api.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: StandbyPage(client: f.api, applicationId: 'application'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Your subscription is paid'), findsOneWidget);
+      expect(find.text('View my subscription'), findsOneWidget);
+      expect(find.text('Choose a route'), findsNothing);
+      // The rider can still start a new request from here.
+      await tester.ensureVisible(find.text('Request another commute'));
+      await tester.tap(find.text('Request another commute'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your subscription is paid'), findsNothing);
+      expect(find.text('Choose a route'), findsOneWidget);
     },
   );
 
