@@ -96,6 +96,10 @@ class PositionQueue {
     );
     await _save(next);
   });
+
+  /// Drop one saved fix that was never trip evidence, such as the phone's
+  /// cached location from before the run started.
+  Future<void> discard(String id) => acknowledge(id);
   Future<void> acknowledge(String id) =>
       _serial(() => _save(_rows.where((r) => r['clientFixId'] != id).toList()));
   Future<void> pruneExpired() => _serial(() async {

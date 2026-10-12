@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/run_summary_page.dart';
+import 'package:trotxi_driver/Presentations/Run/pages/location_connectivity_page.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -27,6 +28,9 @@ class EndRunPage extends StatefulWidget {
 }
 
 class _EndRunPageState extends State<EndRunPage> {
+  /// Why the last attempt to end the trip failed, shown above the buttons.
+  String? _error;
+
   /// Label and the line under it, as the file pairs them. The fourth is the
   /// file's and worth having: it is the one check that points at something the
   /// app can actually show the driver, a rider who never boarded.
@@ -46,19 +50,17 @@ class _EndRunPageState extends State<EndRunPage> {
     if (!_ready || _ending) return;
     setState(() => _ending = true);
     final controller = context.read<RunController>();
+    setState(() => _error = null);
     final completed = await controller.complete();
     if (!mounted) return;
     setState(() => _ending = false);
     if (!completed) {
       final detail = controller.detail;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            detail is Failure<RunDetail>
-                ? detail.message
-                : 'Trip not completed. Try again.',
-          ),
-        ),
+      // Inline, above the buttons: a floating snackbar landed on top of them.
+      setState(
+        () => _error = detail is Failure<RunDetail>
+            ? detail.message
+            : 'Trip not completed. Try again.',
       );
       return;
     }
@@ -247,6 +249,43 @@ class _EndRunPageState extends State<EndRunPage> {
                 ],
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.space12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.space16),
+                decoration: BoxDecoration(
+                  color: colors.danger.withValues(alpha: 0.08),
+                  borderRadius: AppRadii.circular(AppRadii.note),
+                  border: Border.all(color: colors.danger),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _error!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (_error!.contains('GPS'))
+                      TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => LocationConnectivityPage(
+                              run: context.read<RunController>().currentRun,
+                            ),
+                          ),
+                        ),
+                        child: const Text('Review location & connectivity'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.space10),
             Text(
               'Ending a trip closes boarding and cannot be undone.',

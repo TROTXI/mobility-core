@@ -547,6 +547,15 @@ class PositionPublisher extends ChangeNotifier {
               await queue.reject(row['clientFixId'] as String, error.code!);
             }
           }
+          if (error.code == 'capture_before_start') {
+            // Not trip evidence: iOS answers a new stream with its last known
+            // location, stamped before the run started (or the phone clock
+            // runs slightly behind). Drop it rather than make the driver
+            // review it before they can end the trip.
+            await queue.discard(saved['clientFixId'] as String);
+            uploadError = null;
+            continue;
+          }
           if (rejectedReasons.containsKey(error.code)) {
             await queue.reject(saved['clientFixId'] as String, error.code!);
             _set(PositionSharing.failed);
