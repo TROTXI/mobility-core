@@ -7,15 +7,26 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'checkout_page.dart';
+import 'wallet_tab.dart';
 import 'commute_picker.dart';
 import 'phone_verification_page.dart';
 import '../../../Search/journey_search.dart';
 import '../Payments/purchase_labels.dart';
 
 class StandbyPage extends StatefulWidget {
-  const StandbyPage({super.key, required this.client, this.initialJourney});
+  const StandbyPage({
+    super.key,
+    required this.client,
+    this.initialJourney,
+    this.applicationId,
+  });
   final CommuterApi client;
   final JourneyMatch? initialJourney;
+
+  /// The application a notification is about. Once its offer is paid it is no
+  /// longer active, so without this the page would open on a blank request
+  /// form as if nothing had happened.
+  final String? applicationId;
 
   @override
   State<StandbyPage> createState() => _StandbyPageState();
@@ -28,6 +39,7 @@ class _StandbyPageState extends State<StandbyPage> {
   String? _error;
   final Set<int> _travelDays = {1, 2, 3, 4, 5};
   bool _useCredit = false;
+  bool _requestAnother = false;
   wire.PurchaseInputPlanEnum _plan = wire.PurchaseInputPlanEnum.monthly;
   static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -529,6 +541,15 @@ class _StandbyPageState extends State<StandbyPage> {
               a.state == wire.StandbyApplicationStateEnum.checkoutOpen,
         )
         .toList();
+    final paid = _requestAnother || widget.applicationId == null
+        ? null
+        : _applications
+              .where(
+                (a) =>
+                    a.id == widget.applicationId &&
+                    a.state == wire.StandbyApplicationStateEnum.completed,
+              )
+              .firstOrNull;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Waitlist & offers'),
@@ -541,7 +562,7 @@ class _StandbyPageState extends State<StandbyPage> {
           ),
         ],
       ),
-      bottomNavigationBar: eligible && active.isEmpty
+      bottomNavigationBar: eligible && active.isEmpty && paid == null
           ? SafeArea(
               top: false,
               child: Padding(
@@ -570,8 +591,10 @@ class _StandbyPageState extends State<StandbyPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
                 children: [
-                  _hero(active),
-                  const SizedBox(height: 20),
+                  if (paid == null) ...[
+                    _hero(active),
+                    const SizedBox(height: 20),
+                  ],
                   if (_busy) ...[
                     const LinearProgressIndicator(),
                     const SizedBox(height: 16),
@@ -630,13 +653,18 @@ class _StandbyPageState extends State<StandbyPage> {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  if (eligible && active.isEmpty) _requestForm(),
+                  if (paid != null)
+                    _paidCard(paid)
+                  else if (eligible && active.isEmpty)
+                    _requestForm(),
                   for (final application in active) ...[
                     _applicationCard(application),
                     const SizedBox(height: 12),
                   ],
                   const SizedBox(height: 20),
-                  if (active.isEmpty)
+                  if (paid != null)
+                    const SizedBox.shrink()
+                  else if (active.isEmpty)
                     _howItWorks()
                   else if (active.every(
                     (a) =>
@@ -648,6 +676,52 @@ class _StandbyPageState extends State<StandbyPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// The offer this notification was about has been accepted and paid.
+  Widget _paidCard(wire.StandbyApplication application) {
+    final colors = context.appColors;
+    final terms = application.offer?.terms;
+    return AppSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle_rounded, color: colors.success, size: 32),
+          const SizedBox(height: 12),
+          Text('Your subscription is paid', style: AppTypography.title),
+          const SizedBox(height: 6),
+          Text(
+            terms == null
+                ? 'You accepted this offer and your payment went through.'
+                : '${application.routeName}. Coverage: '
+                      '${_coverage(terms.coverageStart, terms.coverageEnd)}.',
+            style: AppTypography.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('My subscription')),
+                    body: WalletTab(client: widget.client),
+                  ),
+                ),
+              ),
+              child: const Text('View my subscription'),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: TextButton(
+              onPressed: () => setState(() => _requestAnother = true),
+              child: const Text('Request another commute'),
+            ),
+          ),
+        ],
       ),
     );
   }
