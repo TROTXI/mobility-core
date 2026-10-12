@@ -313,6 +313,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           authorizeSession,
           cursorSecret: config.keys.cursorSecret,
           reversePeriod: membership.reversePeriod,
+          settleOnReceipt: true,
         });
         const cards = cardBox(config.keys.paystackEvidence);
         autoRenewals = new AutoRenewals({

@@ -198,6 +198,12 @@ export async function createTransportApp(options: AppOptions) {
     genReqId: () => randomUUID(),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: true } },
   });
+  // Webhook events are settled just after they are acknowledged; let those
+  // finish before the database pool closes behind the app.
+  if (options.payments) {
+    const payments = options.payments;
+    app.addHook('onClose', async () => payments.settled?.());
+  }
   app.decorate('transport', service);
   const actors = new WeakMap<FastifyRequest, Actor>();
   const maintenanceRuns = new WeakMap<FastifyRequest, string>();
