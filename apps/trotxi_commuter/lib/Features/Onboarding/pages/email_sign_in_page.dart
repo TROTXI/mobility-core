@@ -131,7 +131,7 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 20),
                   child: Text(
-                    'Enter your email and we will send a secure password reset link if email sign-in is enabled for your account.',
+                    'Enter the email you sign in with. If a Trotxi account uses it, we\u2019ll send a link to reset your password.',
                   ),
                 ),
               TextFormField(

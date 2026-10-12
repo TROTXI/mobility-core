@@ -341,9 +341,16 @@ export class EmailAuth {
     // Never expose provider latency through a non-enumerating request response.
     // The durable outbox survives shutdown while this best-effort send runs.
     if (queued) void this.options.mail?.sendQueued?.(queued).catch(() => {});
+    // One reply per purpose, identical whether or not an account exists, so
+    // the answer never tells a stranger who uses Trotxi.
     return {
-      message:
-        'If this email can be used, an email will arrive shortly. Check your inbox and spam folder.',
+      message: reset
+        ? 'If a Trotxi account uses this email, we\u2019ve sent it a link to reset your password. Check your inbox and spam folder.'
+        : actor
+          ? 'We\u2019ve sent a link to confirm this email. Check your inbox and spam folder.'
+          : // Signup sends nothing when the address already has an account,
+            // so say what to do in that case rather than promise an email.
+            'Check your email for a link to finish creating your account. If this email already has a Trotxi account, sign in or reset your password instead.',
     };
   }
   private async complete(body: any, actor?: Actor) {

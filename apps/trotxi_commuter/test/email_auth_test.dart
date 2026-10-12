@@ -122,7 +122,7 @@ void main() {
         return jsonResponse({
           'data': {
             'message':
-                'If this email can be used, an email will arrive shortly.',
+                'If a Trotxi account uses this email, we\u2019ve sent it a link to reset your password. Check your inbox and spam folder.',
           },
         });
       };
@@ -140,7 +140,10 @@ void main() {
       );
       await tester.tap(find.text('Send verification email'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('If this email'), findsOneWidget);
+      expect(
+        find.textContaining('If a Trotxi account uses this email'),
+        findsOneWidget,
+      );
       expect(await f.store.getAccessToken(), isNull);
     },
   );
