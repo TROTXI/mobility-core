@@ -173,7 +173,7 @@ void main() {
   );
 
   testWidgets(
-    'wallet displays actual balances, pause and dispute together, not a sample card',
+    'commute plan displays balances and all reservation blocks without sample data',
     (tester) async {
       f.reply = (o) => o.path == '/v1/me/membership'
           ? jsonResponse({
@@ -211,18 +211,22 @@ void main() {
           : jsonResponse(page([]));
       await pump(tester, WalletTab(client: f.api));
       expect(find.text('12'), findsOneWidget);
-      expect(find.text('GHS 18.80 credit available'), findsOneWidget);
-      expect(find.textContaining('GHS 1.00 is held'), findsOneWidget);
-      expect(find.text('Total credit: GHS 19.80'), findsOneWidget);
-      expect(find.text('Your membership is paused.'), findsOneWidget);
-      expect(
-        find.text('A payment dispute is open on your account.'),
-        findsOneWidget,
-      );
+      expect(find.text('GHS 18.80'), findsOneWidget);
+      expect(find.text('Your plan is paused.'), findsOneWidget);
+      expect(find.text('A payment dispute needs attention.'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Plan details'), 150);
+      await tester.tap(find.text('Plan details'));
+      await tester.pumpAndSettle();
+      expect(find.text('GHS 18.80'), findsOneWidget);
+      expect(find.text('GHS 19.80'), findsOneWidget);
+      expect(find.text('GHS 1.00'), findsOneWidget);
       expect(find.textContaining('4281'), findsNothing);
       expect(find.byType(Switch), findsNothing);
       expect(f.requests.map((r) => r.path), contains('/v1/me/membership'));
-      expect(f.requests.map((r) => r.path), contains('/v1/me/ride-entries'));
+      expect(
+        f.requests.map((r) => r.path),
+        isNot(contains('/v1/me/ride-entries')),
+      );
       expect(f.requests.map((r) => r.path), contains('/v1/me/purchases'));
       await finish(tester);
     },

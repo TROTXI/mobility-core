@@ -12,7 +12,9 @@ import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/widgets/commuter_root_header.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'notifications_inbox_page.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.client});
@@ -282,20 +284,14 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Profile',
-          style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+    return CommuterRootHeader(
+      title: 'Profile',
+      subtitle: 'Manage your Trotxi account and preferences.',
+      onNotifications: () => Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => NotificationsInboxPage(client: widget.client),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Manage your Trotxi account and preferences.',
-          style: AppTypography.caption.copyWith(color: colors.textSecondary),
-        ),
-      ],
+      ),
     );
   }
 }

@@ -217,17 +217,60 @@ Fixture _fixture(String pageName) {
     if (r.path == '/v1/me/membership') {
       return jsonResponse({
         'data': {
-          'membership': null,
-          'coverage': null,
+          'membership': pageName == 'wallet'
+              ? {'id': 'member', 'lifecycle': 'open'}
+              : null,
+          'coverage': pageName == 'wallet'
+              ? {
+                  'id': 'wallet-period',
+                  'startsAt': '2030-10-11T00:00:00Z',
+                  'endsAt': '2030-11-10T00:00:00Z',
+                  'state': 'open',
+                  'paused': false,
+                  'renewalMode': 'manual',
+                }
+              : null,
           'upcomingCoverage': null,
           'lastCoverageEndedAt': null,
-          'commute': null,
-          'access': {'canReserve': false, 'blocks': <String>[]},
+          'commute': pageName == 'wallet'
+              ? {
+                  'id': 'commute',
+                  'routeId': 'route',
+                  'routeName': 'Circle to Madina',
+                  'effectiveFrom': '2030-10-11',
+                  'effectiveTo': null,
+                  'legs': [
+                    {
+                      'direction': 'outbound',
+                      'scheduleId': 'outbound-schedule',
+                      'patternVersionId': 'outbound-version',
+                      'pickupOccurrenceId': 'outbound-pickup',
+                      'dropoffOccurrenceId': 'outbound-dropoff',
+                      'localDeparture': '06:30',
+                      'timeZone': 'Africa/Accra',
+                      'pickupName': 'Circle',
+                      'dropoffName': 'Madina',
+                    },
+                    {
+                      'direction': 'return',
+                      'scheduleId': 'return-schedule',
+                      'patternVersionId': 'return-version',
+                      'pickupOccurrenceId': 'return-pickup',
+                      'dropoffOccurrenceId': 'return-dropoff',
+                      'localDeparture': '17:30',
+                      'timeZone': 'Africa/Accra',
+                      'pickupName': 'Madina',
+                      'dropoffName': 'Circle',
+                    },
+                  ],
+                }
+              : null,
+          'access': {'canReserve': pageName == 'wallet', 'blocks': <String>[]},
           'entitlements': {
-            'remainingRides': 0,
-            'credit': _money(0),
+            'remainingRides': pageName == 'wallet' ? 12 : 0,
+            'credit': _money(pageName == 'wallet' ? 1800 : 0),
             'heldCredit': _money(0),
-            'availableCredit': _money(0),
+            'availableCredit': _money(pageName == 'wallet' ? 1800 : 0),
           },
         },
       });
@@ -235,7 +278,7 @@ Fixture _fixture(String pageName) {
     if (r.path == '/v1/me/purchases') {
       return jsonResponse(
         page(
-          pageName == 'payments'
+          pageName == 'payments' || pageName == 'wallet'
               ? [
                   {
                     'id': 'private-purchase-id',
@@ -246,7 +289,9 @@ Fixture _fixture(String pageName) {
                     'appliedCredit': _money(0),
                     'cashDue': _money(126000),
                     'checkout': null,
-                    'billingPeriodId': 'private-period-id',
+                    'billingPeriodId': pageName == 'wallet'
+                        ? 'wallet-period'
+                        : 'private-period-id',
                     'failureCode': null,
                     'createdAt': timestamp,
                     'offerTerms': _terms(),

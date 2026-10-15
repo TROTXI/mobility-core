@@ -7,6 +7,8 @@ import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_status.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/widgets/commuter_root_header.dart';
+import 'notifications_inbox_page.dart';
 
 enum _TripsSegment { upcoming, history }
 
@@ -225,20 +227,14 @@ class _ReservationTripsTabState extends State<ReservationTripsTab> {
   // ---------------------------------------------------------------------
 
   Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Trips',
-          style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+    return CommuterRootHeader(
+      title: 'Trips',
+      subtitle: 'Your scheduled and completed commutes.',
+      onNotifications: () => Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => NotificationsInboxPage(client: widget.client),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Your scheduled and completed commutes.',
-          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
-        ),
-      ],
+      ),
     );
   }
 
