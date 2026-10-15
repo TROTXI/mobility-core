@@ -315,7 +315,6 @@ class _HomePageState extends State<HomePage> {
         onShowRoutes: _showRoutes,
         onShowWallet: () => _goToDestination(CommuterDestination.wallet),
         onShowSupport: _showSupport,
-        onShowProfile: () => _goToDestination(CommuterDestination.profile),
       ),
       ReservationTripsTab(client: widget.client),
       WalletTab(client: widget.client),
