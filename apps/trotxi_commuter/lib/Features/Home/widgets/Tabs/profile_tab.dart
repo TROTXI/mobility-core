@@ -12,7 +12,9 @@ import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/widgets/commuter_root_header.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'notifications_inbox_page.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.client});
@@ -158,122 +160,125 @@ class _ProfileTabState extends State<ProfileTab> {
 
     return Container(
       color: colors.backgroundDefault,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxContentWidth),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              24,
-              horizontalPadding,
-              80,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 24),
-                if (_loading && _user == null)
-                  const _ProfileHeaderLoading()
-                else if (_error != null && _user == null)
-                  _ProfileHeaderError(onRetry: _fetchUser)
-                else
-                  _ProfileHeader(
-                    displayName: _user?.displayName,
-                    phone: _user?.phone,
-                    email: _user?.email,
-                    avatarUrl: _user?.avatarUrl,
-                    onEdit: _openPersonalInfo,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                80,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 24),
+                  if (_loading && _user == null)
+                    const _ProfileHeaderLoading()
+                  else if (_error != null && _user == null)
+                    _ProfileHeaderError(onRetry: _fetchUser)
+                  else
+                    _ProfileHeader(
+                      displayName: _user?.displayName,
+                      phone: _user?.phone,
+                      email: _user?.email,
+                      avatarUrl: _user?.avatarUrl,
+                      onEdit: _openPersonalInfo,
+                    ),
+                  const SizedBox(height: 28),
+                  AppSettingsGroup(
+                    children: [
+                      AppSettingsRow(
+                        icon: Icons.person_outline_rounded,
+                        title: 'Personal information',
+                        subtitle: 'Your name and photo',
+                        onTap: _user == null ? null : _openPersonalInfo,
+                      ),
+                      AppSettingsRow(
+                        icon: Icons.route_outlined,
+                        title: 'My commute',
+                        subtitle: 'Route, stops and travel preferences',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                CommutePreferencesPage(client: widget.client),
+                          ),
+                        ),
+                      ),
+                      AppSettingsRow(
+                        icon: Icons.notifications_outlined,
+                        title: 'Notifications',
+                        subtitle: 'Ride alerts and updates',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProfileNotificationsPage(client: widget.client),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 28),
-                AppSettingsGroup(
-                  children: [
-                    AppSettingsRow(
-                      icon: Icons.person_outline_rounded,
-                      title: 'Personal information',
-                      subtitle: 'Your name and photo',
-                      onTap: _user == null ? null : _openPersonalInfo,
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.route_outlined,
-                      title: 'My commute',
-                      subtitle: 'Route, stops and travel preferences',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              CommutePreferencesPage(client: widget.client),
+                  const SizedBox(height: 20),
+                  AppSettingsGroup(
+                    children: [
+                      AppSettingsRow(
+                        icon: Icons.shield_outlined,
+                        title: 'Security & sign-in',
+                        subtitle: 'Password, email and devices',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProfileSecurityPage(client: widget.client),
+                          ),
                         ),
                       ),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.notifications_outlined,
-                      title: 'Notifications',
-                      subtitle: 'Ride alerts and updates',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ProfileNotificationsPage(client: widget.client),
+                      AppSettingsRow(
+                        icon: Icons.phone_outlined,
+                        title: 'Phone number',
+                        subtitle: 'Manage your sign-in number',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                PhoneVerificationPage(client: widget.client),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                AppSettingsGroup(
-                  children: [
-                    AppSettingsRow(
-                      icon: Icons.shield_outlined,
-                      title: 'Security & sign-in',
-                      subtitle: 'Password, email and devices',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ProfileSecurityPage(client: widget.client),
+                      AppSettingsRow(
+                        icon: Icons.brightness_6_outlined,
+                        title: 'Appearance',
+                        subtitle: 'Light, dark or device settings',
+                        onTap: () => _showAppearanceSheet(context),
+                      ),
+                      AppSettingsRow(
+                        icon: Icons.help_outline_rounded,
+                        title: 'Help & support',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                HelpSupportPage(client: widget.client),
+                          ),
                         ),
                       ),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.phone_outlined,
-                      title: 'Phone number',
-                      subtitle: 'Manage your sign-in number',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              PhoneVerificationPage(client: widget.client),
-                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _SignOutButton(onPressed: () => _confirmSignOut(context)),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textTertiary,
                       ),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.brightness_6_outlined,
-                      title: 'Appearance',
-                      subtitle: 'Light, dark or device settings',
-                      onTap: () => _showAppearanceSheet(context),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.help_outline_rounded,
-                      title: 'Help & support',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              HelpSupportPage(client: widget.client),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _SignOutButton(onPressed: () => _confirmSignOut(context)),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textTertiary,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -282,20 +287,14 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Profile',
-          style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+    return CommuterRootHeader(
+      title: 'Profile',
+      subtitle: 'Manage your Trotxi account and preferences.',
+      onNotifications: () => Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => NotificationsInboxPage(client: widget.client),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Manage your Trotxi account and preferences.',
-          style: AppTypography.caption.copyWith(color: colors.textSecondary),
-        ),
-      ],
+      ),
     );
   }
 }

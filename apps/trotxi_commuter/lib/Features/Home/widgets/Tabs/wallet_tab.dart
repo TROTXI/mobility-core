@@ -1,95 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/core/api/commuter_api.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_details_sheet.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
-import 'standby_page.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/auto_renewal_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/checkout_page.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/notifications_inbox_page.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/standby_page.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/utils/money_format.dart';
-import 'auto_renewal_page.dart';
+import 'package:trotxi_commuter/core/widgets/app_surfaces.dart';
+import 'package:trotxi_commuter/core/widgets/commuter_root_header.dart';
 
-// ---------------------------------------------------------------------
-// Activity feed
-// ---------------------------------------------------------------------
+String _formatDay(DateTime date) => DateFormat('d MMM y').format(date.toUtc());
+String _formatDate(Date date) => _formatDay(date.toDateTime());
 
-/// One line in the recent-activity list. Rides and purchases come from two
-/// separate ledgers, so each is normalised into this before being merged
-/// into a single newest-first feed.
-sealed class _Activity {
-  const _Activity();
+String _blockLabel(AccessBlock block) => switch (block.kind) {
+  AccessBlockKindEnum.paused => 'Your plan is paused.',
+  AccessBlockKindEnum.dispute => 'A payment dispute needs attention.',
+  AccessBlockKindEnum.opsRestriction =>
+    'Operations has temporarily restricted reservations.',
+  _ => 'Reservations are temporarily unavailable.',
+};
 
-  DateTime get at;
-}
-
-class _RideActivity extends _Activity {
-  const _RideActivity(this.entry);
-  final RideEntry entry;
-
-  @override
-  DateTime get at => entry.createdAt;
-}
-
-class _PurchaseActivity extends _Activity {
-  const _PurchaseActivity(this.purchase);
-  final Purchase purchase;
-
-  @override
-  DateTime get at => purchase.createdAt;
-}
-
-// ---------------------------------------------------------------------
-// Formatting helpers
-// ---------------------------------------------------------------------
-
-String _formatDay(DateTime date) => DateFormat('d MMM').format(date.toLocal());
-
-// Coverage and commute dates follow the Ghana service calendar, not the
-// device's timezone (which may still be the previous day).
-String _formatFullDay(DateTime date) =>
-    DateFormat('d MMM y').format(date.toUtc());
-
-String _formatDate(Date date) => _formatFullDay(date.toDateTime());
-
-/// Ledger reasons are wire enums; these are the rider-facing sentences.
-String _rideReasonLabel(RideEntryReasonEnum reason) {
-  return switch (reason) {
-    RideEntryReasonEnum.allocation => 'Rides added',
-    RideEntryReasonEnum.boarding => 'Ride taken',
-    RideEntryReasonEnum.noShow => 'Missed ride',
-    RideEntryReasonEnum.returned => 'Ride returned',
-    RideEntryReasonEnum.refund => 'Rides refunded',
-    RideEntryReasonEnum.converted => 'Converted to credit',
-    _ => 'Ride entry',
-  };
-}
-
-/// Why the rider cannot reserve, from `access.blocks`.
-String _blockLabel(AccessBlock block) {
-  return switch (block.kind) {
-    AccessBlockKindEnum.paused => 'Your membership is paused.',
-    AccessBlockKindEnum.dispute => 'A payment dispute is open on your account.',
-    AccessBlockKindEnum.opsRestriction =>
-      'Operations has restricted this account.',
-    _ => 'Reservations are blocked on this account.',
-  };
-}
-
-// ---------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------
-
-/// The rider's wallet and subscription, driven by `GET /v1/me/membership`
-/// (membership, coverage, access, commute and entitlements) plus the two
-/// ledgers behind the activity feed: `GET /v1/me/ride-entries` and
-/// `GET /v1/me/purchases`.
+/// Figma's commute-plan destination, backed by the existing Ops offer model.
 class WalletTab extends StatefulWidget {
   const WalletTab({super.key, required this.client});
-
   final CommuterApi client;
 
   @override
@@ -97,21 +35,10 @@ class WalletTab extends StatefulWidget {
 }
 
 class _WalletTabState extends State<WalletTab> {
-  /// How many ledger rows each side of the feed contributes.
-  static const _activityPageSize = 20;
-
-  /// How many merged rows are shown at once.
-  static const _activityShown = 8;
-
   Membership? _membership;
-  List<_Activity> _activity = const [];
-
-  bool _loading = true;
+  List<Purchase> _purchases = const [];
   Object? _error;
-
-  /// True while a checkout round-trip is in flight, so the subscribe button
-  /// cannot be tapped twice into two purchases.
-  bool _subscribing = false;
+  bool _loading = true;
 
   RiderOwnApi get _riderApi => widget.client.getRiderOwnApi();
 
@@ -126,117 +53,97 @@ class _WalletTabState extends State<WalletTab> {
       _loading = true;
       _error = null;
     });
-
     try {
-      // All three are started together; the page only renders once they've
-      // all landed, so there's nothing to gain from staggering them.
-      final membership = _riderApi.getMembership(
+      final membershipFuture = _riderApi.getMembership(
         xTrotxiClient: widget.client.metadata.app,
         xTrotxiBuild: widget.client.metadata.build,
         xTrotxiPlatform: widget.client.metadata.platform,
       );
-      final rides = _riderApi.listRideEntries(
+      final purchasesFuture = _riderApi.listPurchases(
         xTrotxiClient: widget.client.metadata.app,
         xTrotxiBuild: widget.client.metadata.build,
         xTrotxiPlatform: widget.client.metadata.platform,
-        limit: _activityPageSize,
+        limit: 30,
       );
-      final purchases = _riderApi.listPurchases(
-        xTrotxiClient: widget.client.metadata.app,
-        xTrotxiBuild: widget.client.metadata.build,
-        xTrotxiPlatform: widget.client.metadata.platform,
-        limit: _activityPageSize,
-      );
-
-      final membershipResponse = await membership;
-      final rideResponse = await rides;
-      final purchaseResponse = await purchases;
-
-      final membershipData = membershipResponse.data?.data;
-      final rideData = rideResponse.data?.data ?? const <RideEntry>[];
-      final purchaseData = purchaseResponse.data?.data ?? const <Purchase>[];
-
+      final membershipResponse = await membershipFuture;
+      final purchasesResponse = await purchasesFuture;
       if (!mounted) return;
       setState(() {
-        _membership = membershipData;
-        _activity = <_Activity>[
-          ...rideData.map(_RideActivity.new),
-          ...purchaseData.map(_PurchaseActivity.new),
-        ]..sort((a, b) => b.at.compareTo(a.at));
+        _membership = membershipResponse.data?.data;
+        _purchases = purchasesResponse.data?.data.toList() ?? const [];
         _loading = false;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = e;
+        _error = error;
         _loading = false;
       });
-      debugPrint('Error loading wallet: $e');
     }
   }
 
-  /// Prepare a purchase, then show the server's price in the existing
-  /// recoverable checkout before the rider opens Paystack.
-  Future<void> _onSubscribe() async {
-    if (_subscribing) return;
-    setState(() => _subscribing = true);
-    try {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => StandbyPage(client: widget.client)),
-      );
-      if (!mounted) return;
-      await _load();
-    } finally {
-      if (mounted) setState(() => _subscribing = false);
+  Purchase? _purchaseFor(MembershipCoverage? coverage) {
+    if (coverage == null) return null;
+    for (final purchase in _purchases) {
+      if (purchase.billingPeriodId == coverage.id) return purchase;
     }
+    for (final purchase in _purchases) {
+      if (purchase.state == PurchaseStateEnum.fulfilled) return purchase;
+    }
+    return null;
   }
 
-  // ---------------------------------------------------------------------
-  // UI — theme-aware via context.appColors (light/dark) and laid out from
-  // ResponsiveLayoutInfo (phone / tablet portrait / tablet landscape), the
-  // same pattern OnBoardPage and SplashView use.
-  // ---------------------------------------------------------------------
+  Future<void> _openNotifications() => Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => NotificationsInboxPage(client: widget.client),
+    ),
+  );
+
+  Future<void> _openOffers() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => StandbyPage(client: widget.client)),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openPayments() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => CheckoutPage(client: widget.client)),
+    );
+    if (mounted) await _load();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
     final layout = ResponsiveLayoutInfo.of(context);
-    final isWide =
-        layout.isTabletLandscape && MediaQuery.sizeOf(context).width >= 920;
-
-    final maxContentWidth = layout.select(
-      phone: 520.0,
-      tabletPortrait: 680.0,
-      tabletLandscape: 960.0,
-    );
     final horizontalPadding = layout.select(
       phone: 24.0,
-      tabletPortrait: 24.0,
+      tabletPortrait: 28.0,
       tabletLandscape: 32.0,
     );
-
+    final maxWidth = layout.select(
+      phone: 560.0,
+      tabletPortrait: 700.0,
+      tabletLandscape: 880.0,
+    );
     return Scaffold(
-      backgroundColor: colors.backgroundDefault,
-      // No TextField lives directly in this tab, so it never needs to shrink
-      // for the keyboard — and a stuck/phantom bottom inset (seen on some
-      // OEM ROMs after a dialog's keyboard closes) must not squash it either.
-      resizeToAvoidBottomInset: false,
+      backgroundColor: context.appColors.backgroundDefault,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            constraints: BoxConstraints(maxWidth: maxWidth),
             child: RefreshIndicator(
               onRefresh: _load,
-              color: colors.actionPrimaryDefault,
+              color: context.appColors.actionPrimaryDefault,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
                   16,
                   horizontalPadding,
-                  32,
+                  36,
                 ),
-                children: _buildBody(context, isWide),
+                children: _buildBody(context),
               ),
             ),
           ),
@@ -245,226 +152,399 @@ class _WalletTabState extends State<WalletTab> {
     );
   }
 
-  List<Widget> _buildBody(BuildContext context, bool isWide) {
-    final header = _buildHeader(context);
-
-    if (_loading) {
-      return [header, const SizedBox(height: 20), _buildLoadingCard(context)];
-    }
-
+  List<Widget> _buildBody(BuildContext context) {
     final membership = _membership;
+    final plan = _purchaseFor(membership?.coverage)?.plan;
+    final subtitle = plan == null
+        ? 'Your access to reliable Trotxi rides.'
+        : 'Your ${commutePlanLabel(plan.name).toLowerCase()} access to reliable Trotxi rides.';
+    final header = CommuterRootHeader(
+      title: 'Commute plan',
+      subtitle: subtitle,
+      onNotifications: _openNotifications,
+    );
+    if (_loading) {
+      return [header, const SizedBox(height: 20), const _PlanLoading()];
+    }
     if (_error != null || membership == null) {
-      return [header, const SizedBox(height: 20), _buildErrorCard(context)];
+      return [header, const SizedBox(height: 20), _PlanError(onRetry: _load)];
     }
 
-    // blocks is only populated while access is denied, so an empty list here
-    // is the ordinary "everything is fine" case.
+    final coverage = membership.coverage;
+    final purchase = _purchaseFor(coverage);
     final blocks = membership.access.canReserve
         ? const <AccessBlock>[]
         : membership.access.blocks.toList();
-
     return [
       header,
       const SizedBox(height: 20),
       if (blocks.isNotEmpty) ...[
-        _buildAccessBanner(context, blocks),
-        const SizedBox(height: 16),
+        _AccessNotice(blocks: blocks),
+        const SizedBox(height: 14),
       ],
-      ..._buildBalanceSection(context, membership, isWide),
+      _ActivePlanCard(
+        membership: membership,
+        purchase: purchase,
+        onGetPlan: _openOffers,
+      ),
       if (membership.upcomingCoverage case final upcoming?) ...[
-        const SizedBox(height: 16),
-        _buildUpcomingCoverage(context, upcoming),
+        const SizedBox(height: 14),
+        _UpcomingCoverage(coverage: upcoming),
       ],
-      const SizedBox(height: 20),
-      _buildPaymentActions(context),
       const SizedBox(height: 24),
-      _buildSectionTitle(context, 'Recent activity'),
-      const SizedBox(height: 12),
-      _buildActivitySection(context),
-    ];
-  }
-
-  Widget _buildUpcomingCoverage(
-    BuildContext context,
-    MembershipCoverage upcoming,
-  ) {
-    final colors = context.appColors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.actionPrimaryDefault.withValues(alpha: 0.08),
-        border: Border.all(
-          color: colors.actionPrimaryDefault.withValues(alpha: 0.25),
+      Text(
+        'Plan usage',
+        style: AppTypography.label.copyWith(
+          color: context.appColors.textPrimary,
         ),
-        borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.event_available_rounded, color: colors.actionSecondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Upcoming coverage paid',
-                  style: AppTypography.label.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Starts ${_formatFullDay(upcoming.startsAt)}${upcoming.endsAt == null ? '' : ' · Ends ${_formatFullDay(upcoming.endsAt!)}'}',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'These rides become available when this coverage starts. Your current ride balance is unchanged.',
-                  style: AppTypography.caption.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      const SizedBox(height: 12),
+      _PlanUsageCard(membership: membership),
+      const SizedBox(height: 24),
+      Text(
+        'Manage',
+        style: AppTypography.label.copyWith(
+          color: context.appColors.textPrimary,
+        ),
       ),
-    );
-  }
-
-  Widget _buildPaymentActions(BuildContext context) => AppSettingsGroup(
-    children: [
-      AppSettingsRow(
-        icon: Icons.receipt_long_outlined,
-        title: 'Payments',
-        subtitle: 'History and pending payments',
-        onTap: () async {
-          await Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => CheckoutPage(client: widget.client),
-            ),
-          );
-          if (mounted) await _load();
-        },
-      ),
-      AppSettingsRow(
-        icon: Icons.credit_card_outlined,
-        title: 'Card auto-renewal',
-        subtitle: 'Manage renewal and saved cards',
+      const SizedBox(height: 12),
+      _PlanAction(
+        title: 'Plan details',
+        subtitle: 'View benefits, renewal and billing',
         onTap: () => Navigator.of(context).push<void>(
           MaterialPageRoute(
-            builder: (_) => AutoRenewalPage(client: widget.client),
+            builder: (_) => _PlanDetailsPage(
+              client: widget.client,
+              membership: membership,
+              purchase: purchase,
+            ),
           ),
         ),
       ),
-      AppSettingsRow(
-        icon: Icons.local_offer_outlined,
-        title: 'Waitlist & offers',
-        subtitle: 'Manage your next commute',
-        onTap: () async {
-          await Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => StandbyPage(client: widget.client),
+      const SizedBox(height: 8),
+      _PlanAction(
+        title: coverage == null ? 'Get a commute plan' : 'Change plan',
+        subtitle: coverage == null
+            ? 'Tell us your route and travel days'
+            : 'Request a new route, schedule or plan',
+        onTap: _openOffers,
+      ),
+      const SizedBox(height: 8),
+      _PlanAction(
+        title: 'Billing & payments',
+        subtitle: 'Manage payments and receipts',
+        onTap: _openPayments,
+      ),
+    ];
+  }
+}
+
+class _ActivePlanCard extends StatelessWidget {
+  const _ActivePlanCard({
+    required this.membership,
+    required this.purchase,
+    required this.onGetPlan,
+  });
+  final Membership membership;
+  final Purchase? purchase;
+  final VoidCallback onGetPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final coverage = membership.coverage;
+    if (coverage == null) {
+      return AppSurface(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'NO ACTIVE PLAN',
+              style: AppTypography.caption.copyWith(
+                color: colors.actionSecondary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .5,
+              ),
             ),
-          );
-          if (mounted) await _load();
-        },
-      ),
-    ],
-  );
-
-  // ---------------------------------------------------------------------
-  // Header
-  // ---------------------------------------------------------------------
-
-  Widget _buildHeader(BuildContext context) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Wallet',
-          style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+            const SizedBox(height: 10),
+            Text(
+              'Start your commute plan',
+              style: AppTypography.heading3.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tell us your route and travel days. Operations will send an offer for you to review.',
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: onGetPlan,
+              child: const Text('Join the waitlist'),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Your plan, rides and payments.',
-          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
-        ),
-      ],
-    );
-  }
+      );
+    }
 
-  Widget _buildLoadingCard(BuildContext context) {
-    final colors = context.appColors;
-    return Container(
-      width: double.infinity,
-      height: 160,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: CircularProgressIndicator(color: colors.actionPrimaryDefault),
-    );
-  }
-
-  Widget _buildErrorCard(BuildContext context) {
-    final colors = context.appColors;
-    final error = _error;
-    final message = error is TrotxiException
-        ? error.message
-        : "Couldn't load your wallet";
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    final plan = purchase?.plan;
+    final planName = plan == null
+        ? 'Trotxi commute plan'
+        : 'Trotxi ${commutePlanLabel(plan.name)}';
+    final cadence = plan == null
+        ? 'Reliable weekday commute access'
+        : '${commutePlanLabel(plan.name)} commute access';
+    final renewsAutomatically =
+        coverage.renewalMode == MembershipCoverageRenewalModeEnum.automatic;
+    final renewal = renewsAutomatically
+        ? switch (plan) {
+            PurchasePlanEnum.weekly => 'Renews weekly',
+            PurchasePlanEnum.biweekly => 'Renews every two weeks',
+            PurchasePlanEnum.monthly => 'Renews monthly',
+            PurchasePlanEnum.annual => 'Previous annual plan',
+            _ => 'Auto-renewal active',
+          }
+        : 'Manual renewal';
+    return AppSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            message,
-            style: AppTypography.label.copyWith(color: colors.textPrimary),
+            coverage.paused ? 'PAUSED PLAN' : 'ACTIVE PLAN',
+            style: AppTypography.caption.copyWith(
+              color: coverage.paused ? colors.warning : colors.actionSecondary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .5,
+            ),
           ),
-          const SizedBox(height: 8),
-          TextButton(onPressed: _load, child: const Text('Try again')),
+          const SizedBox(height: 10),
+          Text(
+            planName,
+            style: AppTypography.heading3.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            cadence,
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Flexible(
+                child: AppStatusBadge(
+                  label: coverage.paused ? 'Paused' : renewal,
+                  color: coverage.paused
+                      ? colors.warning
+                      : colors.actionSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  coverage.endsAt == null
+                      ? 'Started'
+                      : renewsAutomatically
+                      ? 'Next renewal'
+                      : 'Renew by',
+                  style: AppTypography.caption.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  _formatDay(coverage.endsAt ?? coverage.startsAt),
+                  textAlign: TextAlign.right,
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------
-  // Access blocks — why reservations are closed
-  // ---------------------------------------------------------------------
+class _PlanUsageCard extends StatelessWidget {
+  const _PlanUsageCard({required this.membership});
+  final Membership membership;
 
-  Widget _buildAccessBanner(BuildContext context, List<AccessBlock> blocks) {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final commute = membership.commute;
+    final legs = commute?.legs.toList() ?? const <CommuteLegView>[];
+    final hasOutbound = legs.any(
+      (leg) => leg.direction == CommuteLegViewDirectionEnum.outbound,
+    );
+    final hasReturn = legs.any(
+      (leg) => leg.direction == CommuteLegViewDirectionEnum.return_,
+    );
+    final windows = switch ((hasOutbound, hasReturn)) {
+      (true, true) => 'Morning + evening commute windows',
+      (true, false) => 'Morning commute window',
+      (false, true) => 'Evening commute window',
+      _ => 'Commute access is set by your offer',
+    };
+    return AppSurface(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            commute?.routeName ?? 'Commute access',
+            style: AppTypography.label.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            windows,
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Divider(height: 1, color: colors.borderSubtle),
+          const SizedBox(height: 16),
+          _UsageRow(
+            label: 'Rides remaining',
+            value: '${membership.entitlements.remainingRides}',
+          ),
+          const SizedBox(height: 12),
+          _UsageRow(
+            label: 'Ride Credit',
+            value: membership.entitlements.availableCredit.formatted,
+            accent: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageRow extends StatelessWidget {
+  const _UsageRow({
+    required this.label,
+    required this.value,
+    this.accent = false,
+  });
+  final String label;
+  final String value;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          label,
+          style: AppTypography.caption.copyWith(
+            color: context.appColors.textSecondary,
+          ),
+        ),
+      ),
+      Text(
+        value,
+        style: AppTypography.label.copyWith(
+          color: accent
+              ? context.appColors.actionSecondary
+              : context.appColors.textPrimary,
+        ),
+      ),
+    ],
+  );
+}
+
+class _PlanAction extends StatelessWidget {
+  const _PlanAction({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Material(
+      color: colors.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.label.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: colors.iconSubtle,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AccessNotice extends StatelessWidget {
+  const _AccessNotice({required this.blocks});
+  final List<AccessBlock> blocks;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.appColors;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colors.warning.withValues(alpha: 0.12),
-        border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
+        color: colors.warning.withValues(alpha: .1),
+        border: Border.all(color: colors.warning.withValues(alpha: .35)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 20, color: colors.warning),
-          const SizedBox(width: 12),
+          Icon(Icons.info_outline_rounded, color: colors.warning, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "You can't reserve rides right now",
+                  'Reservations need attention',
                   style: AppTypography.label.copyWith(
                     color: colors.textPrimary,
                   ),
@@ -484,409 +564,49 @@ class _WalletTabState extends State<WalletTab> {
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------
-  // Entitlements + membership — both from GET /v1/me/membership
-  // ---------------------------------------------------------------------
+class _UpcomingCoverage extends StatelessWidget {
+  const _UpcomingCoverage({required this.coverage});
+  final MembershipCoverage coverage;
 
-  List<Widget> _buildBalanceSection(
-    BuildContext context,
-    Membership membership,
-    bool isWide,
-  ) {
-    if (isWide) {
-      return [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: _buildCreditsCard(context, membership.entitlements),
-            ),
-            const SizedBox(width: 16),
-            Expanded(flex: 2, child: _buildMembershipCard(context, membership)),
-          ],
-        ),
-      ];
-    }
-
-    return [
-      _buildCreditsCard(context, membership.entitlements),
-      const SizedBox(height: 16),
-      _buildMembershipCard(context, membership),
-    ];
-  }
-
-  Widget _buildCreditsCard(
-    BuildContext context,
-    MembershipEntitlements entitlements,
-  ) {
+  @override
+  Widget build(BuildContext context) {
     final colors = context.appColors;
-    final held = entitlements.heldCredit.amountMinor;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surfaceStrong,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'YOUR RIDE BALANCE',
-            style: AppTypography.label.copyWith(
-              color: colors.onSurfaceStrong.withValues(alpha: 0.85),
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.end,
-            spacing: 10,
-            children: [
-              Text(
-                '${entitlements.remainingRides}',
-                style: AppTypography.display.copyWith(
-                  color: colors.onSurfaceStrong,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'rides remaining',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colors.onSurfaceStrong,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Divider(color: colors.onSurfaceStrong.withValues(alpha: .2)),
-          const SizedBox(height: 12),
-          Text(
-            '${entitlements.availableCredit.formatted} credit available',
-            style: AppTypography.label.copyWith(color: colors.onSurfaceStrong),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Total credit: ${entitlements.credit.formatted}',
-            style: AppTypography.caption.copyWith(
-              color: colors.onSurfaceStrong,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            // Held credit is committed to a purchase that hasn't settled, so
-            // it isn't spendable until that purchase resolves.
-            held > 0
-                ? '${entitlements.heldCredit.formatted} is held against a '
-                      'purchase that is still settling.'
-                : 'Available credit can reduce your next plan payment.',
-            style: AppTypography.caption.copyWith(
-              color: colors.onSurfaceStrong.withValues(alpha: 0.72),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMembershipCard(BuildContext context, Membership membership) {
-    final colors = context.appColors;
-    final coverage = membership.coverage;
-    final commute = membership.commute;
-    final isCovered =
-        coverage != null && coverage.state == MembershipCoverageStateEnum.open;
-
-    return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Membership',
-                      style: AppTypography.caption.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _membershipHeadline(membership),
-                      style: AppTypography.buttonAction.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _membershipDetail(membership),
-                      style: AppTypography.caption.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isCovered) _buildStatusBadge(context, coverage.paused),
-            ],
-          ),
-          if (commute != null) ...[
-            const SizedBox(height: 14),
-            Divider(height: 1, color: colors.borderSubtle),
-            const SizedBox(height: 14),
-            _buildCommuteSummary(context, commute),
-          ],
-          const SizedBox(height: 16),
-          _buildSubscribeButton(context, isCovered),
-        ],
-      ),
-    );
-  }
-
-  /// The one-line status: what the rider has, not what the ledger calls it.
-  String _membershipHeadline(Membership membership) {
-    final coverage = membership.coverage;
-    if (coverage == null) {
-      return membership.lastCoverageEndedAt == null
-          ? 'No active plan'
-          : 'Plan expired';
-    }
-    if (coverage.paused) return 'Paused';
-    return switch (coverage.state) {
-      MembershipCoverageStateEnum.open => 'Subscription active',
-      MembershipCoverageStateEnum.closed => 'Plan ended',
-      MembershipCoverageStateEnum.reversed => 'Plan reversed',
-      _ => 'Subscription',
-    };
-  }
-
-  String _membershipDetail(Membership membership) {
-    final coverage = membership.coverage;
-    if (coverage == null) {
-      final endedAt = membership.lastCoverageEndedAt;
-      return endedAt == null
-          ? 'Join the waitlist with your journeys and travel days.'
-          : 'Ended ${_formatFullDay(endedAt)}. Request a renewal offer.';
-    }
-    final endsAt = coverage.endsAt;
-    if (endsAt == null) return 'Started ${_formatFullDay(coverage.startsAt)}';
-    return coverage.renewalMode == MembershipCoverageRenewalModeEnum.manual
-        ? 'Renew by ${_formatFullDay(endsAt)}'
-        : 'Card renewal planned by ${_formatFullDay(endsAt)}';
-  }
-
-  Widget _buildStatusBadge(BuildContext context, bool paused) {
-    final colors = context.appColors;
-    final color = paused ? colors.warning : colors.success;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        paused ? 'Paused' : 'Active',
-        style: AppTypography.label.copyWith(color: color),
-      ),
-    );
-  }
-
-  Widget _buildCommuteSummary(BuildContext context, MembershipCommute commute) {
-    final colors = context.appColors;
-    // Outbound before return, whatever order the API listed them in.
-    final legs = commute.legs.toList()
-      ..sort((a, b) => a.direction.name.compareTo(b.direction.name));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          commute.routeName,
-          style: AppTypography.label.copyWith(color: colors.textPrimary),
+        color: colors.actionPrimaryDefault.withValues(alpha: .08),
+        border: Border.all(
+          color: colors.actionPrimaryDefault.withValues(alpha: .24),
         ),
-        const SizedBox(height: 6),
-        for (final leg in legs)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              '${leg.direction == CommuteLegViewDirectionEnum.outbound ? 'Out' : 'Back'}'
-              ' · ${leg.localDeparture} · '
-              '${leg.pickupName} → ${leg.dropoffName}',
-              style: AppTypography.caption.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-          ),
-        const SizedBox(height: 6),
-        Text(
-          commute.effectiveTo == null
-              ? 'From ${_formatDate(commute.effectiveFrom)}'
-              : '${_formatDate(commute.effectiveFrom)} – '
-                    '${_formatDate(commute.effectiveTo!)}',
-          style: AppTypography.caption.copyWith(color: colors.textTertiary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubscribeButton(BuildContext context, bool isCovered) {
-    final colors = context.appColors;
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: _subscribing ? null : _onSubscribe,
-        style: FilledButton.styleFrom(
-          backgroundColor: colors.actionPrimaryDefault,
-          disabledBackgroundColor: colors.actionPrimaryDisabled,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-        child: _subscribing
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colors.actionOnPrimary,
-                ),
-              )
-            : Text(
-                isCovered ? 'Request renewal offer' : 'Join the waitlist',
-                style: AppTypography.buttonAction.copyWith(
-                  color: colors.actionOnPrimary,
-                ),
-              ),
+        borderRadius: BorderRadius.circular(16),
       ),
-    );
-  }
-
-  // ---------------------------------------------------------------------
-  // Recent activity — ride entries merged with purchases
-  // ---------------------------------------------------------------------
-
-  Widget _buildSectionTitle(BuildContext context, String title) {
-    final colors = context.appColors;
-    return Text(
-      title,
-      style: AppTypography.buttonAction.copyWith(color: colors.textPrimary),
-    );
-  }
-
-  Widget _buildActivitySection(BuildContext context) {
-    final colors = context.appColors;
-    final shown = _activity.take(_activityShown).toList();
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: shown.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    color: colors.actionSecondary,
-                    size: 26,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No activity yet',
-                    style: AppTypography.label.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Your rides and payments will appear here.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                for (int i = 0; i < shown.length; i++) ...[
-                  _buildActivityTile(context, shown[i]),
-                  if (i != shown.length - 1)
-                    Divider(height: 1, color: colors.borderSubtle),
-                ],
-              ],
-            ),
-    );
-  }
-
-  Widget _buildActivityTile(BuildContext context, _Activity activity) {
-    final (title, subtitle, amount, isCredit) = switch (activity) {
-      _RideActivity(:final entry) => (
-        _rideReasonLabel(entry.reason),
-        _formatDay(entry.createdAt),
-        '${entry.deltaRides > 0 ? '+' : ''}${entry.deltaRides} '
-            '${entry.deltaRides.abs() == 1 ? 'ride' : 'rides'}',
-        entry.deltaRides > 0,
-      ),
-      _PurchaseActivity(:final purchase) => (
-        purchase.offerTerms != null
-            ? 'Subscription offer'
-            : purchasePlanLabel(purchase.plan),
-        '${purchaseStateLabel(purchase.state, collectionState: purchase.collectionState)} · ${_formatDay(purchase.createdAt)}',
-        purchase.price.formatted,
-        false,
-      ),
-    };
-
-    final colors = context.appColors;
-    // Only purchases have a detail endpoint (`GET /v1/me/purchases/{id}`), so
-    // ride entries stay inert and show no affordance.
-    final purchase = activity is _PurchaseActivity ? activity.purchase : null;
-
-    final row = Padding(
-      padding: const EdgeInsets.all(16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            isCredit ? '+' : '−',
-            style: AppTypography.bodyLarge.copyWith(
-              color: isCredit ? colors.actionSecondary : colors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 16),
+          Icon(Icons.event_available_rounded, color: colors.actionSecondary),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  'Upcoming coverage paid',
                   style: AppTypography.label.copyWith(
                     color: colors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  'Starts ${_formatDay(coverage.startsAt)}${coverage.endsAt == null ? '' : ' · Ends ${_formatDay(coverage.endsAt!)}'}',
+                  style: AppTypography.caption.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'These rides become available when this coverage starts.',
                   style: AppTypography.caption.copyWith(
                     color: colors.textSecondary,
                   ),
@@ -894,50 +614,181 @@ class _WalletTabState extends State<WalletTab> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            amount,
-            textAlign: TextAlign.right,
-            style: AppTypography.label.copyWith(
-              color: isCredit ? colors.actionSecondary : colors.textSecondary,
-            ),
-          ),
-          if (purchase != null) ...[
-            const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: colors.textTertiary,
-            ),
-          ],
         ],
       ),
     );
+  }
+}
 
-    if (purchase == null) return row;
+class _PlanDetailsPage extends StatelessWidget {
+  const _PlanDetailsPage({
+    required this.client,
+    required this.membership,
+    required this.purchase,
+  });
+  final CommuterApi client;
+  final Membership membership;
+  final Purchase? purchase;
 
-    // The surrounding card paints its own opaque background over the
-    // Scaffold's Material, so the splash needs a transparent Material of its
-    // own above that fill or it never shows.
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(onTap: () => _openPurchase(purchase), child: row),
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final coverage = membership.coverage;
+    final commute = membership.commute;
+    return Scaffold(
+      backgroundColor: colors.backgroundDefault,
+      appBar: AppBar(title: const Text('Plan details')),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+          children: [
+            AppPageHeading(
+              title: purchase == null
+                  ? 'Your commute plan'
+                  : 'Trotxi ${commutePlanLabel(purchase!.plan.name)}',
+              subtitle: coverage == null
+                  ? 'You do not have active coverage.'
+                  : 'Your route, rides and renewal in one place.',
+            ),
+            const SizedBox(height: 20),
+            AppSurface(
+              child: Column(
+                children: [
+                  AppDetailRow(
+                    label: 'Status',
+                    value: coverage == null
+                        ? 'No active plan'
+                        : coverage.paused
+                        ? 'Paused'
+                        : 'Active',
+                  ),
+                  if (coverage != null) ...[
+                    const Divider(height: 24),
+                    AppDetailRow(
+                      label: 'Coverage',
+                      value: coverage.endsAt == null
+                          ? 'From ${_formatDay(coverage.startsAt)}'
+                          : '${_formatDay(coverage.startsAt)} to ${_formatDay(coverage.endsAt!)}',
+                    ),
+                  ],
+                  const Divider(height: 24),
+                  AppDetailRow(
+                    label: 'Rides remaining',
+                    value: '${membership.entitlements.remainingRides}',
+                  ),
+                  const Divider(height: 24),
+                  AppDetailRow(
+                    label: 'Available Ride Credit',
+                    value: membership.entitlements.availableCredit.formatted,
+                  ),
+                  const Divider(height: 24),
+                  AppDetailRow(
+                    label: 'Total Ride Credit',
+                    value: membership.entitlements.credit.formatted,
+                  ),
+                  if (membership.entitlements.heldCredit.amountMinor > 0) ...[
+                    const Divider(height: 24),
+                    AppDetailRow(
+                      label: 'Credit being processed',
+                      value: membership.entitlements.heldCredit.formatted,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (commute != null) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Your commute',
+                style: AppTypography.label.copyWith(color: colors.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              AppSurface(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      commute.routeName,
+                      style: AppTypography.heading3.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (final leg in commute.legs)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '${leg.direction == CommuteLegViewDirectionEnum.outbound ? 'Outbound' : 'Return'} · ${leg.localDeparture}\n${leg.pickupName} → ${leg.dropoffName}',
+                          style: AppTypography.caption.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    Text(
+                      commute.effectiveTo == null
+                          ? 'From ${_formatDate(commute.effectiveFrom)}'
+                          : '${_formatDate(commute.effectiveFrom)} to ${_formatDate(commute.effectiveTo!)}',
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            _PlanAction(
+              title: 'Card auto-renewal',
+              subtitle: 'Manage renewal and saved-card controls',
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => AutoRenewalPage(client: client),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+}
 
-  /// Opens the details sheet for [purchase] and reloads if the purchase moved
-  /// on since the feed was built — a purchase that was settling when the list
-  /// loaded is the common case, and its entitlements would otherwise stay
-  /// stale behind the sheet.
-  Future<void> _openPurchase(Purchase purchase) async {
-    final refreshed = await showPurchaseDetailsSheet(
-      context,
-      client: widget.client,
-      purchaseId: purchase.id,
-    );
-    if (!mounted) return;
-    if (refreshed != null && refreshed.state != purchase.state) {
-      await _load();
-    }
-  }
+class _PlanLoading extends StatelessWidget {
+  const _PlanLoading();
+
+  @override
+  Widget build(BuildContext context) => AppSurface(
+    child: SizedBox(
+      height: 120,
+      child: Center(
+        child: CircularProgressIndicator(
+          color: context.appColors.actionPrimaryDefault,
+        ),
+      ),
+    ),
+  );
+}
+
+class _PlanError extends StatelessWidget {
+  const _PlanError({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => AppSurface(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Could not load your commute plan',
+          style: AppTypography.label.copyWith(
+            color: context.appColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(onPressed: onRetry, child: const Text('Try again')),
+      ],
+    ),
+  );
 }

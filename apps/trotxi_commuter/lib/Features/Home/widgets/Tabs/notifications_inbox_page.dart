@@ -57,7 +57,8 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       }
       setState(() {
         if (!more) _items.clear();
-        _items.addAll(page.data);
+        final known = _items.map((item) => item.id).toSet();
+        _items.addAll(page.data.where((item) => known.add(item.id)));
         _cursor = page.page.nextCursor;
       });
     } catch (error) {
@@ -138,6 +139,26 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
   void _message(String text) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
+  bool _startsDay(int index) {
+    if (index == 0) return true;
+    final current = _items[index].createdAt.toLocal();
+    final previous = _items[index - 1].createdAt.toLocal();
+    return current.year != previous.year ||
+        current.month != previous.month ||
+        current.day != previous.day;
+  }
+
+  String _dayLabel(DateTime value) {
+    final date = value.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final difference = today.difference(day).inDays;
+    if (difference == 0) return 'Today';
+    if (difference == 1) return 'Yesterday';
+    return DateFormat('EEE, d MMM').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -148,7 +169,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
         backgroundColor: colors.backgroundDefault,
         actions: [
           IconButton(
-            onPressed: _markAll,
+            onPressed: _loading ? null : _markAll,
             tooltip: 'Mark all read',
             icon: const Icon(Icons.done_all_rounded),
           ),
@@ -160,17 +181,14 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilterChip(
-                    label: const Text('Unread only'),
-                    selected: _unreadOnly,
-                    onSelected: (value) {
-                      setState(() => _unreadOnly = value);
-                      _load();
-                    },
-                  ),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: _InboxFilter(
+                  unreadOnly: _unreadOnly,
+                  onChanged: (value) {
+                    if (value == _unreadOnly) return;
+                    setState(() => _unreadOnly = value);
+                    _load();
+                  },
                 ),
               ),
               Expanded(
@@ -227,9 +245,10 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                             ),
                           ],
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                           itemCount: _items.length + (_cursor != null ? 1 : 0),
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             if (index == _items.length) {
                               return Center(
@@ -245,47 +264,175 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
                             }
                             final item = _items[index];
                             final copy = notificationCopy(item.kind);
-                            return Card(
-                              color: colors.surfaceElevated,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(color: colors.borderSubtle),
-                              ),
-                              child: ListTile(
-                                leading: Icon(
-                                  copy.$3,
-                                  color: colors.actionSecondary,
-                                ),
-                                title: Text(
-                                  copy.$1,
-                                  style: AppTypography.label.copyWith(
-                                    color: colors.textPrimary,
-                                    fontWeight: item.readAt == null
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_startsDay(index)) ...[
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: index == 0 ? 0 : 12,
+                                      bottom: 8,
+                                    ),
+                                    child: Text(
+                                      _dayLabel(item.createdAt),
+                                      style: AppTypography.label.copyWith(
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
                                   ),
+                                ],
+                                _InboxItem(
+                                  item: item,
+                                  copy: copy,
+                                  onTap: () => _open(item),
                                 ),
-                                subtitle: Text(
-                                  '${copy.$2}\n${DateFormat('d MMM · h:mm a').format(item.createdAt.toLocal())}',
-                                  style: AppTypography.caption.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                                isThreeLine: true,
-                                trailing: item.readAt == null
-                                    ? Icon(
-                                        Icons.circle,
-                                        size: 9,
-                                        color: colors.actionSecondary,
-                                      )
-                                    : null,
-                                onTap: () => _open(item),
-                              ),
+                              ],
                             );
                           },
                         ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InboxFilter extends StatelessWidget {
+  const _InboxFilter({required this.unreadOnly, required this.onChanged});
+
+  final bool unreadOnly;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated,
+        border: Border.all(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          for (final entry in const [(false, 'All'), (true, 'Unread')])
+            Expanded(
+              child: Semantics(
+                selected: unreadOnly == entry.$1,
+                button: true,
+                child: InkWell(
+                  onTap: () => onChanged(entry.$1),
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: unreadOnly == entry.$1
+                          ? colors.backgroundDefault
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      entry.$2,
+                      style: AppTypography.label.copyWith(
+                        color: unreadOnly == entry.$1
+                            ? colors.actionSecondary
+                            : colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxItem extends StatelessWidget {
+  const _InboxItem({
+    required this.item,
+    required this.copy,
+    required this.onTap,
+  });
+
+  final RiderNotification item;
+  final (String, String, IconData) copy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final unread = item.readAt == null;
+    return Material(
+      color: colors.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colors.borderSubtle),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: colors.actionPrimaryDefault.withValues(alpha: .1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(copy.$3, size: 21, color: colors.actionSecondary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      copy.$1,
+                      style: AppTypography.label.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      copy.$2,
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      DateFormat('h:mm a').format(item.createdAt.toLocal()),
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (unread) ...[
+                const SizedBox(width: 8),
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(top: 5),
+                  decoration: BoxDecoration(
+                    color: colors.actionSecondary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
