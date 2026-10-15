@@ -15,6 +15,7 @@ import type { AuthOptions } from '../src/auth/service.js';
 import { GoogleIdTokenVerifier } from '../src/auth/id-token-verifier.google.js';
 import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
 import { hashToken } from '../src/auth/credentials.js';
+import { currentCommuterTermsVersion } from '../src/auth/terms.js';
 import { TransportError } from '../src/transport/errors.js';
 import { TransactionalEmail } from '../src/notifications/email.js';
 import { DriverSms } from '../src/notifications/driver-sms.js';
@@ -237,6 +238,8 @@ async function setup(
     const res = await request('POST', `/v1/auth/${provider}`, {
       idToken: await identityToken(subject, provider),
       ...extra,
+      acceptedTerms: true,
+      termsVersion: currentCommuterTermsVersion,
     });
     assert.equal(res.statusCode, 200, res.body);
     return res.json().data;

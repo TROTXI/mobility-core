@@ -345,8 +345,9 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 043 adds invitation, team audit/receipt and one-time bootstrap tables.
     // 044 adds auto-renewal preferences, saved cards and renewals.
     // 047 adds verified commuter email credentials and single-use challenges.
-    // 049 adds private, reservation-owned ride ratings.
-    assert.equal(tables.rows[0].n, 113);
+    // 049 adds private, reservation-owned ride ratings. 051 adds immutable
+    // commuter Terms acceptance records.
+    assert.equal(tables.rows[0].n, 114);
     assert.deepEqual(
       (
         await pool.query(
