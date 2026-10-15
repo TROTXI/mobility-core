@@ -160,122 +160,125 @@ class _ProfileTabState extends State<ProfileTab> {
 
     return Container(
       color: colors.backgroundDefault,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxContentWidth),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              24,
-              horizontalPadding,
-              80,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 24),
-                if (_loading && _user == null)
-                  const _ProfileHeaderLoading()
-                else if (_error != null && _user == null)
-                  _ProfileHeaderError(onRetry: _fetchUser)
-                else
-                  _ProfileHeader(
-                    displayName: _user?.displayName,
-                    phone: _user?.phone,
-                    email: _user?.email,
-                    avatarUrl: _user?.avatarUrl,
-                    onEdit: _openPersonalInfo,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                80,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 24),
+                  if (_loading && _user == null)
+                    const _ProfileHeaderLoading()
+                  else if (_error != null && _user == null)
+                    _ProfileHeaderError(onRetry: _fetchUser)
+                  else
+                    _ProfileHeader(
+                      displayName: _user?.displayName,
+                      phone: _user?.phone,
+                      email: _user?.email,
+                      avatarUrl: _user?.avatarUrl,
+                      onEdit: _openPersonalInfo,
+                    ),
+                  const SizedBox(height: 28),
+                  AppSettingsGroup(
+                    children: [
+                      AppSettingsRow(
+                        icon: Icons.person_outline_rounded,
+                        title: 'Personal information',
+                        subtitle: 'Your name and photo',
+                        onTap: _user == null ? null : _openPersonalInfo,
+                      ),
+                      AppSettingsRow(
+                        icon: Icons.route_outlined,
+                        title: 'My commute',
+                        subtitle: 'Route, stops and travel preferences',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                CommutePreferencesPage(client: widget.client),
+                          ),
+                        ),
+                      ),
+                      AppSettingsRow(
+                        icon: Icons.notifications_outlined,
+                        title: 'Notifications',
+                        subtitle: 'Ride alerts and updates',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProfileNotificationsPage(client: widget.client),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 28),
-                AppSettingsGroup(
-                  children: [
-                    AppSettingsRow(
-                      icon: Icons.person_outline_rounded,
-                      title: 'Personal information',
-                      subtitle: 'Your name and photo',
-                      onTap: _user == null ? null : _openPersonalInfo,
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.route_outlined,
-                      title: 'My commute',
-                      subtitle: 'Route, stops and travel preferences',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              CommutePreferencesPage(client: widget.client),
+                  const SizedBox(height: 20),
+                  AppSettingsGroup(
+                    children: [
+                      AppSettingsRow(
+                        icon: Icons.shield_outlined,
+                        title: 'Security & sign-in',
+                        subtitle: 'Password, email and devices',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProfileSecurityPage(client: widget.client),
+                          ),
                         ),
                       ),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.notifications_outlined,
-                      title: 'Notifications',
-                      subtitle: 'Ride alerts and updates',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ProfileNotificationsPage(client: widget.client),
+                      AppSettingsRow(
+                        icon: Icons.phone_outlined,
+                        title: 'Phone number',
+                        subtitle: 'Manage your sign-in number',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                PhoneVerificationPage(client: widget.client),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                AppSettingsGroup(
-                  children: [
-                    AppSettingsRow(
-                      icon: Icons.shield_outlined,
-                      title: 'Security & sign-in',
-                      subtitle: 'Password, email and devices',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ProfileSecurityPage(client: widget.client),
+                      AppSettingsRow(
+                        icon: Icons.brightness_6_outlined,
+                        title: 'Appearance',
+                        subtitle: 'Light, dark or device settings',
+                        onTap: () => _showAppearanceSheet(context),
+                      ),
+                      AppSettingsRow(
+                        icon: Icons.help_outline_rounded,
+                        title: 'Help & support',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                HelpSupportPage(client: widget.client),
+                          ),
                         ),
                       ),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.phone_outlined,
-                      title: 'Phone number',
-                      subtitle: 'Manage your sign-in number',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              PhoneVerificationPage(client: widget.client),
-                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _SignOutButton(onPressed: () => _confirmSignOut(context)),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textTertiary,
                       ),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.brightness_6_outlined,
-                      title: 'Appearance',
-                      subtitle: 'Light, dark or device settings',
-                      onTap: () => _showAppearanceSheet(context),
-                    ),
-                    AppSettingsRow(
-                      icon: Icons.help_outline_rounded,
-                      title: 'Help & support',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              HelpSupportPage(client: widget.client),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _SignOutButton(onPressed: () => _confirmSignOut(context)),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textTertiary,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

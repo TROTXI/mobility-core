@@ -464,6 +464,50 @@ void main() {
     },
   );
 
+  testWidgets('manual commute plans do not imply automatic renewal', (
+    tester,
+  ) async {
+    final f = _fixture('wallet');
+    addTearDown(f.api.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(body: WalletTab(client: f.api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Manual renewal'), findsOneWidget);
+    expect(find.text('Renew by'), findsOneWidget);
+    expect(find.text('Renews monthly'), findsNothing);
+    expect(find.text('Next renewal'), findsNothing);
+  });
+
+  testWidgets('profile content starts below the system top inset', (
+    tester,
+  ) async {
+    final f = _fixture('profile');
+    addTearDown(f.api.dispose);
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            padding: const EdgeInsets.only(top: 59),
+            viewPadding: const EdgeInsets.only(top: 59),
+          ),
+          child: child!,
+        ),
+        home: Scaffold(body: ProfileTab(client: f.api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(find.text('Profile')).dy, greaterThan(59));
+  });
+
   testWidgets('waitlist withdrawal can be cancelled without a write', (
     tester,
   ) async {

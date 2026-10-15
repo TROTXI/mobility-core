@@ -295,16 +295,17 @@ class _ActivePlanCard extends StatelessWidget {
     final cadence = plan == null
         ? 'Reliable weekday commute access'
         : '${commutePlanLabel(plan.name)} commute access';
-    final renewal = switch (plan) {
-      PurchasePlanEnum.weekly => 'Renews weekly',
-      PurchasePlanEnum.biweekly => 'Renews every two weeks',
-      PurchasePlanEnum.monthly => 'Renews monthly',
-      PurchasePlanEnum.annual => 'Previous annual plan',
-      _ =>
-        coverage.renewalMode == MembershipCoverageRenewalModeEnum.automatic
-            ? 'Auto-renewal active'
-            : 'Manual renewal',
-    };
+    final renewsAutomatically =
+        coverage.renewalMode == MembershipCoverageRenewalModeEnum.automatic;
+    final renewal = renewsAutomatically
+        ? switch (plan) {
+            PurchasePlanEnum.weekly => 'Renews weekly',
+            PurchasePlanEnum.biweekly => 'Renews every two weeks',
+            PurchasePlanEnum.monthly => 'Renews monthly',
+            PurchasePlanEnum.annual => 'Previous annual plan',
+            _ => 'Auto-renewal active',
+          }
+        : 'Manual renewal';
     return AppSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,7 +346,11 @@ class _ActivePlanCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  coverage.endsAt == null ? 'Started' : 'Next renewal',
+                  coverage.endsAt == null
+                      ? 'Started'
+                      : renewsAutomatically
+                      ? 'Next renewal'
+                      : 'Renew by',
                   style: AppTypography.caption.copyWith(
                     color: colors.textSecondary,
                   ),

@@ -169,9 +169,7 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
         backgroundColor: colors.backgroundDefault,
         actions: [
           IconButton(
-            onPressed: _items.any((item) => item.readAt == null)
-                ? _markAll
-                : null,
+            onPressed: _loading ? null : _markAll,
             tooltip: 'Mark all read',
             icon: const Icon(Icons.done_all_rounded),
           ),
