@@ -104,7 +104,9 @@ class CommuterSessionClient {
       {required String email,
       required String firstName,
       required String lastName,
-      String? otherNames}) async {
+      String? otherNames,
+      required bool acceptedTerms,
+      required String termsVersion}) async {
     final generation = store.generation;
     try {
       final response = await client.getPublicApi().requestEmailSignup(
@@ -115,7 +117,9 @@ class CommuterSessionClient {
               ..email = email
               ..firstName = firstName
               ..lastName = lastName
-              ..otherNames = otherNames),
+              ..otherNames = otherNames
+              ..acceptedTerms = acceptedTerms
+              ..termsVersion = termsVersion),
           );
       if (generation != store.generation) throw _superseded;
       return response.data!.data.message;

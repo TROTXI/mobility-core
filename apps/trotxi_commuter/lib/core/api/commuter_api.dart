@@ -141,6 +141,8 @@ class CommuterApi extends CommuterDataClient {
     String? otherNames,
     required String email,
     required String password,
+    required bool acceptedTerms,
+    required String termsVersion,
   }) async {
     _loadAttempt++;
     await completePhoneRegistration(
@@ -149,6 +151,8 @@ class CommuterApi extends CommuterDataClient {
       otherNames: otherNames,
       email: email,
       password: password,
+      acceptedTerms: acceptedTerms,
+      termsVersion: termsVersion,
     );
     if (_closed) return;
     authNotice =

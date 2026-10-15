@@ -229,6 +229,8 @@ class CommuterDataClient {
     String? otherNames,
     required String email,
     required String password,
+    required bool acceptedTerms,
+    required String termsVersion,
   }) async {
     final generation = sessionGeneration;
     try {
@@ -240,7 +242,9 @@ class CommuterDataClient {
           ..lastName = lastName
           ..otherNames = otherNames
           ..email = email
-          ..password = password),
+          ..password = password
+          ..acceptedTerms = acceptedTerms
+          ..termsVersion = termsVersion),
         extra: {_generationKey: generation},
       );
       ensureSession(generation);

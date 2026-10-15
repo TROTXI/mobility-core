@@ -13,10 +13,12 @@ class PublicInformationLinks extends StatelessWidget {
     super.key,
     this.open = _openExternally,
     this.showDeletion = true,
+    this.showTerms = true,
   });
 
   final Future<bool> Function(Uri) open;
   final bool showDeletion;
+  final bool showTerms;
 
   Future<void> _show(BuildContext context, Uri uri) async {
     try {
@@ -58,6 +60,8 @@ class PublicInformationLinks extends StatelessWidget {
       spacing: 8,
       runSpacing: 4,
       children: [
+        if (showTerms)
+          link('Terms and Conditions', TrotxiPublicInformation.terms),
         link('Privacy notice', TrotxiPublicInformation.privacy),
         if (showDeletion)
           link('Request account deletion', TrotxiPublicInformation.deletion),

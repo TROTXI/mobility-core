@@ -212,6 +212,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'config_events',
       'maintenance_run_starts',
       'maintenance_run_outcomes',
+      'terms_acceptances',
     ];
     const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
       `SELECT c.relname AS name, EXISTS (

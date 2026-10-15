@@ -16,6 +16,7 @@ import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 import { phoneIdentity, phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
 import { fullName } from './full-name.js';
 import { checkPassword, hashPassword } from './password.js';
+import { recordCommuterTermsAcceptance } from './terms.js';
 import { sharedAdmission } from '../runtime/admission.js';
 import {
   EmailAuth,
@@ -363,6 +364,8 @@ export class AuthService {
       displayName?: string;
       authorizationCode?: string;
       invitationToken?: string;
+      acceptedTerms?: unknown;
+      termsVersion?: unknown;
     },
     opsOnly = false,
   ) {
@@ -469,6 +472,12 @@ export class AuthService {
             [displayName, identity.email],
           )
         ).rows[0]!;
+        await recordCommuterTermsAcceptance(
+          client,
+          user.id,
+          input,
+          provider === 'google' ? 'commuter_google_signup' : 'commuter_apple_signup',
+        );
         await client.query(
           'INSERT INTO app.auth_identities(user_id,provider,subject,provider_token_ciphertext) VALUES ($1,$2,$3,$4)',
           [user.id, provider, identity.providerId, encrypted],
@@ -988,6 +997,7 @@ export class AuthService {
         ).rowCount
       )
         fail(409, 'email_unavailable', 'This email address belongs to another account.');
+      await recordCommuterTermsAcceptance(c, user.id, body, 'commuter_phone_signup');
       await c.query(
         `UPDATE app.users SET display_name=$2,first_name=$3,last_name=$4,other_names=$5,
            phone_registration_pending=false WHERE id=$1`,

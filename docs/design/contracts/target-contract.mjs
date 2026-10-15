@@ -227,7 +227,17 @@ named(
   }),
 );
 named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled: z.boolean() }));
-named('GoogleSignIn', obj({ idToken: text(8192) }));
+named(
+  'GoogleSignIn',
+  obj({
+    idToken: text(8192),
+    acceptedTerms: z.literal(true).optional(),
+    termsVersion: z
+      .string()
+      .regex(/^2026-10-14$/)
+      .optional(),
+  }),
+);
 named(
   'OpsGoogleSignIn',
   obj({
@@ -275,6 +285,8 @@ named(
     otherNames: text(80).nullable().optional(),
     email: z.email().max(320),
     password: newPassword,
+    acceptedTerms: z.literal(true),
+    termsVersion: z.string().regex(/^2026-10-14$/),
   }),
 );
 named(
@@ -284,6 +296,8 @@ named(
     firstName: text(60),
     lastName: text(60),
     otherNames: text(80).nullable().optional(),
+    acceptedTerms: z.literal(true),
+    termsVersion: z.string().regex(/^2026-10-14$/),
   }),
 );
 named('EmailAddress', obj({ email: z.email().max(320) }));
@@ -332,6 +346,11 @@ named(
     nonce: text(256).optional(),
     authorizationCode: text(4096).optional(),
     displayName: text(100).optional(),
+    acceptedTerms: z.literal(true).optional(),
+    termsVersion: z
+      .string()
+      .regex(/^2026-10-14$/)
+      .optional(),
   }),
 );
 named(

@@ -1,16 +1,17 @@
-# Public privacy and deletion pages
+# Public legal and account pages
 
 Pilot pages are static files in `apps/ops/public`. The existing Ops build copies
 them into its deployment; they do not require Ops access or JavaScript.
 
 - `/privacy`
 - `/delete-account`
+- `/terms`
 
 Render rewrites these clean public paths to the static `.html` files before
 the Ops SPA fallback. The `.html` URLs remain working compatibility links.
 Ops staging is Blueprint-managed: confirm its Blueprint sync applies these
 rules when the change merges, then check both clean URLs after deployment.
-For a service that is not Blueprint-managed, add the same two
+For a service that is not Blueprint-managed, add the same three
 rewrite rules in Render's Redirects/Rewrites settings; deploying files alone
 does not apply `render.yaml` settings.
 
@@ -51,8 +52,10 @@ Track external cleanup retries and explain legitimately retained records.
 
 ## Before store publication
 
-- Verify incoming request delivery and both deployed public URLs without login.
+- Verify incoming request delivery and all three deployed public URLs without login.
 - Confirm the legal operator/data-controller identity and postal address.
+- Add and verify a monitored company phone number before publishing the Terms.
+- Have Ghanaian counsel approve the Terms version linked from signup.
 - Review legal bases, international transfers and retained-record durations.
 - Confirm disclosures against the deployed SDKs and store data declarations.
 - Replace staging URLs together in the shared mobile public-information class

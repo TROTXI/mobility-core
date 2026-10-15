@@ -2903,6 +2903,9 @@ export interface components {
       nonce?: string;
       authorizationCode?: string;
       displayName?: string;
+      /** @enum {boolean} */
+      acceptedTerms?: true;
+      termsVersion?: string;
     };
     ArrivalInput: {
       stopOccurrenceId: string;
@@ -3416,6 +3419,9 @@ export interface components {
       firstName: string;
       lastName: string;
       otherNames?: string | null;
+      /** @enum {boolean} */
+      acceptedTerms: true;
+      termsVersion: string;
     };
     ErrorResponse: {
       error: {
@@ -3502,6 +3508,9 @@ export interface components {
     };
     GoogleSignIn: {
       idToken: string;
+      /** @enum {boolean} */
+      acceptedTerms?: true;
+      termsVersion?: string;
     };
     Health: {
       /** @enum {string} */
@@ -4565,6 +4574,9 @@ export interface components {
       /** Format: email */
       email: string;
       password: string;
+      /** @enum {boolean} */
+      acceptedTerms: true;
+      termsVersion: string;
     };
     PhoneSignInRequest: {
       phone: string;
