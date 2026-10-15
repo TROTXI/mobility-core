@@ -51,7 +51,6 @@ class HomeTab extends ConsumerStatefulWidget {
     this.onShowRoutes,
     this.onShowWallet,
     this.onShowSupport,
-    this.onShowProfile,
     this.isActive = true,
   });
 
@@ -64,7 +63,6 @@ class HomeTab extends ConsumerStatefulWidget {
   final VoidCallback? onShowRoutes;
   final VoidCallback? onShowWallet;
   final VoidCallback? onShowSupport;
-  final VoidCallback? onShowProfile;
   final bool isActive;
 
   @override
@@ -369,28 +367,7 @@ class _HomeTabState extends ConsumerState<HomeTab> with WidgetsBindingObserver {
                     : CommuterIcon.moon,
               ),
             ),
-            const SizedBox(width: 8),
           ],
-          if (widget.onShowProfile != null)
-            CommuterHeaderAction(
-              tooltip: 'Open profile',
-              onPressed: widget.onShowProfile!,
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: colors.actionPrimaryDefault,
-                backgroundImage: widget.userData.avatarUrl?.isNotEmpty == true
-                    ? NetworkImage(widget.userData.avatarUrl!)
-                    : null,
-                child: widget.userData.avatarUrl?.isNotEmpty == true
-                    ? null
-                    : Text(
-                        _firstName[0].toUpperCase(),
-                        style: AppTypography.label.copyWith(
-                          color: colors.actionOnPrimary,
-                        ),
-                      ),
-              ),
-            ),
         ],
       ),
     );
