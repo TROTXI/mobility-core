@@ -15,6 +15,10 @@ class _$AppleSignIn extends AppleSignIn {
   final String? authorizationCode;
   @override
   final String? displayName;
+  @override
+  final bool? acceptedTerms;
+  @override
+  final String? termsVersion;
 
   factory _$AppleSignIn([void Function(AppleSignInBuilder)? updates]) =>
       (AppleSignInBuilder()..update(updates))._build();
@@ -23,7 +27,9 @@ class _$AppleSignIn extends AppleSignIn {
       {required this.idToken,
       this.nonce,
       this.authorizationCode,
-      this.displayName})
+      this.displayName,
+      this.acceptedTerms,
+      this.termsVersion})
       : super._();
   @override
   AppleSignIn rebuild(void Function(AppleSignInBuilder) updates) =>
@@ -39,7 +45,9 @@ class _$AppleSignIn extends AppleSignIn {
         idToken == other.idToken &&
         nonce == other.nonce &&
         authorizationCode == other.authorizationCode &&
-        displayName == other.displayName;
+        displayName == other.displayName &&
+        acceptedTerms == other.acceptedTerms &&
+        termsVersion == other.termsVersion;
   }
 
   @override
@@ -49,6 +57,8 @@ class _$AppleSignIn extends AppleSignIn {
     _$hash = $jc(_$hash, nonce.hashCode);
     _$hash = $jc(_$hash, authorizationCode.hashCode);
     _$hash = $jc(_$hash, displayName.hashCode);
+    _$hash = $jc(_$hash, acceptedTerms.hashCode);
+    _$hash = $jc(_$hash, termsVersion.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -59,7 +69,9 @@ class _$AppleSignIn extends AppleSignIn {
           ..add('idToken', idToken)
           ..add('nonce', nonce)
           ..add('authorizationCode', authorizationCode)
-          ..add('displayName', displayName))
+          ..add('displayName', displayName)
+          ..add('acceptedTerms', acceptedTerms)
+          ..add('termsVersion', termsVersion))
         .toString();
   }
 }
@@ -84,6 +96,15 @@ class AppleSignInBuilder implements Builder<AppleSignIn, AppleSignInBuilder> {
   String? get displayName => _$this._displayName;
   set displayName(String? displayName) => _$this._displayName = displayName;
 
+  bool? _acceptedTerms;
+  bool? get acceptedTerms => _$this._acceptedTerms;
+  set acceptedTerms(bool? acceptedTerms) =>
+      _$this._acceptedTerms = acceptedTerms;
+
+  String? _termsVersion;
+  String? get termsVersion => _$this._termsVersion;
+  set termsVersion(String? termsVersion) => _$this._termsVersion = termsVersion;
+
   AppleSignInBuilder() {
     AppleSignIn._defaults(this);
   }
@@ -95,6 +116,8 @@ class AppleSignInBuilder implements Builder<AppleSignIn, AppleSignInBuilder> {
       _nonce = $v.nonce;
       _authorizationCode = $v.authorizationCode;
       _displayName = $v.displayName;
+      _acceptedTerms = $v.acceptedTerms;
+      _termsVersion = $v.termsVersion;
       _$v = null;
     }
     return this;
@@ -121,6 +144,8 @@ class AppleSignInBuilder implements Builder<AppleSignIn, AppleSignInBuilder> {
           nonce: nonce,
           authorizationCode: authorizationCode,
           displayName: displayName,
+          acceptedTerms: acceptedTerms,
+          termsVersion: termsVersion,
         );
     replace(_$result);
     return _$result;

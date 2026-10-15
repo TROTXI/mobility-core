@@ -127,10 +127,16 @@ class HelpSupportPage extends StatelessWidget {
               ],
               const SizedBox(height: 28),
               Text(
-                'Privacy and account',
+                'Legal and account',
                 style: AppTypography.title.copyWith(color: colors.textPrimary),
               ),
               const SizedBox(height: 12),
+              _linkTile(
+                context,
+                icon: Icons.description_outlined,
+                title: 'Terms and Conditions',
+                onTap: () => _open(context, TrotxiPublicInformation.terms),
+              ),
               _linkTile(
                 context,
                 icon: Icons.privacy_tip_outlined,

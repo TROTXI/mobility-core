@@ -8,6 +8,7 @@ import { sharedAdmission } from '../runtime/admission.js';
 import { hashToken, newRefresh } from './credentials.js';
 import { fullName } from './full-name.js';
 import { checkPassword, hashPassword } from './password.js';
+import { recordCommuterTermsAcceptance } from './terms.js';
 
 export const publicEmailOperations = [
   'requestEmailSignup',
@@ -306,6 +307,8 @@ export class EmailAuth {
         ])
       ).rows[0];
       if (user?.role !== 'commuter') return;
+      if (!actor && !reset)
+        await recordCommuterTermsAcceptance(c, userId, body, 'commuter_email_signup');
       const old = (
         await c.query('SELECT * FROM app.email_credentials WHERE user_id=$1 FOR UPDATE', [userId])
       ).rows[0];

@@ -20,11 +20,14 @@ void main() {
         ),
       ),
     );
+    await tester.tap(find.text('Terms and Conditions'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Privacy notice'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Request account deletion'));
     await tester.pumpAndSettle();
     expect(opened, [
+      TrotxiPublicInformation.terms,
       TrotxiPublicInformation.privacy,
       TrotxiPublicInformation.deletion,
     ]);

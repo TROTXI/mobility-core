@@ -15,6 +15,8 @@ part 'email_signup.g.dart';
 /// * [firstName]
 /// * [lastName]
 /// * [otherNames]
+/// * [acceptedTerms]
+/// * [termsVersion]
 @BuiltValue()
 abstract class EmailSignup implements Built<EmailSignup, EmailSignupBuilder> {
   @BuiltValueField(wireName: r'email')
@@ -28,6 +30,12 @@ abstract class EmailSignup implements Built<EmailSignup, EmailSignupBuilder> {
 
   @BuiltValueField(wireName: r'otherNames')
   String? get otherNames;
+
+  @BuiltValueField(wireName: r'acceptedTerms')
+  bool get acceptedTerms;
+
+  @BuiltValueField(wireName: r'termsVersion')
+  String get termsVersion;
 
   EmailSignup._();
 
@@ -74,6 +82,16 @@ class _$EmailSignupSerializer implements PrimitiveSerializer<EmailSignup> {
         specifiedType: const FullType.nullable(String),
       );
     }
+    yield r'acceptedTerms';
+    yield serializers.serialize(
+      object.acceptedTerms,
+      specifiedType: const FullType(bool),
+    );
+    yield r'termsVersion';
+    yield serializers.serialize(
+      object.termsVersion,
+      specifiedType: const FullType(String),
+    );
   }
 
   @override
@@ -127,6 +145,20 @@ class _$EmailSignupSerializer implements PrimitiveSerializer<EmailSignup> {
           ) as String?;
           if (valueDes == null) continue;
           result.otherNames = valueDes;
+          break;
+        case r'acceptedTerms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptedTerms = valueDes;
+          break;
+        case r'termsVersion':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.termsVersion = valueDes;
           break;
         default:
           unhandled.add(key);

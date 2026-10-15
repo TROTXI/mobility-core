@@ -16,6 +16,8 @@ part 'phone_registration.g.dart';
 /// * [otherNames]
 /// * [email]
 /// * [password]
+/// * [acceptedTerms]
+/// * [termsVersion]
 @BuiltValue()
 abstract class PhoneRegistration
     implements Built<PhoneRegistration, PhoneRegistrationBuilder> {
@@ -33,6 +35,12 @@ abstract class PhoneRegistration
 
   @BuiltValueField(wireName: r'password')
   String get password;
+
+  @BuiltValueField(wireName: r'acceptedTerms')
+  bool get acceptedTerms;
+
+  @BuiltValueField(wireName: r'termsVersion')
+  String get termsVersion;
 
   PhoneRegistration._();
 
@@ -85,6 +93,16 @@ class _$PhoneRegistrationSerializer
     yield r'password';
     yield serializers.serialize(
       object.password,
+      specifiedType: const FullType(String),
+    );
+    yield r'acceptedTerms';
+    yield serializers.serialize(
+      object.acceptedTerms,
+      specifiedType: const FullType(bool),
+    );
+    yield r'termsVersion';
+    yield serializers.serialize(
+      object.termsVersion,
       specifiedType: const FullType(String),
     );
   }
@@ -147,6 +165,20 @@ class _$PhoneRegistrationSerializer
             specifiedType: const FullType(String),
           ) as String;
           result.password = valueDes;
+          break;
+        case r'acceptedTerms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptedTerms = valueDes;
+          break;
+        case r'termsVersion':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.termsVersion = valueDes;
           break;
         default:
           unhandled.add(key);

@@ -15,6 +15,10 @@ class _$EmailSignup extends EmailSignup {
   final String lastName;
   @override
   final String? otherNames;
+  @override
+  final bool acceptedTerms;
+  @override
+  final String termsVersion;
 
   factory _$EmailSignup([void Function(EmailSignupBuilder)? updates]) =>
       (EmailSignupBuilder()..update(updates))._build();
@@ -23,7 +27,9 @@ class _$EmailSignup extends EmailSignup {
       {required this.email,
       required this.firstName,
       required this.lastName,
-      this.otherNames})
+      this.otherNames,
+      required this.acceptedTerms,
+      required this.termsVersion})
       : super._();
   @override
   EmailSignup rebuild(void Function(EmailSignupBuilder) updates) =>
@@ -39,7 +45,9 @@ class _$EmailSignup extends EmailSignup {
         email == other.email &&
         firstName == other.firstName &&
         lastName == other.lastName &&
-        otherNames == other.otherNames;
+        otherNames == other.otherNames &&
+        acceptedTerms == other.acceptedTerms &&
+        termsVersion == other.termsVersion;
   }
 
   @override
@@ -49,6 +57,8 @@ class _$EmailSignup extends EmailSignup {
     _$hash = $jc(_$hash, firstName.hashCode);
     _$hash = $jc(_$hash, lastName.hashCode);
     _$hash = $jc(_$hash, otherNames.hashCode);
+    _$hash = $jc(_$hash, acceptedTerms.hashCode);
+    _$hash = $jc(_$hash, termsVersion.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -59,7 +69,9 @@ class _$EmailSignup extends EmailSignup {
           ..add('email', email)
           ..add('firstName', firstName)
           ..add('lastName', lastName)
-          ..add('otherNames', otherNames))
+          ..add('otherNames', otherNames)
+          ..add('acceptedTerms', acceptedTerms)
+          ..add('termsVersion', termsVersion))
         .toString();
   }
 }
@@ -83,6 +95,15 @@ class EmailSignupBuilder implements Builder<EmailSignup, EmailSignupBuilder> {
   String? get otherNames => _$this._otherNames;
   set otherNames(String? otherNames) => _$this._otherNames = otherNames;
 
+  bool? _acceptedTerms;
+  bool? get acceptedTerms => _$this._acceptedTerms;
+  set acceptedTerms(bool? acceptedTerms) =>
+      _$this._acceptedTerms = acceptedTerms;
+
+  String? _termsVersion;
+  String? get termsVersion => _$this._termsVersion;
+  set termsVersion(String? termsVersion) => _$this._termsVersion = termsVersion;
+
   EmailSignupBuilder() {
     EmailSignup._defaults(this);
   }
@@ -94,6 +115,8 @@ class EmailSignupBuilder implements Builder<EmailSignup, EmailSignupBuilder> {
       _firstName = $v.firstName;
       _lastName = $v.lastName;
       _otherNames = $v.otherNames;
+      _acceptedTerms = $v.acceptedTerms;
+      _termsVersion = $v.termsVersion;
       _$v = null;
     }
     return this;
@@ -122,6 +145,10 @@ class EmailSignupBuilder implements Builder<EmailSignup, EmailSignupBuilder> {
           lastName: BuiltValueNullFieldError.checkNotNull(
               lastName, r'EmailSignup', 'lastName'),
           otherNames: otherNames,
+          acceptedTerms: BuiltValueNullFieldError.checkNotNull(
+              acceptedTerms, r'EmailSignup', 'acceptedTerms'),
+          termsVersion: BuiltValueNullFieldError.checkNotNull(
+              termsVersion, r'EmailSignup', 'termsVersion'),
         );
     replace(_$result);
     return _$result;

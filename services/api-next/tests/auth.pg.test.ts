@@ -241,16 +241,26 @@ test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enabl
     temporary.accessToken,
   );
   assert.equal(beforeRegistration.json().error.code, 'registration_required');
+  const registration = {
+    firstName: 'Ama',
+    otherNames: 'Akua',
+    lastName: 'Mensah',
+    email: 'ama@outlook.com',
+    password: emailPassword,
+  };
+  assert.equal(
+    (await f.request('POST', '/v1/me/phone-registration', registration, temporary.accessToken))
+      .statusCode,
+    400,
+  );
   data(
     await f.request(
       'POST',
       '/v1/me/phone-registration',
       {
-        firstName: 'Ama',
-        otherNames: 'Akua',
-        lastName: 'Mensah',
-        email: 'ama@outlook.com',
-        password: emailPassword,
+        ...registration,
+        acceptedTerms: true,
+        termsVersion: '2026-10-14',
       },
       temporary.accessToken,
     ),
@@ -277,6 +287,15 @@ test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enabl
   );
   assert.equal(signed.account.displayName, 'Ama Akua Mensah');
   assert.equal(signed.account.phoneRegistrationPending, false);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT terms_version,channel FROM app.terms_acceptances WHERE user_id=$1',
+        [signed.account.id],
+      )
+    ).rows,
+    [{ terms_version: '2026-10-14', channel: 'commuter_phone_signup' }],
+  );
   const fixture = await f.owner.connect();
   try {
     await fixture.query('BEGIN');
@@ -371,6 +390,8 @@ test('PHONE-PASSWORD-01: phone proof completes named signup, contact proof enabl
         lastName: 'Rider',
         email: 'ama@outlook.com',
         password: emailPassword,
+        acceptedTerms: true,
+        termsVersion: '2026-10-14',
       },
       replacement.accessToken,
     ),
@@ -1141,6 +1162,7 @@ async function setup(
     const res = await request('POST', `/v1/auth/${provider}`, {
       idToken: await identityToken(subject, provider),
       ...extra,
+      ...termsAcceptance,
     });
     assert.equal(res.statusCode, 200, res.body);
     return res.json().data;
@@ -1200,10 +1222,19 @@ const data = (response: { statusCode: number; body: string; json(): any }, statu
   assert.equal(response.statusCode, status, response.body);
   return status === 204 ? undefined : response.json().data;
 };
+const termsAcceptance = { acceptedTerms: true, termsVersion: '2026-10-14' } as const;
 
 test('AUTH-01 / ID-01–02: concurrent first social sign-ins share identity, no orphan user, no email linking', async (t) => {
   const f = await setup(t),
     blocker = await f.owner.connect();
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/google', {
+        idToken: await identityToken('terms-required'),
+      })
+    ).statusCode,
+    400,
+  );
   await blocker.query('BEGIN');
   await blocker.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
     JSON.stringify(['auth-identity', 'google', 'same']),
@@ -1230,6 +1261,17 @@ test('AUTH-01 / ID-01–02: concurrent first social sign-ins share identity, no 
   const otherSubject = await f.sign('different');
   assert.notEqual(otherSubject.account.id, one.account.id);
   assert.equal((await f.owner.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 3);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT channel,count(*)::int AS count FROM app.terms_acceptances GROUP BY channel ORDER BY channel',
+      )
+    ).rows,
+    [
+      { channel: 'commuter_apple_signup', count: 1 },
+      { channel: 'commuter_google_signup', count: 2 },
+    ],
+  );
 });
 test('AUTH-02: first-sign-in failure rolls back identity, user and session together', async (t) => {
   const f = await setup(t);
@@ -1237,7 +1279,7 @@ test('AUTH-02: first-sign-in failure rolls back identity, user and session toget
     .query(`CREATE FUNCTION app.auth_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected_issue_failure'; END $$;
     CREATE TRIGGER auth_fault BEFORE INSERT ON app.refresh_credentials FOR EACH ROW EXECUTE FUNCTION app.auth_fault()`);
   const token = await identityToken('fault');
-  data(await f.request('POST', '/v1/auth/google', { idToken: token }), 500);
+  data(await f.request('POST', '/v1/auth/google', { idToken: token, ...termsAcceptance }), 500);
   assert.deepEqual(
     (
       await f.owner.query(`SELECT (SELECT count(*)::int FROM app.users) AS users,
@@ -1246,7 +1288,7 @@ test('AUTH-02: first-sign-in failure rolls back identity, user and session toget
     { users: 0, identities: 0, sessions: 0 },
   );
   await f.owner.query('DROP TRIGGER auth_fault ON app.refresh_credentials');
-  data(await f.request('POST', '/v1/auth/google', { idToken: token }));
+  data(await f.request('POST', '/v1/auth/google', { idToken: token, ...termsAcceptance }));
 });
 test('AUTH-03 / ID-03: real concurrent refresh consumes once, commits reuse revocation, lost response cannot silently replay', async (t) => {
   const f = await setup(t),
@@ -1817,6 +1859,7 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
   data(
     await f.request('POST', '/v1/auth/google', {
       idToken: await identityToken('existing-rider', 'google', { email: 'rider@example.invalid' }),
+      ...termsAcceptance,
     }),
   );
   const riderInvite = await invite('Rider@Example.invalid');
@@ -2471,6 +2514,8 @@ const emailRegistration = {
   firstName: 'Ama',
   otherNames: 'Akua',
   lastName: 'Mensah',
+  acceptedTerms: true,
+  termsVersion: '2026-10-14',
 };
 async function emailToken(f: Awaited<ReturnType<typeof setup>>) {
   await f.emailDelivered();
@@ -2499,6 +2544,16 @@ async function registeredEmail(f: Awaited<ReturnType<typeof setup>>) {
 }
 test('EMAIL-01 any email domain, full names, proof before password, no automatic phone verification', async (t) => {
   const f = await setup(t);
+  assert.equal(
+    (
+      await f.request('POST', '/v1/auth/email/signup', {
+        email: 'before-terms@example.com',
+        firstName: 'Before',
+        lastName: 'Terms',
+      })
+    ).statusCode,
+    400,
+  );
   data(
     await f.request('POST', '/v1/auth/email/signup', {
       ...emailRegistration,
@@ -2522,6 +2577,16 @@ test('EMAIL-01 any email domain, full names, proof before password, no automatic
   );
   const stored = (await f.owner.query('SELECT * FROM app.email_auth_challenges')).rows[0];
   assert.equal(stored.token_hash, hashToken(token));
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        `SELECT a.terms_version,a.channel FROM app.terms_acceptances a
+         JOIN app.email_credentials e ON e.user_id=a.user_id WHERE e.email=$1`,
+        [emailRegistration.email],
+      )
+    ).rows,
+    [{ terms_version: '2026-10-14', channel: 'commuter_email_signup' }],
+  );
   data(await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }), 204);
   assert.equal(
     (await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }))
@@ -2746,12 +2811,16 @@ test('EMAIL-07 verified Google enrollment can proceed despite an unverified emai
       }),
     },
   });
-  const attacker = data(await f.request('POST', '/v1/auth/google', { idToken: 'attacker' }));
+  const attacker = data(
+    await f.request('POST', '/v1/auth/google', { idToken: 'attacker', ...termsAcceptance }),
+  );
   data(await f.request('POST', '/v1/me/email-access/link', { email }, attacker.accessToken));
   const pendingToken = await emailToken(f);
   data(await f.request('POST', '/v1/auth/email/signup', { ...emailRegistration, email }));
   const signupToken = await emailToken(f);
-  const owner = data(await f.request('POST', '/v1/auth/google', { idToken: 'owner' }));
+  const owner = data(
+    await f.request('POST', '/v1/auth/google', { idToken: 'owner', ...termsAcceptance }),
+  );
   assert.notEqual(owner.account.id, attacker.account.id);
   assert.equal(
     (

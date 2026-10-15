@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
+import 'package:trotxi_commuter/core/widgets/terms_acceptance.dart';
+import 'package:trotxi_client/public_information.dart';
 
 enum EmailMode { login, signup, reset }
 
@@ -21,6 +23,7 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
       _other = TextEditingController();
   EmailMode _mode = EmailMode.login;
   bool _busy = false, _showPassword = false;
+  bool _acceptedTerms = false;
   String? _error, _message;
   @override
   void dispose() {
@@ -36,6 +39,7 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
       _error = null;
       _message = null;
       _password.clear();
+      if (mode != EmailMode.signup) _acceptedTerms = false;
     });
   }
 
@@ -60,6 +64,8 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
                 otherNames: _other.text.trim().isEmpty
                     ? null
                     : _other.text.trim(),
+                acceptedTerms: _acceptedTerms,
+                termsVersion: TrotxiPublicInformation.currentTermsVersion,
               );
         if (mounted) setState(() => _message = message);
       }
@@ -179,6 +185,11 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
                   ),
                 ),
               ],
+              if (_mode == EmailMode.signup)
+                TermsAcceptance(
+                  accepted: _acceptedTerms,
+                  onChanged: (value) => setState(() => _acceptedTerms = value),
+                ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -193,7 +204,10 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
               ],
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _busy ? null : _submit,
+                onPressed:
+                    _busy || (_mode == EmailMode.signup && !_acceptedTerms)
+                    ? null
+                    : _submit,
                 child: Text(
                   _busy
                       ? 'Please wait...'
@@ -218,11 +232,7 @@ class _EmailSignInPageState extends State<EmailSignInPage> {
                       : 'Back to sign in',
                 ),
               ),
-              if (_mode == EmailMode.signup)
-                const Text(
-                  'By creating an account, you agree to Trotxi’s Terms and acknowledge the Privacy Policy.',
-                ),
-              const PublicInformationLinks(),
+              PublicInformationLinks(showTerms: _mode != EmailMode.signup),
             ],
           ),
         ),

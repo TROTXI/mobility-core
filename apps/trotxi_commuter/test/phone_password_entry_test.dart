@@ -126,6 +126,12 @@ void main() {
     await enter('Password', 'GoodPass123!');
     await enter('Confirm password', 'GoodPass123!');
     expect(find.text('Passwords match'), findsOneWidget);
+    expect(find.text('Terms and Conditions'), findsAtLeastNWidgets(1));
+    expect(tester.widget<FilledButton>(sendButton).onPressed, isNull);
+    final termsCheckbox = find.byType(Checkbox);
+    await tester.ensureVisible(termsCheckbox);
+    await tester.tap(termsCheckbox);
+    await tester.pump();
     expect(tester.widget<FilledButton>(sendButton).onPressed, isNotNull);
     expect(tester.getBottomRight(sendButton).dy, lessThan(640));
 
@@ -164,6 +170,8 @@ void main() {
         lastName: 'Mensah',
         email: 'ama@example.com',
         password: 'Correct horse trotxi battery1!',
+        acceptedTerms: true,
+        termsVersion: '2026-10-14',
       );
 
       expect(await fixture.store.getAccessToken(), isNull);
@@ -230,6 +238,10 @@ void main() {
     expect(find.text('Keep your account yours.'), findsOneWidget);
     await enter('Password', 'Correct horse trotxi battery1!');
     await enter('Confirm password', 'Correct horse trotxi battery1!');
+    final termsCheckbox = find.byType(Checkbox);
+    await tester.ensureVisible(termsCheckbox);
+    await tester.tap(termsCheckbox);
+    await tester.pump();
     final send = find.text('Send verification code');
     await tester.ensureVisible(send);
     await tester.tap(send);

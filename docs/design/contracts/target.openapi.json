@@ -24105,6 +24105,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 8192
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
         "required": ["idToken"],
@@ -24288,9 +24296,17 @@
             "minLength": 12,
             "maxLength": 128,
             "pattern": "(?=.*[A-Z])(?=.*[0-9])(?=.*[\\x21-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\x7e])"
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
-        "required": ["firstName", "lastName", "email", "password"],
+        "required": ["firstName", "lastName", "email", "password", "acceptedTerms", "termsVersion"],
         "additionalProperties": false
       },
       "EmailSignup": {
@@ -24317,9 +24333,17 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
-        "required": ["email", "firstName", "lastName"],
+        "required": ["email", "firstName", "lastName", "acceptedTerms", "termsVersion"],
         "additionalProperties": false
       },
       "EmailAddress": {
@@ -24569,6 +24593,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
         "required": ["idToken"],

@@ -15,6 +15,8 @@ part 'apple_sign_in.g.dart';
 /// * [nonce]
 /// * [authorizationCode]
 /// * [displayName]
+/// * [acceptedTerms]
+/// * [termsVersion]
 @BuiltValue()
 abstract class AppleSignIn implements Built<AppleSignIn, AppleSignInBuilder> {
   @BuiltValueField(wireName: r'idToken')
@@ -28,6 +30,12 @@ abstract class AppleSignIn implements Built<AppleSignIn, AppleSignInBuilder> {
 
   @BuiltValueField(wireName: r'displayName')
   String? get displayName;
+
+  @BuiltValueField(wireName: r'acceptedTerms')
+  bool? get acceptedTerms;
+
+  @BuiltValueField(wireName: r'termsVersion')
+  String? get termsVersion;
 
   AppleSignIn._();
 
@@ -75,6 +83,20 @@ class _$AppleSignInSerializer implements PrimitiveSerializer<AppleSignIn> {
       yield r'displayName';
       yield serializers.serialize(
         object.displayName,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.acceptedTerms != null) {
+      yield r'acceptedTerms';
+      yield serializers.serialize(
+        object.acceptedTerms,
+        specifiedType: const FullType(bool),
+      );
+    }
+    if (object.termsVersion != null) {
+      yield r'termsVersion';
+      yield serializers.serialize(
+        object.termsVersion,
         specifiedType: const FullType(String),
       );
     }
@@ -130,6 +152,20 @@ class _$AppleSignInSerializer implements PrimitiveSerializer<AppleSignIn> {
             specifiedType: const FullType(String),
           ) as String;
           result.displayName = valueDes;
+          break;
+        case r'acceptedTerms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptedTerms = valueDes;
+          break;
+        case r'termsVersion':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.termsVersion = valueDes;
           break;
         default:
           unhandled.add(key);

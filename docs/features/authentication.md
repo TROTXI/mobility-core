@@ -40,6 +40,12 @@ with a combined display name limited to 200 characters. Unicode names are suppor
 controls are rejected. The account response
 returns all three components. Existing names are not split by guessing.
 Name entry does not itself verify legal identity.
+A new rider must explicitly accept the current Terms and Conditions before the
+app can send the signup verification request. The request includes the exact
+terms version. The API rejects missing, false or outdated acceptance and stores
+the accepted version, server acceptance time and signup channel in an immutable
+record. The Privacy Notice remains a separate notice rather than bundled
+consent. Migration 051 creates the acceptance record.
 A profile phone field or payment phone is not verification.
 Matching numbers never silently merge accounts or transfer subscriptions.
 Collision/review states do not authorize taking another account's number.
@@ -88,7 +94,10 @@ phone verification.
 
 The API still serves email signup/login and Google/Apple commuter operations
 for older staging clients while the new build rolls out. The current app does
-not show those choices. The legacy email flow is:
+not show those choices. Existing social accounts can still sign in without
+accepting a new contract. Creating a new commuter through a legacy social
+endpoint requires the current explicit Terms acceptance. The legacy email flow
+is:
 
 1. Signup collects full-name fields and email, then calls
    `POST /v1/auth/email/signup`. No password or usable session exists yet.
@@ -148,6 +157,9 @@ paid provider or scheduled service is required by this implementation.
 - Apply migration 048 and deploy the API and public recovery page before
   distributing the new commuter build. mNotify and Resend configuration must
   be healthy. The web origin must match API CORS.
+- Apply migration 051 and deploy the versioned `/terms` page before distributing
+  a build that requires Terms acceptance. Confirm that the app and API use the
+  same version and that a signup cannot continue before the box is selected.
 - Register with full name, phone, email and password. Verify the SMS, then sign
   in with phone and password. The first session must not reach Home before
   registration completes. A reopened pending signup must resume completion.
