@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_map_canvas.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_tracking_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
+import 'package:trotxi_map/trotxi_map.dart';
 import 'replacement_fixture.dart';
 
 Map<String, Object?> tripRow(String id) => {
@@ -43,6 +45,18 @@ Map<String, Object?> liveRow({int age = 20, String state = 'live'}) => {
   'serverTime': timestamp,
 };
 void main() {
+  test('trip camera keeps an Accra commuter corridor at route scale', () {
+    final camera = tripRouteCamera(const [
+      LatLng(5.569607, -0.213256),
+      LatLng(5.675362, -0.173796),
+    ], const Size(382, 320));
+
+    expect(camera.target.latitude, closeTo(5.6224845, .000001));
+    expect(camera.target.longitude, closeTo(-.193526, .000001));
+    expect(camera.zoom, greaterThan(11));
+    expect(camera.zoom, lessThan(13));
+  });
+
   test(
     'commuter excludes transitive location permissions and has no iOS location prompt',
     () {
