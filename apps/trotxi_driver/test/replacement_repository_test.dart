@@ -589,6 +589,7 @@ void main() {
           200,
           {
             'data': {
+              'trip': trip(),
               'tripId': 'trip-1',
               'patternVersionId': 'version-old',
               'geometryId': null,
@@ -624,6 +625,7 @@ void main() {
         200,
         {
           'data': {
+            'trip': trip(),
             'tripId': 'trip-1',
             'patternVersionId': 'version-old',
             'geometryId': null,
@@ -661,6 +663,7 @@ void main() {
           200,
           {
             'data': {
+              'trip': trip(id: o.path.split('/')[3]),
               'tripId': o.path.split('/')[3],
               'patternVersionId': 'version-old',
               'geometryId': null,
@@ -696,6 +699,7 @@ void main() {
             200,
             {
               'data': {
+                'trip': trip(),
                 'tripId': 'trip-1',
                 'patternVersionId': 'version-old',
                 'geometryId': null,
