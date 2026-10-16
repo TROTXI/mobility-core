@@ -25,7 +25,6 @@ Map<String, Object?> tripJson({String id = 'trip'}) => {
 };
 Map<String, Object?> liveJson({String state = 'live', int age = 20}) => {
   'trip': tripJson(),
-  'trip': tripJson(),
   'tripId': 'trip',
   'patternVersionId': 'operated-outbound',
   'geometryId': 'geometry',
