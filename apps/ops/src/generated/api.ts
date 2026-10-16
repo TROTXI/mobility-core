@@ -3557,6 +3557,8 @@ export interface components {
       data: components['schemas']['Incident'];
     };
     LiveTrip: {
+      /** @description Current trip details included with the live snapshot so clients do not issue a second read. */
+      trip: components['schemas']['Trip'];
       tripId: string;
       patternVersionId: string;
       geometryId: string | null;

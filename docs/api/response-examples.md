@@ -80,6 +80,19 @@ Money is integer pesewas. Use [API integration](README.md) for the current flow.
 ```json
 {
   "data": {
+    "trip": {
+      "id": "trip-example",
+      "departureId": "departure-example",
+      "serviceDate": "2026-09-14",
+      "runNumber": 1,
+      "routeId": "route-example",
+      "patternId": "outbound-example",
+      "patternVersionId": "outbound-version-example",
+      "direction": "outbound",
+      "scheduledAt": "2026-09-14T06:30:00Z",
+      "status": "active",
+      "vehicleLabel": "GT 1234-20"
+    },
     "tripId": "trip-example",
     "state": "live",
     "patternVersionId": "outbound-version-example",

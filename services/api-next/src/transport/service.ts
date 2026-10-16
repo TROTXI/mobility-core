@@ -94,6 +94,8 @@ export interface Dependencies {
   coordinateReservations?: (client: PoolClient, change: ReservationChange) => Promise<void>;
   /** When a running bus counts as gone quiet on the ops board. */
   staleFixAfterSeconds?: number;
+  /** Test override. Production uses the short bounded live-trip cache default. */
+  liveCacheMs?: number;
 }
 export function canonical(value: Json): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -153,7 +155,7 @@ export class TransportService {
     this.catalog = new Catalog(deps.cursorSecret);
     this.fleet = new Fleet(deps.cursorSecret);
     this.gps = new Gps(deps.cursorSecret);
-    this.trips = new Trips(deps.cursorSecret);
+    this.trips = new Trips(deps.cursorSecret, deps.liveCacheMs);
   }
   private async transaction<T>(
     work: (client: PoolClient) => Promise<T>,
@@ -271,10 +273,12 @@ export class TransportService {
       // unique (trip, clientFixId) row and payload digest are the durable
       // receipt. Never cache past assignment/session checks in a second,
       // seven-day command receipt, nor retain an extra receipt per GPS fix.
-      return this.transaction(async (client) => {
+      const result = await this.transaction(async (client) => {
         const driverId = await this.authorize(client, actor, operation);
         return this.gps.execute(client, actor, operation, target, body, randomUUID(), driverId);
       });
+      this.trips.invalidateLiveTrip(target);
+      return result;
     }
     const catalog = (catalogCommands as readonly string[]).includes(operation);
     const fleet = (fleetCommands as readonly string[]).includes(operation);
@@ -285,7 +289,7 @@ export class TransportService {
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
     const keyHash = digest(key),
       inputHash = digest(canonical(body));
-    return this.transaction(async (client) => {
+    const result = await this.transaction(async (client) => {
       // Fixed lock order: receipt -> session/user/driver -> trip -> references.
       // It is the same for different HTTP workers and application instances.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
@@ -400,6 +404,20 @@ export class TransportService {
       );
       return result;
     });
+    if (operation === 'runRouteLearning' || operation === 'runGpsRetention')
+      this.trips.clearLiveCache();
+    else if (
+      [
+        'assignTrip',
+        'rescheduleTrip',
+        'cancelTrip',
+        'startTrip',
+        'completeTrip',
+        'recordArrival',
+      ].includes(operation)
+    )
+      this.trips.invalidateLiveTrip(target);
+    return result;
   }
   /**
    * Trip reads for a signed-in rider. Not readCatalog: those authorize the ops

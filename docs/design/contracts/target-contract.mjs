@@ -1034,6 +1034,9 @@ named(
 named(
   'LiveTrip',
   obj({
+    trip: schemas.Trip.describe(
+      'Current trip details included with the live snapshot so clients do not issue a second read.',
+    ),
     tripId: id,
     patternVersionId: id,
     geometryId: id.nullable(),
@@ -2422,6 +2425,19 @@ export const exampleCases = [
     schema: 'LiveTripResponse',
     value: {
       data: {
+        trip: {
+          id: 'trip-demo',
+          departureId: 'departure-demo',
+          serviceDate: '2026-09-14',
+          runNumber: 1,
+          routeId: 'route-demo',
+          patternId: 'pattern-demo',
+          patternVersionId: 'pattern-version-demo',
+          direction: 'outbound',
+          scheduledAt: '2026-09-14T10:00:00Z',
+          status: 'active',
+          vehicleLabel: null,
+        },
         tripId: 'trip-demo',
         patternVersionId: 'pattern-version-demo',
         geometryId: null,
