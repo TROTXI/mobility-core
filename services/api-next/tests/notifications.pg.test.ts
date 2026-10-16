@@ -133,6 +133,24 @@ test('published rider routes validate the response and reject another client', a
   });
   assert.equal(updated.statusCode, 200, updated.body);
   assert.equal(updated.json().data.dailyAskTime, '18:00');
+  // Render's edge hands clients weak ETags (W/"..."); sending one back must
+  // name the same version, not fail every edit with 412.
+  const weak = await app.inject({
+    method: 'PATCH',
+    url: '/v1/me/notification-preferences',
+    headers: { ...headers, 'if-match': `W/${updated.headers.etag}` },
+    payload: { dailyAskTime: '18:30', optionalUpdatesEnabled: true },
+  });
+  assert.equal(weak.statusCode, 200, weak.body);
+  assert.equal(weak.json().data.dailyAskTime, '18:30');
+  // A stale version is still refused, weak or not.
+  const stale = await app.inject({
+    method: 'PATCH',
+    url: '/v1/me/notification-preferences',
+    headers: { ...headers, 'if-match': `W/${updated.headers.etag}` },
+    payload: { dailyAskTime: '19:00', optionalUpdatesEnabled: true },
+  });
+  assert.equal(stale.statusCode, 412, stale.body);
   const wrongClient = await app.inject({
     method: 'GET',
     url: '/v1/me/notifications',
