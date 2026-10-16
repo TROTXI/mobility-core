@@ -74,9 +74,32 @@ void main() {
   test('tracking polling is staggered around the target interval', () {
     const interval = Duration(seconds: 15);
 
-    expect(jitterTripTrackingDelay(interval, 0), const Duration(seconds: 12));
-    expect(jitterTripTrackingDelay(interval, .5), interval);
-    expect(jitterTripTrackingDelay(interval, 1), const Duration(seconds: 18));
+    expect(
+      jitterTripTrackingDelay(interval, sample: 0),
+      const Duration(seconds: 12),
+    );
+    expect(jitterTripTrackingDelay(interval, sample: .5), interval);
+    expect(
+      jitterTripTrackingDelay(interval, sample: 1),
+      const Duration(seconds: 18),
+    );
+  });
+
+  test('rate-limit jitter never schedules before Retry-After', () {
+    const retryAfter = Duration(seconds: 15);
+
+    expect(
+      jitterTripTrackingDelay(retryAfter, sample: 0, notBefore: true),
+      retryAfter,
+    );
+    expect(
+      jitterTripTrackingDelay(retryAfter, sample: .5, notBefore: true),
+      const Duration(milliseconds: 16500),
+    );
+    expect(
+      jitterTripTrackingDelay(retryAfter, sample: 1, notBefore: true),
+      const Duration(seconds: 18),
+    );
   });
 
   test('trip camera keeps an Accra commuter corridor at route scale', () {

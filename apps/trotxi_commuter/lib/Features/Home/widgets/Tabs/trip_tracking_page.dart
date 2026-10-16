@@ -30,9 +30,15 @@ Duration? tripTrackingPollDelay(
 final _pollJitter = math.Random();
 
 @visibleForTesting
-Duration jitterTripTrackingDelay(Duration delay, [double? sample]) {
+Duration jitterTripTrackingDelay(
+  Duration delay, {
+  double? sample,
+  bool notBefore = false,
+}) {
   final boundedSample = (sample ?? _pollJitter.nextDouble()).clamp(0.0, 1.0);
-  final factor = 0.8 + (boundedSample * 0.4);
+  final factor = notBefore
+      ? 1.0 + (boundedSample * 0.2)
+      : 0.8 + (boundedSample * 0.4);
   return Duration(microseconds: (delay.inMicroseconds * factor).round());
 }
 
@@ -183,6 +189,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       });
     }
     var again = true;
+    var retryNotBefore = false;
     try {
       final snapshot = await _tracking.load();
       if (!mounted || epoch != _epoch || !_visible) return;
@@ -218,6 +225,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
             : 'Could not refresh live tracking. Please retry.';
       });
       if (e is RateLimitException) {
+        retryNotBefore = true;
         _delay = e.retryAfter > widget.pollInterval
             ? e.retryAfter
             : widget.pollInterval;
@@ -243,7 +251,10 @@ class _TripTrackingPageState extends State<TripTrackingPage>
           _resumePending = false;
           unawaited(_refresh());
         } else if (_visible && epoch == _epoch && again) {
-          _poll = Timer(jitterTripTrackingDelay(_delay), _refresh);
+          _poll = Timer(
+            jitterTripTrackingDelay(_delay, notBefore: retryNotBefore),
+            _refresh,
+          );
         }
       }
     }
