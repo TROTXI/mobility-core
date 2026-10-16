@@ -204,6 +204,15 @@ export async function createTransportApp(options: AppOptions) {
     const payments = options.payments;
     app.addHook('onClose', async () => payments.settled?.());
   }
+  // Render's edge serves every ETag as weak (W/"..."), so a client sending
+  // back the ETag it was given would never match our strong comparisons and
+  // every edit failed with 412. Our tokens are opaque version stamps, not
+  // byte-level validators, so the weak form names the same version.
+  app.addHook('onRequest', async (request) => {
+    const match = request.headers['if-match'];
+    if (typeof match === 'string' && match.startsWith('W/'))
+      request.headers['if-match'] = match.slice(2);
+  });
   app.decorate('transport', service);
   const actors = new WeakMap<FastifyRequest, Actor>();
   const maintenanceRuns = new WeakMap<FastifyRequest, string>();
