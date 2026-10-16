@@ -15,6 +15,17 @@ typedef TripMapBuilder =
 Widget buildTripMap(CommuterTripSnapshot snapshot, TrotxiMapStyle style) =>
     TripMapCanvas(snapshot: snapshot, style: style);
 
+@visibleForTesting
+Duration? tripTrackingPollDelay(
+  wire.LiveTripStateEnum state,
+  Duration liveInterval,
+) => switch (state) {
+  wire.LiveTripStateEnum.notStarted || wire.LiveTripStateEnum.ended => null,
+  wire.LiveTripStateEnum.awaitingFix ||
+  wire.LiveTripStateEnum.stale => const Duration(seconds: 30),
+  _ => liveInterval,
+};
+
 typedef TripTrackingContentBuilder =
     Widget Function(
       CommuterTripSnapshot? snapshot,
@@ -29,7 +40,7 @@ class TripTrackingPage extends StatefulWidget {
     required this.client,
     required this.tripId,
     this.mapBuilder = buildTripMap,
-    this.pollInterval = const Duration(seconds: 5),
+    this.pollInterval = const Duration(seconds: 15),
     this.contentBuilder,
     this.isActive = true,
     this.onTripEnded,
@@ -41,7 +52,7 @@ class TripTrackingPage extends StatefulWidget {
   final bool isActive;
   final VoidCallback? onTripEnded;
 
-  /// Injectable scheduler interval for lifecycle tests; app callers use 5s.
+  /// Injectable scheduler interval for lifecycle tests; app callers use 15s.
   final Duration pollInterval;
   @override
   State<TripTrackingPage> createState() => _TripTrackingPageState();
@@ -58,7 +69,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
       _loading = false,
       _resumePending = false;
   int _epoch = 0;
-  Duration _delay = const Duration(seconds: 5);
+  Duration _delay = const Duration(seconds: 15);
   bool _routeCurrent = true;
   bool get _visible => _foreground && widget.isActive && _routeCurrent;
   @override
@@ -149,25 +160,35 @@ class _TripTrackingPageState extends State<TripTrackingPage>
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool userInitiated = false}) async {
     if (!_visible || _inFlight) return;
     _poll?.cancel();
     final epoch = _epoch;
+    final showProgress = userInitiated || _snapshot == null;
     _inFlight = true;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (showProgress) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     var again = true;
     try {
       final snapshot = await _tracking.load();
       if (!mounted || epoch != _epoch || !_visible) return;
+      final nextPoll = tripTrackingPollDelay(
+        snapshot.live.state,
+        widget.pollInterval,
+      );
       setState(() {
         _snapshot = snapshot;
-        _delay = widget.pollInterval;
+        _error = null;
+        if (nextPoll != null) _delay = nextPoll;
       });
-      again = snapshot.live.state != wire.LiveTripStateEnum.ended;
-      if (!again) widget.onTripEnded?.call();
+      again = nextPoll != null;
+      if (snapshot.live.state == wire.LiveTripStateEnum.ended) {
+        widget.onTripEnded?.call();
+      }
       _age?.cancel();
       if (snapshot.hasPosition) {
         _age = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -187,11 +208,17 @@ class _TripTrackingPageState extends State<TripTrackingPage>
             : 'Could not refresh live tracking. Please retry.';
       });
       if (e is RateLimitException) {
-        _delay = e.retryAfter > const Duration(seconds: 5)
+        _delay = e.retryAfter > widget.pollInterval
             ? e.retryAfter
-            : const Duration(seconds: 5);
+            : widget.pollInterval;
       } else {
-        _delay = Duration(seconds: (_delay.inSeconds * 2).clamp(5, 60));
+        final doubled = Duration(microseconds: _delay.inMicroseconds * 2);
+        const ceiling = Duration(minutes: 2);
+        _delay = doubled < widget.pollInterval
+            ? widget.pollInterval
+            : doubled > ceiling
+            ? ceiling
+            : doubled;
       }
       again =
           !(e is UnauthorizedException ||
@@ -201,7 +228,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
     } finally {
       _inFlight = false;
       if (mounted) {
-        setState(() => _loading = false);
+        if (showProgress) setState(() => _loading = false);
         if (_visible && _resumePending) {
           _resumePending = false;
           unawaited(_refresh());
@@ -249,9 +276,11 @@ class _TripTrackingPageState extends State<TripTrackingPage>
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: _inFlight || !_foreground ? null : _refresh,
+                    onPressed: _inFlight || !_foreground
+                        ? null
+                        : () => _refresh(userInitiated: true),
                     icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Refresh tracking'),
+                    label: const Text('Check latest location'),
                   ),
                 ),
                 if (_loading) const LinearProgressIndicator(),

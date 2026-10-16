@@ -6,6 +6,7 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_map_canvas.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_tracking_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
+import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 import 'replacement_fixture.dart';
 
@@ -45,6 +46,30 @@ Map<String, Object?> liveRow({int age = 20, String state = 'live'}) => {
   'serverTime': timestamp,
 };
 void main() {
+  test('tracking polling backs off until a trip can provide live movement', () {
+    expect(
+      tripTrackingPollDelay(
+        LiveTripStateEnum.notStarted,
+        const Duration(seconds: 15),
+      ),
+      isNull,
+    );
+    expect(
+      tripTrackingPollDelay(
+        LiveTripStateEnum.awaitingFix,
+        const Duration(seconds: 15),
+      ),
+      const Duration(seconds: 30),
+    );
+    expect(
+      tripTrackingPollDelay(
+        LiveTripStateEnum.live,
+        const Duration(seconds: 15),
+      ),
+      const Duration(seconds: 15),
+    );
+  });
+
   test('trip camera keeps an Accra commuter corridor at route scale', () {
     final camera = tripRouteCamera(const [
       LatLng(5.569607, -0.213256),
@@ -182,8 +207,8 @@ void main() {
   }
 
   Future<void> refresh(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Refresh tracking'));
-    await drain(tester, () => tester.tap(find.text('Refresh tracking')));
+    await tester.ensureVisible(find.text('Check latest location'));
+    await drain(tester, () => tester.tap(find.text('Check latest location')));
   }
 
   Future<void> finish(WidgetTester tester) async {
@@ -418,7 +443,7 @@ void main() {
           .where((r) => r.path.endsWith('/live'))
           .length;
       await tester.runAsync(() async {
-        await tester.tap(find.text('Refresh tracking'));
+        await tester.tap(find.text('Check latest location'));
         for (var i = 0; i < 100 && !entered.isCompleted; i++) {
           await tester.pump();
           await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -451,6 +476,22 @@ void main() {
       await finish(tester);
     },
   );
+  testWidgets(
+    'not-started state stops automatic refresh until the rider checks again',
+    (tester) async {
+      await pump(tester, interval: const Duration(milliseconds: 100));
+      state = 'not_started';
+      await refresh(tester);
+      expect(find.textContaining('Trip has not started'), findsOneWidget);
+      final before = f.requests.length;
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      expect(f.requests.length, before);
+      await finish(tester);
+    },
+  );
+
   testWidgets(
     'ended state removes a supplied fix and stops automatic refresh',
     (tester) async {
