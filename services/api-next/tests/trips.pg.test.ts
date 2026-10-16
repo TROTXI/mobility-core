@@ -16,7 +16,7 @@ function expectStatus(response: Response, code: number) {
 }
 
 /** A paid rider on a published corridor, a driver, and an HTTP surface. */
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, options: { liveCacheMs?: number } = {}) {
   const f = await setup(t);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
   const admin = { userId: f.adminId, sessionId: f.adminId };
@@ -214,6 +214,7 @@ async function fixture(t: TestContext) {
         'Bearer driver': { userId: driverUser, sessionId: driverUser },
       })[header as string] ?? null,
     minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+    liveCacheMs: options.liveCacheMs,
   });
   t.after(() => app.close());
   const get = (path: string, who = 'rider') =>
@@ -480,8 +481,12 @@ test('TRP-05 a run reports what it is doing, and never predicts from a stale fix
   await f.place(running.id, 100);
   const fresh = expectStatus(await f.get(`/v1/trips/${running.id}/live`), 200);
   assert.deepEqual(shape(fresh), { state: 'live', position: 'present', etas: true });
+  assert.equal(fresh.trip.id, running.id);
+  assert.equal(fresh.trip.patternVersionId, fresh.patternVersionId);
   assert.ok(fresh.position.ageSeconds <= 2, String(fresh.position.ageSeconds));
   assert.ok(fresh.serverTime > fresh.position.capturedAt);
+  const cached = expectStatus(await f.get(`/v1/trips/${running.id}/live`), 200);
+  assert.equal(cached.serverTime, fresh.serverTime, 'shared live work is reused briefly per trip');
 
   // A fix the projection is still showing, but old enough to be labelled.
   const lagging = await f.trip({ day: f.day(3), status: 'active' });
@@ -506,7 +511,7 @@ test('TRP-05 a run reports what it is doing, and never predicts from a stale fix
 });
 
 test('TRP-06 an estimate says what it was built from', async (t) => {
-  const f = await fixture(t);
+  const f = await fixture(t, { liveCacheMs: 0 });
   await f.buy();
   const run = await f.trip({ status: 'active' });
   await f.place(run.id, 0);
@@ -651,7 +656,7 @@ test('TRP-08 coverage that has lapsed buys no more watching', async (t) => {
 });
 
 test('TRP-09 a line that doubles back keeps counting down on the way home', async (t) => {
-  const f = await fixture(t);
+  const f = await fixture(t, { liveCacheMs: 0 });
   await f.buy();
   const route = await f.corridor('Three-stop loop', 0, 3);
   const run = await f.trip({ status: 'active', scheduleId: route.scheduleId });

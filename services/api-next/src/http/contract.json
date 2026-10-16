@@ -10634,6 +10634,19 @@
                   "awaiting-fix": {
                     "value": {
                       "data": {
+                        "trip": {
+                          "id": "trip-demo",
+                          "departureId": "departure-demo",
+                          "serviceDate": "2026-09-14",
+                          "runNumber": 1,
+                          "routeId": "route-demo",
+                          "patternId": "pattern-demo",
+                          "patternVersionId": "pattern-version-demo",
+                          "direction": "outbound",
+                          "scheduledAt": "2026-09-14T10:00:00Z",
+                          "status": "active",
+                          "vehicleLabel": null
+                        },
                         "tripId": "trip-demo",
                         "patternVersionId": "pattern-version-demo",
                         "geometryId": null,
@@ -25199,6 +25212,14 @@
       "LiveTrip": {
         "type": "object",
         "properties": {
+          "trip": {
+            "description": "Current trip details included with the live snapshot so clients do not issue a second read.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Trip"
+              }
+            ]
+          },
           "tripId": {
             "type": "string",
             "minLength": 1,
@@ -25264,6 +25285,7 @@
           }
         },
         "required": [
+          "trip",
           "tripId",
           "patternVersionId",
           "geometryId",

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -25,6 +26,15 @@ Duration? tripTrackingPollDelay(
   wire.LiveTripStateEnum.stale => const Duration(seconds: 30),
   _ => liveInterval,
 };
+
+final _pollJitter = math.Random();
+
+@visibleForTesting
+Duration jitterTripTrackingDelay(Duration delay, [double? sample]) {
+  final boundedSample = (sample ?? _pollJitter.nextDouble()).clamp(0.0, 1.0);
+  final factor = 0.8 + (boundedSample * 0.4);
+  return Duration(microseconds: (delay.inMicroseconds * factor).round());
+}
 
 typedef TripTrackingContentBuilder =
     Widget Function(
@@ -233,7 +243,7 @@ class _TripTrackingPageState extends State<TripTrackingPage>
           _resumePending = false;
           unawaited(_refresh());
         } else if (_visible && epoch == _epoch && again) {
-          _poll = Timer(_delay, _refresh);
+          _poll = Timer(jitterTripTrackingDelay(_delay), _refresh);
         }
       }
     }

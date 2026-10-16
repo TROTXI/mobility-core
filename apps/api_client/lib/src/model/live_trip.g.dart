@@ -82,6 +82,8 @@ class _$LiveTripStateEnumSerializer
 
 class _$LiveTrip extends LiveTrip {
   @override
+  final Trip trip;
+  @override
   final String tripId;
   @override
   final String patternVersionId;
@@ -102,7 +104,8 @@ class _$LiveTrip extends LiveTrip {
       (LiveTripBuilder()..update(updates))._build();
 
   _$LiveTrip._(
-      {required this.tripId,
+      {required this.trip,
+      required this.tripId,
       required this.patternVersionId,
       this.geometryId,
       this.riderPickupOccurrenceId,
@@ -122,6 +125,7 @@ class _$LiveTrip extends LiveTrip {
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is LiveTrip &&
+        trip == other.trip &&
         tripId == other.tripId &&
         patternVersionId == other.patternVersionId &&
         geometryId == other.geometryId &&
@@ -135,6 +139,7 @@ class _$LiveTrip extends LiveTrip {
   @override
   int get hashCode {
     var _$hash = 0;
+    _$hash = $jc(_$hash, trip.hashCode);
     _$hash = $jc(_$hash, tripId.hashCode);
     _$hash = $jc(_$hash, patternVersionId.hashCode);
     _$hash = $jc(_$hash, geometryId.hashCode);
@@ -150,6 +155,7 @@ class _$LiveTrip extends LiveTrip {
   @override
   String toString() {
     return (newBuiltValueToStringHelper(r'LiveTrip')
+          ..add('trip', trip)
           ..add('tripId', tripId)
           ..add('patternVersionId', patternVersionId)
           ..add('geometryId', geometryId)
@@ -164,6 +170,10 @@ class _$LiveTrip extends LiveTrip {
 
 class LiveTripBuilder implements Builder<LiveTrip, LiveTripBuilder> {
   _$LiveTrip? _$v;
+
+  TripBuilder? _trip;
+  TripBuilder get trip => _$this._trip ??= TripBuilder();
+  set trip(TripBuilder? trip) => _$this._trip = trip;
 
   String? _tripId;
   String? get tripId => _$this._tripId;
@@ -208,6 +218,7 @@ class LiveTripBuilder implements Builder<LiveTrip, LiveTripBuilder> {
   LiveTripBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
+      _trip = $v.trip.toBuilder();
       _tripId = $v.tripId;
       _patternVersionId = $v.patternVersionId;
       _geometryId = $v.geometryId;
@@ -239,6 +250,7 @@ class LiveTripBuilder implements Builder<LiveTrip, LiveTripBuilder> {
     try {
       _$result = _$v ??
           _$LiveTrip._(
+            trip: trip.build(),
             tripId: BuiltValueNullFieldError.checkNotNull(
                 tripId, r'LiveTrip', 'tripId'),
             patternVersionId: BuiltValueNullFieldError.checkNotNull(
@@ -255,6 +267,9 @@ class LiveTripBuilder implements Builder<LiveTrip, LiveTripBuilder> {
     } catch (_) {
       late String _$failedField;
       try {
+        _$failedField = 'trip';
+        trip.build();
+
         _$failedField = 'position';
         _position?.build();
         _$failedField = 'etas';

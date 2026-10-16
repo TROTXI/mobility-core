@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/trip.dart';
 import 'package:trotxi_api_client/src/model/stop_eta.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/live_trip_position.dart';
@@ -14,6 +15,7 @@ part 'live_trip.g.dart';
 /// LiveTrip
 ///
 /// Properties:
+/// * [trip] - Current trip details included with the live snapshot so clients do not issue a second read.
 /// * [tripId]
 /// * [patternVersionId]
 /// * [geometryId]
@@ -24,6 +26,10 @@ part 'live_trip.g.dart';
 /// * [serverTime]
 @BuiltValue()
 abstract class LiveTrip implements Built<LiveTrip, LiveTripBuilder> {
+  /// Current trip details included with the live snapshot so clients do not issue a second read.
+  @BuiltValueField(wireName: r'trip')
+  Trip get trip;
+
   @BuiltValueField(wireName: r'tripId')
   String get tripId;
 
@@ -72,6 +78,11 @@ class _$LiveTripSerializer implements PrimitiveSerializer<LiveTrip> {
     LiveTrip object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
+    yield r'trip';
+    yield serializers.serialize(
+      object.trip,
+      specifiedType: const FullType(Trip),
+    );
     yield r'tripId';
     yield serializers.serialize(
       object.tripId,
@@ -143,6 +154,13 @@ class _$LiveTripSerializer implements PrimitiveSerializer<LiveTrip> {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
+        case r'trip':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(Trip),
+          ) as Trip;
+          result.trip.replace(valueDes);
+          break;
         case r'tripId':
           final valueDes = serializers.deserialize(
             value,

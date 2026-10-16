@@ -24,6 +24,7 @@ Map<String, Object?> tripRow(String id) => {
   'vehicleLabel': 'Bus A',
 };
 Map<String, Object?> liveRow({int age = 20, String state = 'live'}) => {
+  'trip': tripRow('trip'),
   'tripId': 'trip',
   'patternVersionId': 'version',
   'geometryId': null,
@@ -68,6 +69,14 @@ void main() {
       ),
       const Duration(seconds: 15),
     );
+  });
+
+  test('tracking polling is staggered around the target interval', () {
+    const interval = Duration(seconds: 15);
+
+    expect(jitterTripTrackingDelay(interval, 0), const Duration(seconds: 12));
+    expect(jitterTripTrackingDelay(interval, .5), interval);
+    expect(jitterTripTrackingDelay(interval, 1), const Duration(seconds: 18));
   });
 
   test('trip camera keeps an Accra commuter corridor at route scale', () {

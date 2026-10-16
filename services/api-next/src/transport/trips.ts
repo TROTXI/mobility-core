@@ -34,6 +34,20 @@ const iso = (value: Date) => value.toISOString();
 const day = (value: Date | string) =>
   typeof value === 'string' ? value : value.toISOString().slice(0, 10);
 
+const LIVE_CACHE_MS = 3_000;
+const LIVE_CACHE_LIMIT = 512;
+type SharedLive = {
+  trip: Body;
+  tripId: string;
+  patternVersionId: string;
+  geometryId: string | null;
+  state: 'not_started' | 'awaiting_fix' | 'live' | 'stale' | 'ended';
+  position: Body | null;
+  etas: Body[];
+  serverTime: string;
+};
+type LiveCacheEntry = { until: number; value: Promise<SharedLive> };
+
 export function tripId(value: unknown): string {
   if (
     typeof value !== 'string' ||
@@ -62,8 +76,20 @@ function view(r: QueryResultRow): Body {
 
 export class Trips {
   private readonly cursors;
-  constructor(secret: Buffer) {
+  private readonly liveCache = new Map<string, LiveCacheEntry>();
+  constructor(
+    secret: Buffer,
+    private readonly liveCacheMs = LIVE_CACHE_MS,
+  ) {
     this.cursors = cursorCodec(secret);
+  }
+
+  invalidateLiveTrip(id: string) {
+    this.liveCache.delete(id);
+  }
+
+  clearLiveCache() {
+    this.liveCache.clear();
   }
 
   async read(
@@ -183,6 +209,45 @@ export class Trips {
   private async live(client: PoolClient, actor: Actor, trip: QueryResultRow): Promise<Outcome> {
     const entitled = await this.entitlement(client, actor, trip);
     if (!entitled) return notFound();
+    const shared = await this.sharedLive(client, trip);
+    return {
+      status: 200,
+      body: {
+        data: {
+          ...shared,
+          riderPickupOccurrenceId: entitled.pickupOccurrenceId,
+        },
+      },
+      headers: {},
+    };
+  }
+
+  /**
+   * Position, ETA and trip metadata are identical for every authorized rider.
+   * Entitlement is deliberately checked before this cache, then the one
+   * rider-specific pickup occurrence is added after it. A short bounded cache
+   * coalesces a crowd watching the same bus without caching access decisions.
+   */
+  private async sharedLive(client: PoolClient, trip: QueryResultRow): Promise<SharedLive> {
+    if (this.liveCacheMs <= 0) return this.buildSharedLive(client, trip);
+    const nowMs = Date.now();
+    const cached = this.liveCache.get(trip.id);
+    if (cached && cached.until > nowMs) return cached.value;
+    if (cached) this.liveCache.delete(trip.id);
+    if (this.liveCache.size >= LIVE_CACHE_LIMIT) {
+      const oldest = this.liveCache.keys().next().value as string | undefined;
+      if (oldest) this.liveCache.delete(oldest);
+    }
+    const value = this.buildSharedLive(client, trip);
+    const entry = { until: nowMs + this.liveCacheMs, value };
+    this.liveCache.set(trip.id, entry);
+    void value.catch(() => {
+      if (this.liveCache.get(trip.id) === entry) this.liveCache.delete(trip.id);
+    });
+    return value;
+  }
+
+  private async buildSharedLive(client: PoolClient, trip: QueryResultRow): Promise<SharedLive> {
     const now = (await client.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
     const ended = ['completed', 'cancelled'].includes(trip.status);
     const fix = ended
@@ -212,33 +277,25 @@ export class Trips {
             ? 'live'
             : 'stale';
     return {
-      status: 200,
-      body: {
-        data: {
-          tripId: trip.id,
-          patternVersionId: trip.pattern_version_id,
-          geometryId: (await this.geometry(client, trip.pattern_version_id)) ?? null,
-          riderPickupOccurrenceId: entitled.pickupOccurrenceId,
-          state,
-          position:
-            fix && !ended
-              ? {
-                  location: { latitude: Number(fix.latitude), longitude: Number(fix.longitude) },
-                  capturedAt: iso(fix.effective_captured_at),
-                  receivedAt: iso(fix.received_at),
-                  ageSeconds: age!,
-                }
-              : null,
-          // A prediction from a position this old would be a guess wearing a
-          // number. The marker and its time still go out; the arrival does not.
-          etas:
-            fix && !ended && age! <= ETA_AGE_LIMIT_SECONDS
-              ? await this.etas(client, trip, fix)
-              : [],
-          serverTime: iso(now),
-        },
-      },
-      headers: {},
+      trip: view(trip),
+      tripId: trip.id,
+      patternVersionId: trip.pattern_version_id,
+      geometryId: (await this.geometry(client, trip.pattern_version_id)) ?? null,
+      state,
+      position:
+        fix && !ended
+          ? {
+              location: { latitude: Number(fix.latitude), longitude: Number(fix.longitude) },
+              capturedAt: iso(fix.effective_captured_at),
+              receivedAt: iso(fix.received_at),
+              ageSeconds: age!,
+            }
+          : null,
+      // A prediction from a position this old would be a guess wearing a
+      // number. The marker and its time still go out; the arrival does not.
+      etas:
+        fix && !ended && age! <= ETA_AGE_LIMIT_SECONDS ? await this.etas(client, trip, fix) : [],
+      serverTime: iso(now),
     };
   }
 
