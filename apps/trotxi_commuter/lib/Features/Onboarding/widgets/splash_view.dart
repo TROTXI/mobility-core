@@ -23,14 +23,22 @@ class SplashView extends StatelessWidget {
           final layout = ResponsiveLayoutInfo.fromSize(
             Size(constraints.maxWidth, constraints.maxHeight),
           );
-          final config = _SplashLayoutConfig.forDevice(layout.deviceClass);
+          final compactPhoneLandscape =
+              layout.isPhone && layout.orientation == Orientation.landscape;
+          final config = _SplashLayoutConfig.forDevice(
+            layout.deviceClass,
+            compactPhoneLandscape: compactPhoneLandscape,
+          );
           final backgroundAsset = _backgroundAsset(
             layout.deviceClass,
             brightness,
           );
 
           return Stack(
-            key: ValueKey('splash-layout-${layout.deviceClass.name}'),
+            key: ValueKey(
+              'splash-layout-${layout.deviceClass.name}-'
+              '${layout.orientation.name}',
+            ),
             fit: StackFit.expand,
             children: [
               ExcludeSemantics(
@@ -150,6 +158,7 @@ class _SplashLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final isLight = brightness == Brightness.light;
     return Semantics(
       label: 'Trotxi',
       image: true,
@@ -159,11 +168,11 @@ class _SplashLogo extends StatelessWidget {
             width: width,
             height: height,
             child: Image.asset(
-              brightness == Brightness.dark
-                  ? Appvectors.logodarktheme
-                  : Appvectors.logo,
+              isLight ? Appvectors.logo : Appvectors.logodarktheme,
               key: ValueKey('splash-logo-${brightness.name}'),
-              fit: BoxFit.contain,
+              // The light asset has a tall transparent canvas. Cover removes
+              // only that padding so both theme logos have the same presence.
+              fit: isLight ? BoxFit.cover : BoxFit.contain,
             ),
           ),
         ),
@@ -244,7 +253,29 @@ class _SplashLayoutConfig {
     required this.bottomGap,
   });
 
-  factory _SplashLayoutConfig.forDevice(AppDeviceClass deviceClass) {
+  factory _SplashLayoutConfig.forDevice(
+    AppDeviceClass deviceClass, {
+    bool compactPhoneLandscape = false,
+  }) {
+    if (deviceClass == AppDeviceClass.phone && compactPhoneLandscape) {
+      return const _SplashLayoutConfig(
+        horizontalPadding: 48,
+        topGap: 18,
+        logoWidth: 188,
+        logoHeight: 82,
+        logoTextGap: 2,
+        headlineSize: 16,
+        subtitleSize: 11,
+        vehicleWidth: 84,
+        vehicleHeight: 42,
+        vehicleTextGap: 0,
+        statusSize: 12,
+        statusProgressGap: 4,
+        progressWidth: 200,
+        bottomGap: 12,
+      );
+    }
+
     return switch (deviceClass) {
       AppDeviceClass.phone => const _SplashLayoutConfig(
         horizontalPadding: 28,
