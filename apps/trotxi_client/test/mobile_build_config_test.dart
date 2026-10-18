@@ -11,17 +11,61 @@ void main() {
           .readAsStringSync()) as Map);
   void validate(Map<String, String> values,
           {bool release = true,
+          String app = 'trotxi_commuter',
           Map<String, MobileEnvironmentPolicy> policies =
               mobileEnvironmentPolicies}) =>
-      MobileBuildConfig(values).validate(release: release, policies: policies);
+      MobileBuildConfig(values)
+          .validate(release: release, app: app, policies: policies);
 
   test('both checked-in staging environments validate', () {
     for (final app in ['commuter', 'driver']) {
       final values = Map<String, String>.from(jsonDecode(
           File('$root/apps/trotxi_$app/config/staging.json')
               .readAsStringSync()) as Map);
-      validate(values);
+      validate(values, app: 'trotxi_$app');
     }
+  });
+  test('iOS identities are pinned to each app, including local builds', () {
+    for (final app in ['trotxi_commuter', 'trotxi_driver']) {
+      final values = Map<String, String>.from(jsonDecode(
+              File('$root/apps/$app/config/staging.json').readAsStringSync())
+          as Map);
+      final other =
+          app == 'trotxi_commuter' ? 'trotxi_driver' : 'trotxi_commuter';
+      final otherPolicy =
+          mobileEnvironmentPolicies['staging']!.firebaseApps[other]!;
+      for (final environment in ['staging', 'local']) {
+        final config = {...values, 'APP_ENVIRONMENT': environment};
+        if (environment == 'local') {
+          config['API_BASE_URL'] = 'http://127.0.0.1:3000';
+          config['API_SESSION_REALM'] = 'local-test';
+        }
+        validate(config, app: app, release: false);
+        for (final invalid in [
+          {
+            ...config,
+            'FIREBASE_IOS_API_KEY': '${values['FIREBASE_IOS_API_KEY']}typo'
+          },
+          {
+            ...config,
+            'FIREBASE_IOS_APP_ID':
+                '1:${values['FIREBASE_SENDER_ID']}:ios:unapproved'
+          },
+          {...config, 'FIREBASE_IOS_APP_ID': otherPolicy.iosAppId},
+          {...config, 'FIREBASE_IOS_BUNDLE_ID': otherPolicy.iosBundleId},
+          {
+            ...config,
+            'FIREBASE_IOS_APP_ID': otherPolicy.iosAppId,
+            'FIREBASE_IOS_BUNDLE_ID': otherPolicy.iosBundleId,
+            'FIREBASE_IOS_API_KEY': otherPolicy.iosApiKey
+          },
+        ]) {
+          expect(() => validate(invalid, app: app, release: false),
+              throwsFormatException);
+        }
+      }
+    }
+    expect(() => validate(staging, app: 'unapproved'), throwsFormatException);
   });
   for (final key in staging.keys) {
     test('missing $key fails closed', () {
@@ -83,7 +127,14 @@ void main() {
         publicSiteOrigin: 'https://www.example.test',
         realm: 'production-1',
         firebaseProject: 'trotxi-production-example',
-        firebaseSender: '999999999');
+        firebaseSender: '999999999',
+        firebaseApps: {
+          'trotxi_commuter': MobileFirebaseAppPolicy(
+            iosBundleId: 'com.example.commuter',
+            iosAppId: '1:999999999:ios:test',
+            iosApiKey: 'synthetic-public-client-config',
+          ),
+        });
     final policies = {...mobileEnvironmentPolicies, 'production': production};
     final values = {
       ...staging,
@@ -94,7 +145,9 @@ void main() {
       'FIREBASE_PROJECT_ID': production.firebaseProject,
       'FIREBASE_SENDER_ID': production.firebaseSender,
       'FIREBASE_ANDROID_APP_ID': '1:999999999:android:test',
-      'FIREBASE_IOS_APP_ID': '1:999999999:ios:test'
+      'FIREBASE_IOS_APP_ID': '1:999999999:ios:test',
+      'FIREBASE_IOS_API_KEY': 'synthetic-public-client-config',
+      'FIREBASE_IOS_BUNDLE_ID': 'com.example.commuter',
     };
     validate(values, policies: policies);
     for (final key in [
@@ -141,6 +194,20 @@ void main() {
         dart, ['$root/tool/validate_mobile_build.dart', app.path, 'release'],
         environment: {'DART_DEFINES': definitions});
     expect((await run(definitions)).exitCode, 0);
+    for (final change in [
+      {'FIREBASE_IOS_API_KEY': 'mistyped-public-key'},
+      {'FIREBASE_IOS_APP_ID': '1:${staging['FIREBASE_SENDER_ID']}:ios:other'},
+      {'FIREBASE_IOS_BUNDLE_ID': 'com.trotxi.trotxiDriver'},
+    ]) {
+      final invalid = {...staging, ...change}
+          .entries
+          .map((e) => base64.encode(utf8.encode('${e.key}=${e.value}')))
+          .join(',');
+      final rejected = await run(invalid);
+      expect(rejected.exitCode, 1);
+      expect('${rejected.stdout}${rejected.stderr}',
+          isNot(contains(staging['FIREBASE_IOS_API_KEY'])));
+    }
     expect((await run('')).exitCode, 1);
     expect(
         (await run(

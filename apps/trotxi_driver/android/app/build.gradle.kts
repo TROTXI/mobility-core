@@ -28,17 +28,25 @@ plugins {
 // Run the same environment validation as startup before native or Flutter
 // compilation. An ordinary flutter build cannot bypass this gate.
 val mobileDefines = providers.gradleProperty("dart-defines").orElse("").get()
-val mobileValues = mobileDefines.split(",").filter { it.isNotEmpty() }.associate {
-    val pair = String(Base64.getDecoder().decode(it), Charsets.UTF_8)
-    pair.substringBefore("=") to pair.substringAfter("=", "")
-}
-val mobileEnvironment = mobileValues["APP_ENVIRONMENT"].orEmpty()
-val providerEnvironment = if (mobileEnvironment == "local") "staging" else mobileEnvironment
-require(providerEnvironment in listOf("staging", "production")) {
-    "Select APP_ENVIRONMENT with --dart-define-from-file=config/staging.json."
-}
 val mobileAppDirectory = project.file("../..")
-val mobileFirebaseFile = project.file("../../config/$providerEnvironment/google-services.json")
+// Model sync/help may inspect provider inputs without Flutter definitions.
+// Leave invalid selections empty; validateMobileEnvironment rejects them as
+// a build dependency, before provider processing or compilation can run.
+val mobileFirebaseFiles = providers.provider {
+    val mobileValues = runCatching {
+        mobileDefines.split(",").filter { it.isNotEmpty() }.associate {
+            val pair = String(Base64.getDecoder().decode(it), Charsets.UTF_8)
+            pair.substringBefore("=") to pair.substringAfter("=", "")
+        }
+    }.getOrDefault(emptyMap())
+    val mobileEnvironment = mobileValues["APP_ENVIRONMENT"].orEmpty()
+    val providerEnvironment = if (mobileEnvironment == "local") "staging" else mobileEnvironment
+    if (providerEnvironment in listOf("staging", "production")) {
+        listOf(project.file("../../config/$providerEnvironment/google-services.json"))
+    } else {
+        emptyList()
+    }
+}
 val localProperties = Properties().apply {
     rootProject.file("local.properties").inputStream().use { load(it) }
 }
@@ -58,7 +66,7 @@ val validateMobileEnvironment = tasks.register<Exec>("validateMobileEnvironment"
 // default search paths during registration and would overwrite an earlier set.
 afterEvaluate {
     tasks.withType<com.google.gms.googleservices.GoogleServicesTask>().configureEach {
-        googleServicesJsonFiles.set(listOf(mobileFirebaseFile))
+        googleServicesJsonFiles.set(mobileFirebaseFiles)
         googleServicesJsonFiles.disallowChanges()
         dependsOn(validateMobileEnvironment)
     }

@@ -32,8 +32,13 @@ in a Dart definition or mobile asset.
 Android selects only `config/<environment>/google-services.json`, mapping local
 to staging. Its project, sender, app ID, package and API key must match the Dart
 configuration. Old root/source-set provider files cannot override that choice.
-iOS uses the selected Dart Firebase options and validates its bundle ID. No
-hardcoded Firebase options remain in app code. APNs registration/signing for the
+iOS uses the selected Dart Firebase options; both the build gate and startup
+compare its bundle ID, app ID and public API key against the reviewed app-specific
+policy in `apps/trotxi_client/lib/approved_firebase_options.dart`. The calling app
+is fixed in code, not selected by a client-supplied bundle ID. Local builds use
+the same staging identities. Android model sync and non-build tasks do not need
+environment definitions; build and provider-processing tasks still fail closed
+without them. APNs registration/signing for the
 production Firebase project remains a separate device acceptance check.
 
 ### Build and validate
@@ -207,7 +212,7 @@ sampling and request allowlists. Build both native platforms and regenerate the
 manifest inventory. Older builds without Crashlytics/Performance are not evidence
 for this revised dependency graph.
 
-Local checks for this revision: 267 commuter tests, 326 driver tests, 219 shared
+Local checks for the diagnostics revision (`1b60ca7`): 267 commuter tests, 326 driver tests, 219 shared
 client tests, 21 diagnostics tests and six public-page tests passed. Static
 analysis passed for all four Dart packages. Both platforms' native configurations
 were inspected; final store/device acceptance below remains separate.
@@ -216,6 +221,13 @@ driver Android run reached the Crashlytics mapping-upload task but failed with
 a TLS `bad_record_mac` error. Its retry needs approval to send code-derived
 symbol/mapping files to Firebase. An earlier driver APK build passed, but does
 not replace verification of the final cleanup guard.
+
+The subsequent build-policy review fixes passed all 220 shared-client tests and
+static analysis for the client and both apps. Fourteen Android Gradle checks
+across both apps verified that help accepts absent/malformed definitions,
+build/provider tasks reject absent/malformed configuration, valid staging provider
+processing succeeds, and an incorrect iOS key is rejected. These are configuration
+and provider-processing checks, not new APK/IPA builds or symbol-upload verification.
 
 The Android Crashlytics Gradle plugin uploads release obfuscation mappings to
 the configured Firebase project. These are code-derived build artifacts, not

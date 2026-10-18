@@ -42,7 +42,10 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      MobileBuildConfig.fromEnvironment.validate(release: kReleaseMode);
+      MobileBuildConfig.fromEnvironment.validate(
+        release: kReleaseMode,
+        app: 'trotxi_driver',
+      );
       // An explicitly selected replacement database is mandatory. Never fall
       // back to staging or reuse the old unscoped session on a bad build.
       TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);

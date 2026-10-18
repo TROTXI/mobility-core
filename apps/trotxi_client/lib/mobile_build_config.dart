@@ -1,3 +1,7 @@
+import 'approved_firebase_options.dart';
+
+export 'approved_firebase_options.dart' show MobileFirebaseAppPolicy;
+
 /// Non-secret, reviewed destinations. Production remains locked until its
 /// actual API origin, public site, realm and Firebase project are approved.
 const mobileEnvironmentPolicies = <String, MobileEnvironmentPolicy>{
@@ -7,6 +11,7 @@ const mobileEnvironmentPolicies = <String, MobileEnvironmentPolicy>{
     realm: 'staging-1',
     firebaseProject: 'trotxi-501218',
     firebaseSender: '431341307838',
+    firebaseApps: stagingFirebaseApps,
   ),
 };
 
@@ -16,12 +21,14 @@ class MobileEnvironmentPolicy {
       required this.publicSiteOrigin,
       required this.realm,
       required this.firebaseProject,
-      required this.firebaseSender});
+      required this.firebaseSender,
+      required this.firebaseApps});
   final String apiOrigin;
   final String publicSiteOrigin;
   final String realm;
   final String firebaseProject;
   final String firebaseSender;
+  final Map<String, MobileFirebaseAppPolicy> firebaseApps;
 }
 
 /// Shared by the native build guards and startup. No Flutter imports so that
@@ -60,6 +67,7 @@ class MobileBuildConfig {
 
   void validate(
       {required bool release,
+      required String app,
       Map<String, MobileEnvironmentPolicy> policies =
           mobileEnvironmentPolicies}) {
     if (!{'local', 'staging', 'production'}.contains(environment)) {
@@ -85,6 +93,16 @@ class MobileBuildConfig {
       require('FIREBASE_${platform}_API_KEY');
     }
     require('FIREBASE_IOS_BUNDLE_ID');
+    final providerPolicy =
+        policies[environment == 'local' ? 'staging' : environment];
+    final appPolicy = providerPolicy?.firebaseApps[app];
+    if (appPolicy == null ||
+        values['FIREBASE_IOS_BUNDLE_ID'] != appPolicy.iosBundleId ||
+        values['FIREBASE_IOS_APP_ID'] != appPolicy.iosAppId ||
+        values['FIREBASE_IOS_API_KEY'] != appPolicy.iosApiKey) {
+      throw const FormatException(
+          'Firebase iOS configuration does not match the approved application.');
+    }
     if (environment == 'local') {
       if (release ||
           !{'localhost', '127.0.0.1', '10.0.2.2', '::1'}.contains(api.host) ||

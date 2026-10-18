@@ -41,7 +41,13 @@ void main(List<String> args) {
       }
     }
     final config = MobileBuildConfig(values);
-    config.validate(release: args[1].toLowerCase() != 'debug');
+    final app = Uri.directory(
+      Directory(args[0]).resolveSymbolicLinksSync(),
+    ).pathSegments.where((s) => s.isNotEmpty).last;
+    if (!{'trotxi_commuter', 'trotxi_driver'}.contains(app)) {
+      throw const FormatException('Unknown mobile app.');
+    }
+    config.validate(release: args[1].toLowerCase() != 'debug', app: app);
     // Android's auto-initialized native app must be identical to Dart's app.
     final providerEnvironment = config.environment == 'local'
         ? 'staging'
@@ -59,12 +65,6 @@ void main(List<String> args) {
       throw const FormatException(
         'Native Firebase project does not match build settings.',
       );
-    }
-    final app = Uri.directory(
-      Directory(args[0]).resolveSymbolicLinksSync(),
-    ).pathSegments.where((s) => s.isNotEmpty).last;
-    if (!{'trotxi_commuter', 'trotxi_driver'}.contains(app)) {
-      throw const FormatException('Unknown mobile app.');
     }
     final clients = (native['client'] as List).cast<Map<String, dynamic>>();
     final matches = clients.where(

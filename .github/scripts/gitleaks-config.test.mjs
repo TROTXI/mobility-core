@@ -29,41 +29,81 @@ test('Gitleaks exceptions cover only reviewed Firebase fields and SDK inventory 
     write('apps/trotxi_commuter/config/production.json', json(fields));
     write('apps/unreviewed/config/staging.json', json(fields));
     // A different provider's secret is still caught in an approved field/path.
-    write('apps/trotxi_driver/config/staging.json', json({
-      FIREBASE_ANDROID_API_KEY: payment,
-      FIREBASE_IOS_API_KEY: google,
-      SERVER_API_KEY: google,
-    }));
+    write(
+      'apps/trotxi_driver/config/staging.json',
+      json({
+        FIREBASE_ANDROID_API_KEY: payment,
+        FIREBASE_IOS_API_KEY: google,
+        SERVER_API_KEY: google,
+      }),
+    );
     const row = readFileSync(join(root, 'docs/mobile-release-readiness.md'), 'utf8')
-      .split('\n').find((line) => line.startsWith('| Analytics,'));
+      .split('\n')
+      .find((line) => line.startsWith('| Analytics,'));
     assert.ok(row, 'SDK inventory row must exist');
-    const historical = row.replace('Analytics,', 'Analytics, Crashlytics, Performance,')
-      .replace('No collection through these absent SDKs', 'No mobile collection through these removed SDKs');
-    write('docs/mobile-release-readiness.md', `${row}\n${historical}\nSERVER_API_KEY="${google}"\n`);
+    const historical = row
+      .replace('Analytics,', 'Analytics, Crashlytics, Performance,')
+      .replace(
+        'No collection through these absent SDKs',
+        'No mobile collection through these removed SDKs',
+      );
+    write(
+      'docs/mobile-release-readiness.md',
+      `${row}\n${historical}\nSERVER_API_KEY="${google}"\n`,
+    );
     write('docs/unreviewed.md', row);
     const docker = process.env.GITLEAKS_DOCKER === '1';
-    const prefix = docker ? [
-      'run', '--rm', '-v', `${fixture}:/repo`,
-      '-v', `${join(root, '.gitleaks.toml')}:/gitleaks.toml:ro`, '-w', '/repo',
-      'ghcr.io/gitleaks/gitleaks:latest',
-    ] : [];
-    const scan = spawnSync(docker ? 'docker' : 'gitleaks', [...prefix,
-      'detect', '--no-git', '--source', '.', '--config', docker ? '/gitleaks.toml' : join(root, '.gitleaks.toml'),
-      '--redact', '--report-format=json', '--report-path=-', '--no-banner', '--log-level=error',
-    ], { encoding: 'utf8', cwd: fixture });
+    const prefix = docker
+      ? [
+          'run',
+          '--rm',
+          '-v',
+          `${fixture}:/repo`,
+          '-v',
+          `${join(root, '.gitleaks.toml')}:/gitleaks.toml:ro`,
+          '-w',
+          '/repo',
+          'ghcr.io/gitleaks/gitleaks:latest',
+        ]
+      : [];
+    const scan = spawnSync(
+      docker ? 'docker' : 'gitleaks',
+      [
+        ...prefix,
+        'detect',
+        '--no-git',
+        '--source',
+        '.',
+        '--config',
+        docker ? '/gitleaks.toml' : join(root, '.gitleaks.toml'),
+        '--redact',
+        '--report-format=json',
+        '--report-path=-',
+        '--no-banner',
+        '--log-level=error',
+      ],
+      { encoding: 'utf8', cwd: fixture },
+    );
     assert.equal(scan.error, undefined, 'Gitleaks must be installed');
     assert.equal(scan.status, 1, 'Negative controls must be detected');
     const findings = JSON.parse(scan.stdout);
-    const found = (suffix, rule) => findings.filter((f) =>
-      f.File.endsWith(suffix) && f.RuleID === rule);
+    const found = (suffix, rule) =>
+      findings.filter((f) => f.File.endsWith(suffix) && f.RuleID === rule);
     assert.equal(found('apps/trotxi_commuter/config/staging.json', 'gcp-api-key').length, 0);
     assert.equal(found('apps/trotxi_driver/config/staging.json', 'gcp-api-key').length, 1);
-    assert.ok(findings.some((f) => f.File.endsWith('apps/trotxi_driver/config/staging.json')
-      && f.RuleID !== 'gcp-api-key'));
+    assert.ok(
+      findings.some(
+        (f) =>
+          f.File.endsWith('apps/trotxi_driver/config/staging.json') && f.RuleID !== 'gcp-api-key',
+      ),
+    );
     assert.equal(found('apps/trotxi_commuter/config/production.json', 'gcp-api-key').length, 2);
     assert.equal(found('apps/unreviewed/config/staging.json', 'gcp-api-key').length, 2);
-    assert.equal(found('docs/mobile-release-readiness.md', 'generic-api-key')
-      .filter((f) => f.StartLine <= 2).length, 0);
+    assert.equal(
+      found('docs/mobile-release-readiness.md', 'generic-api-key').filter((f) => f.StartLine <= 2)
+        .length,
+      0,
+    );
     assert.equal(found('docs/mobile-release-readiness.md', 'gcp-api-key').length, 1);
     assert.equal(found('docs/unreviewed.md', 'generic-api-key').length, 1);
   } finally {

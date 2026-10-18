@@ -43,7 +43,10 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      MobileBuildConfig.fromEnvironment.validate(release: kReleaseMode);
+      MobileBuildConfig.fromEnvironment.validate(
+        release: kReleaseMode,
+        app: 'trotxi_commuter',
+      );
       TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
       final firebaseReady = await initializeOptionalService(() async {
