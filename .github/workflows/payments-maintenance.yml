@@ -15,7 +15,7 @@ concurrency: seed-staging
 
 jobs:
   payments:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.STAGING_JOB_SCHEDULER != 'api'
     environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -41,7 +41,7 @@ jobs:
   emails:
     # Independent jobs: payments cannot prevent retrying due emails, and no
     # process receives both the access-signing and email-encryption keys.
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.STAGING_JOB_SCHEDULER != 'api'
     environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 10

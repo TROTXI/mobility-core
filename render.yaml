@@ -29,6 +29,9 @@ databases:
 # Scheduled maintenance runs in GitHub with purpose-specific keys. Do not copy
 # the staging root secret into a cron environment group. Retire the existing
 # unused trotxi-cron-staging group during the security cutover.
+# Optional in-process scheduling is disabled by default. Do not enable it on
+# the sleeping free web service below. The always-on prerequisite and mutually
+# exclusive cutover are documented in docs/operations/job-scheduler.md.
 
 services:
   - type: web

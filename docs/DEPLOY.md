@@ -54,6 +54,11 @@ without enabling unrelated commented services. Verify actual response headers.
 
 ## Scheduling
 
+The optional [in-process scheduler](operations/job-scheduler.md) covers all 16
+maintenance capabilities on an always-on API. It is disabled by default.
+Do not enable it on sleeping free hosting or alongside the legacy workflows.
+The linked runbook includes the cutover, rollback and complete job inventory.
+
 Two main-only workflows use the protected staging environment:
 
 | Workflow / group               | UTC (Accra)      | Work                                                                                                                 |
