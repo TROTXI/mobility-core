@@ -11,6 +11,7 @@ class TrotxiPublicInformation {
 
   static Uri get terms => _page('terms');
   static Uri get privacy => _page('privacy');
+  static Uri get privacyChoices => privacy.replace(fragment: 'choices');
   static Uri get deletion => _page('delete-account');
 
   static Uri _page(String path) =>
@@ -20,9 +21,11 @@ class TrotxiPublicInformation {
   /// (plain HTTP only for a local site while developing).
   static void ensureConfigured({bool release = false}) {
     final uri = Uri.tryParse(site);
-    final local = const {'localhost', '127.0.0.1', '10.0.2.2'}.contains(
-      uri?.host,
-    );
+    final local = const {
+      'localhost',
+      '127.0.0.1',
+      '10.0.2.2',
+    }.contains(uri?.host);
     if (uri == null ||
         !uri.hasScheme ||
         uri.host.isEmpty ||

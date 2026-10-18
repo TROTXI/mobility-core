@@ -5,7 +5,7 @@
   --ink: #152235;
   --muted: #46596d;
   --line: #d4dee7;
-  --action: #5b7896;
+  --action: #3f607f;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -57,6 +57,11 @@ nav {
   display: flex;
   gap: 1.25rem;
   flex-wrap: wrap;
+}
+nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
 }
 a {
   color: var(--action);

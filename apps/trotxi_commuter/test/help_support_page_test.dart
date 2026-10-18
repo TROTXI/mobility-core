@@ -28,6 +28,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();
     expect(find.text('Request account deletion'), findsOneWidget);
+    expect(find.text('Privacy choices'), findsOneWidget);
     expect(find.textContaining('Please try again later'), findsNothing);
   });
 }
