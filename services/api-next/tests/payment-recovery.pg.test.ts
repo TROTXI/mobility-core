@@ -78,10 +78,10 @@ for (const status of [401, 403]) {
     });
     const purchase = await f.buy();
     payload = { status: true, data: f.success(purchase).data };
-    await f.owner.query(
-      "UPDATE app.payment_attempts SET created_at=clock_timestamp()-interval '2 hours' WHERE id=$1",
-      [purchase.attempt.id],
-    );
+    // Creation timestamps are immutable financial evidence. Advance only the
+    // application clock so maintenance selects the existing attempt as old.
+    // TestContext restores Date automatically when this test finishes.
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 2 * 60 * 60 * 1000 });
     let checks = 0;
     const denied = new TransportError(status, 'test_authority_removed', 'Authority removed.');
     const recovery = new PaymentRecovery({
