@@ -43,24 +43,9 @@ import { recordJob } from '../observability/metrics.js';
 import type { MaintenanceAudit } from '../runtime/maintenance-audit.js';
 import { inboxOperations } from '../notifications/inbox.js';
 import { autoRenewalOperations } from '../payments/auto-renewal.js';
+import { maintenanceOperations } from '../auth/ops-permissions.js';
 import type { AutoRenewals, AutoRenewalOperation } from '../payments/auto-renewal.js';
 import type { RiderInbox } from '../notifications/inbox.js';
-// The contract admits a `worker` client on exactly these, with no platform:
-// scheduled maintenance is an operations caller without an app build behind it.
-const maintenanceOperations = new Set([
-  'runPersonalPauseResumes',
-  'runTripGeneration',
-  'runPayments',
-  'runPaymentInbox',
-  'runPaymentReconciliation',
-  'runPeriodClose',
-  'runAskDispatch',
-  'runReservationDefaults',
-  'runNoShows',
-  'runRouteLearning',
-  'runGpsRetention',
-  'runAutoRenewals',
-]);
 const paymentOperations = [
   'receivePaystackWebhook',
   'listPaymentReviews',
@@ -88,6 +73,8 @@ interface Operation {
   responses: Record<string, { content?: Record<string, { schema: Record<string, unknown> }> }>;
 }
 export interface AppOptions extends Dependencies {
+  /** Absent is disabled, including direct/test compositions. */
+  apiDocumentation?: 'read-only' | 'disabled';
   maintenanceAudit?: MaintenanceAudit;
   refunds?: RefundInitiation;
   /** Request logs to stdout, which OpenTelemetry ships to Loki. Off in tests. */
@@ -317,38 +304,50 @@ export async function createTransportApp(options: AppOptions) {
       error: { code: 'not_found', message: 'Resource not found.', requestId: request.id },
     }),
   );
-  // The old service served Swagger UI at /docs and the cutover dropped it, which
-  // also removed the /docs/json the ops console's openapi-typescript step reads.
-  // Built from the same contract this factory compiles its routes from, so the
-  // document cannot describe an endpoint the service does not have. Live build
-  // identity stays at /version rather than being restated here and drifting.
-  //
-  // Unauthenticated, which is what the old service did. That publishes the ops
-  // surface to anyone who reaches the host, and is a decision to revisit before
-  // there is a production deployment worth reading.
   // Populated at the same branches that register handlers. Optional providers
   // and unwired services must not appear just because they exist in the contract.
   const documentedOperations = new Set<string>();
-  app.get('/docs/json', async (request, reply) => {
-    reply.header('Cache-Control', 'no-store');
-    return openApiDocument(`${request.protocol}://${request.host}`, documentedOperations);
-  });
-  app.get('/docs', async (_request, reply) => {
-    reply.header('Cache-Control', 'no-store').type('text/html; charset=utf-8');
-    // Same origin, so the renderer fetches the document above rather than
-    // carrying a second copy that could disagree with it.
-    return `<!doctype html><html><head><meta charset="utf-8">
+  if (options.apiDocumentation === 'read-only') {
+    app.get('/docs/json', async (request, reply) => {
+      reply.header('Cache-Control', 'no-store').header('X-Content-Type-Options', 'nosniff');
+      return openApiDocument(`${request.protocol}://${request.host}`, documentedOperations);
+    });
+    app.get('/docs', async (_request, reply) => {
+      reply
+        .header('Cache-Control', 'no-store')
+        .header(
+          'Content-Security-Policy',
+          "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        )
+        .header('Referrer-Policy', 'no-referrer')
+        .header('X-Content-Type-Options', 'nosniff')
+        .header('X-Frame-Options', 'DENY')
+        .type('text/html; charset=utf-8');
+      // A script-free reader: no CDN, token input, browser storage or API console.
+      // Client generation uses the checked-in contract, never this deployment.
+      const escape = (s: string) =>
+        s
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
+      const rows = Object.entries(contract.paths)
+        .flatMap(([path, methods]) =>
+          Object.entries(methods)
+            .filter(([, op]) => documentedOperations.has(op.operationId))
+            .map(
+              ([method, op]) =>
+                `<tr><td>${escape(method.toUpperCase())}</td><td>${escape(path)}</td><td>${escape(op.operationId)}</td></tr>`,
+            ),
+        )
+        .join('');
+      return `<!doctype html><html><head><meta charset="utf-8">
 <title>Trotxi API</title><meta name="viewport" content="width=device-width,initial-scale=1">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/rapidoc/9.3.8/rapidoc-min.js"></script>
-<style>html,body{margin:0;height:100%}rapi-doc{height:100vh;width:100%}</style></head>
-<body><rapi-doc spec-url="/docs/json" theme="light" bg-color="#F6F7F4" text-color="#0B1C30"
-  primary-color="#1F6B4A" nav-bg-color="#013215" nav-text-color="#C9D6CB"
-  nav-hover-bg-color="#0B4423" nav-accent-color="#BDCABE" render-style="read"
-  schema-style="table" show-header="false" allow-spec-url-load="false"
-  allow-spec-file-load="false" show-method-in-nav-bar="as-colored-text"
-  persist-auth="true"
-  use-path-in-nav-bar="true" sort-endpoints-by="path"></rapi-doc></body></html>`;
-  });
+</head><body><h1>Trotxi API</h1><p>Read-only staging documentation. API authentication and permissions still apply.</p>
+<p><a href="/docs/json">OpenAPI specification</a></p>
+<table><caption>Enabled endpoints</caption><thead><tr><th>Method</th><th>Path</th><th>Operation</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+    });
+  }
 
   for (const [path, methods] of Object.entries(contract.paths)) {
     for (const [method, value] of Object.entries(methods)) {

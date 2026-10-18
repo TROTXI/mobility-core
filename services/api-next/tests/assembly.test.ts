@@ -570,6 +570,19 @@ test('ASM-05b a validator must not rewrite the value it approves', () => {
   assert.equal(readConfiguration(bare).docsUrl, 'https://docs.trotxi.com');
 });
 
+test('API documentation policy follows deployment environment, not payment mode or NODE_ENV', () => {
+  const env = environment();
+  env.NODE_ENV = 'production';
+  assert.equal(readConfiguration(env).apiDocumentation, 'read-only');
+  env.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'production';
+  assert.equal(readConfiguration(env).apiDocumentation, 'disabled');
+  delete env.REPLACEMENT_DOCS_URL;
+  assert.equal(
+    readConfiguration(env).docsUrl,
+    'https://github.com/TROTXI/mobility-core/tree/main/docs/features',
+  );
+});
+
 const store = (over: Partial<ConstructorParameters<typeof R2ObjectStore>[0]> = {}) =>
   new R2ObjectStore({
     accountId: 'ff00ff00ff00ff00ff00ff00ff00ff00',

@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import { checkOpsPermission } from './ops-permissions.js';
 import { createHmac } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
@@ -262,6 +263,7 @@ export class AuthService {
     client: PoolClient,
     actor: Actor,
     options: {
+      operation?: string;
       allowUnelevated?: boolean;
       allowPinSetup?: boolean;
       allowPhoneRegistration?: boolean;
@@ -276,6 +278,7 @@ export class AuthService {
     client: PoolClient,
     actor: Actor,
     options: {
+      operation?: string;
       allowUnelevated?: boolean;
       allowPinSetup?: boolean;
       allowPhoneRegistration?: boolean;
@@ -284,7 +287,7 @@ export class AuthService {
     const user = await this.user(client, actor.userId);
     const session = (
       await client.query(
-        `SELECT id,
+        `SELECT id,issued_for,
           (admin_verified_at IS NOT NULL
             AND admin_verified_at > clock_timestamp() - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
             AS elevated
@@ -311,6 +314,7 @@ export class AuthService {
       fail(403, 'pin_change_required', 'Set your own PIN before you continue.');
     if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
       fail(403, 'passkey_required', 'Use your passkey to continue.');
+    checkOpsPermission(user, session.issued_for, options.operation);
     return { role: user.role, driverId: driver?.id ?? null };
   };
 

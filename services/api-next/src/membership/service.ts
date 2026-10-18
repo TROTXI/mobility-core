@@ -102,7 +102,7 @@ export class MembershipService {
     }
   }
   private async authorize(c: PoolClient, actor: Actor, operation: string) {
-    await this.options.authorizeSession(c, actor);
+    await this.options.authorizeSession(c, actor, { operation });
     const user = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE', [
         actor.userId,

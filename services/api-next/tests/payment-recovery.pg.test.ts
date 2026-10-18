@@ -14,6 +14,97 @@ import { redactExpiredPaymentEvidence } from '../src/payments/evidence-retention
 // Generated locally; never an account credential or a provider network token.
 const secret = `sk_test_${randomBytes(16).toString('hex')}`;
 
+for (const status of [401, 403]) {
+  for (const kind of ['inbox', 'all', 'periods'] as const) {
+    test(`REC-AUTH ${kind} stops on ${status} after its initial authorization`, async (t) => {
+      const f = await fixture(t);
+      const purchase = await f.buy();
+      if (kind === 'periods') await f.send(f.success(purchase));
+      else await f.enqueue(f.success(purchase));
+      let checks = 0;
+      const denied = new TransportError(status, 'test_authority_removed', 'Authority removed.');
+      const recovery = new PaymentRecovery({
+        ...f.options,
+        authorizeSession: async (c, actor, context) => {
+          assert.equal(
+            context?.operation,
+            kind === 'all'
+              ? 'runPayments'
+              : kind === 'periods'
+                ? 'runPeriodClose'
+                : 'runPaymentInbox',
+          );
+          if (++checks > 1) throw denied;
+          await f.options.authorizeSession(c, actor);
+        },
+      });
+      await assert.rejects(recovery.maintenance(f.admin, kind), (error) => error === denied);
+      assert.equal(checks, 2, 'stop immediately rather than recording an item failure');
+      if (kind === 'periods') {
+        assert.equal(
+          (
+            await f.owner.query('SELECT state FROM app.billing_periods WHERE purchase_id=$1', [
+              purchase.id,
+            ])
+          ).rows[0].state,
+          'open',
+        );
+        assert.equal(
+          (await f.owner.query('SELECT count(*)::int AS n FROM app.period_closures')).rows[0].n,
+          0,
+        );
+      } else {
+        const event = (await f.owner.query('SELECT state,attempts FROM app.payment_events'))
+          .rows[0];
+        assert.equal(event.state, 'ready');
+        assert.equal(
+          event.attempts,
+          0,
+          'authorization failure must not quarantine or back off evidence',
+        );
+        assert.equal(
+          (await f.owner.query('SELECT count(*)::int AS n FROM app.payment_collections')).rows[0].n,
+          0,
+        );
+      }
+    });
+  }
+  test(`REC-AUTH reconciliation rejects ${status} after provider verification before evidence is stored`, async (t) => {
+    let calls = 0;
+    let payload: unknown;
+    const f = await fixture(t, async () => {
+      calls++;
+      return Response.json(payload);
+    });
+    const purchase = await f.buy();
+    payload = { status: true, data: f.success(purchase).data };
+    // Creation timestamps are immutable financial evidence. Advance only the
+    // application clock so maintenance selects the existing attempt as old.
+    // TestContext restores Date automatically when this test finishes.
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 2 * 60 * 60 * 1000 });
+    let checks = 0;
+    const denied = new TransportError(status, 'test_authority_removed', 'Authority removed.');
+    const recovery = new PaymentRecovery({
+      ...f.options,
+      authorizeSession: async (c, actor, context) => {
+        assert.equal(context?.operation, 'runPaymentReconciliation');
+        if (++checks === 3) throw denied;
+        await f.options.authorizeSession(c, actor);
+      },
+    });
+    await assert.rejects(
+      recovery.maintenance(f.admin, 'reconciliation'),
+      (error) => error === denied,
+    );
+    assert.equal(checks, 3);
+    assert.equal(calls, 1);
+    assert.equal(
+      (await f.owner.query('SELECT count(*)::int AS n FROM app.payment_events')).rows[0].n,
+      0,
+    );
+  });
+}
+
 test('REC-RET-01: old settled provider bodies redact once while financial facts and open reviews remain', async (t) => {
   const f = await fixture(t);
   const purchase = await f.buy();

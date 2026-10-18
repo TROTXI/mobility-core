@@ -18,6 +18,114 @@ import type { AuthOptions } from '../src/auth/service.js';
 import { credentialReplay } from '../src/auth/secret-replay.js';
 import { fullName } from '../src/auth/full-name.js';
 import { hashPassword, checkPassword, validatePassword } from '../src/auth/password.js';
+import { EmailAuth } from '../src/auth/email-auth.js';
+import type { Pool } from 'pg';
+import {
+  checkOpsPermission,
+  financeOperations,
+  maintenanceOperations,
+} from '../src/auth/ops-permissions.js';
+import contract from '../src/http/contract.json' with { type: 'json' };
+
+test('Ops permission matrix is role-based and maintenance scope covers the full published surface', () => {
+  const published = Object.entries(contract.paths)
+    .filter(([path]) => path.startsWith('/v1/ops/maintenance/'))
+    .flatMap(([, methods]) => Object.values(methods).map((op) => op.operationId));
+  assert.deepEqual([...maintenanceOperations].sort(), published.sort());
+  for (const role of ['commuter', 'driver', 'admin'])
+    for (const operation of [...maintenanceOperations, ...financeOperations])
+      assert.throws(() => checkOpsPermission({ role }, 'interactive', operation), {
+        code: 'superadmin_required',
+      });
+  for (const operation of [...maintenanceOperations, ...financeOperations])
+    assert.doesNotThrow(() =>
+      checkOpsPermission({ role: 'admin', is_superadmin: true }, 'interactive', operation),
+    );
+  for (const operation of maintenanceOperations)
+    assert.doesNotThrow(() => checkOpsPermission({ role: 'admin' }, 'maintenance', operation));
+  for (const operation of [undefined, 'listOpsTrips', ...financeOperations])
+    assert.throws(
+      () => checkOpsPermission({ role: 'admin', is_superadmin: true }, 'maintenance', operation),
+      { code: 'worker_scope_required' },
+    );
+});
+
+test('email account admission normalizes identity, expires without sliding and fails closed', async () => {
+  let window = 1;
+  const counters = new Map<string, { window: number; count: number }>();
+  let reads = 0;
+  let unavailable = false;
+  const pool = {
+    query: async (sql: string, args: unknown[]) => {
+      if (sql.includes('INSERT INTO app.admission_counters')) {
+        if (unavailable) throw new Error('admission unavailable');
+        const key = String(args[0]);
+        assert.doesNotMatch(key, /@|198\.51/);
+        assert.equal(args[1], 60);
+        const previous = counters.get(key);
+        const row = { window, count: previous?.window === window ? previous.count + 1 : 1 };
+        counters.set(key, row);
+        return { rows: [{ count: row.count, resets_in: 60 }] };
+      }
+      reads++;
+      return { rows: [] };
+    },
+  } as unknown as Pool;
+  const replicas = [0, 1].map(
+    () =>
+      new EmailAuth({
+        pool,
+        secret: Buffer.alloc(32, 6),
+        authorize: async () => {
+          throw new Error('unexpected');
+        },
+        issue: async () => {
+          throw new Error('unexpected');
+        },
+      }),
+  );
+  for (let i = 0; i < 36; i++) {
+    await assert.rejects(
+      replicas[i % 2]!.handle(
+        'signInEmail',
+        undefined,
+        {
+          email: i % 2 ? ' Rider@Example.test ' : 'rider@example.test',
+          password: 'wrong',
+        },
+        `198.51.100.${i}`,
+      ),
+      { code: i < 30 ? 'invalid_credentials' : 'rate_limited' },
+    );
+  }
+  assert.equal(reads, 30);
+  assert.equal(
+    [...counters.keys()].filter((k) => k.startsWith('email-password-account:')).length,
+    1,
+  );
+  window++;
+  await assert.rejects(
+    replicas[0]!.handle(
+      'signInEmail',
+      undefined,
+      { email: 'rider@example.test', password: 'wrong' },
+      '198.51.100.1',
+    ),
+    { code: 'invalid_credentials' },
+  );
+  assert.equal(reads, 31);
+  unavailable = true;
+  await assert.rejects(
+    replicas[0]!.handle(
+      'signInEmail',
+      undefined,
+      { email: 'rider@example.test', password: 'wrong' },
+      '198.51.100.1',
+    ),
+    /admission unavailable/,
+  );
+  assert.equal(reads, 31);
+});
 
 test('EMAIL-U01 full names retain their parts, normalize whitespace and reject incomplete or control text', () => {
   assert.deepEqual(

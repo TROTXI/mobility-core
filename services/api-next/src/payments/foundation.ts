@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import type { SessionAuthorizer } from '../auth/ops-permissions.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
@@ -58,7 +59,7 @@ export interface FinancialDependencies {
   environment: 'test' | 'live';
   /** Only historical-model tests may opt out. Runtime always requires an offer. */
   requireOffer?: boolean;
-  authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: SessionAuthorizer;
   subscriptionActive?: (client: PoolClient, userId: string, purchaseId: string) => Promise<void>;
   // These MUST use this transaction client. No HTTP/provider calls or commits.
   // 012 supplies applicable account/period blocks; 013 supplies pause/reservation
@@ -94,6 +95,7 @@ export interface FinancialDependencies {
 export interface RenewalCheckout {
   terms: OfferTerms;
   renews: string;
+  authorize: import('../auth/ops-permissions.js').AuthorizeWork;
 }
 type PurchaseRow = {
   id: string;
@@ -189,9 +191,10 @@ export class FinancialFoundation {
     )
       fail(400, 'invalid_request', 'Invalid purchase selection.');
     return this.tx(async (c) => {
+      if (renewal) await renewal.authorize(c);
       await this.lock(c, actor.userId);
       // A renewal has no rider session: the maintenance operator who runs it
-      // was authorized, and it charges only on terms the rider already paid for.
+      // is reauthorized in this transaction before touching the rider's funds.
       if (!renewal) await this.options.authorizeSession(c, actor);
       if (this.options.requireOffer !== false) await expireUnpaidOffers(c, actor.userId, now);
       const old = (
@@ -648,8 +651,13 @@ export class FinancialFoundation {
     await c.query("UPDATE app.billing_periods SET state='closed' WHERE id=$1", [periodId]);
     return true;
   }
-  async closePeriod(periodId: string, now = new Date()) {
+  async closePeriod(
+    periodId: string,
+    now = new Date(),
+    authorize?: import('../auth/ops-permissions.js').AuthorizeWork,
+  ) {
     return this.tx(async (c) => {
+      await authorize?.(c);
       const p = (
         await c.query('SELECT user_id,membership_id FROM app.billing_periods WHERE id=$1', [
           periodId,
