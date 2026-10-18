@@ -14,6 +14,7 @@ import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/widgets/commuter_root_header.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:trotxi_client/mobile_build_config.dart';
 import 'notifications_inbox_page.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -270,7 +271,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   const SizedBox(height: 16),
                   Center(
                     child: Text(
-                      '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter',
+                      '${_version == null ? 'Trotxi' : 'Version $_version'}\nTrotxi · Commuter · ${MobileBuildConfig.fromEnvironment.environment}',
                       textAlign: TextAlign.center,
                       style: AppTypography.bodySmall.copyWith(
                         color: colors.textTertiary,

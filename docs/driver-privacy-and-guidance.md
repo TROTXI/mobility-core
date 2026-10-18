@@ -31,8 +31,9 @@ denial remains possible; camera and notification consent are separate.
 ## Notice content and evidence
 
 The app describes identity/profile and photo, assignments, boarding, incidents,
-work requests, device notification registration and Firebase analytics, crash and
-performance diagnostics. It explains
+work requests and device notification registration. Firebase Core and Messaging
+remain for push; Analytics, Crashlytics and Performance are removed from current
+mobile builds. Historical provider data is not deleted by this change. It explains
 precise active-trip location, eligible rider/operations access, and safe use.
 It does not describe payments as driver salary, advertise 24/7 support, or claim
 an incident form summons emergency help.

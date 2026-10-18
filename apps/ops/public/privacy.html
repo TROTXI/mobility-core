@@ -78,9 +78,12 @@
         </li>
         <li>
           <strong>Devices and reliability:</strong> session and device-registration information,
-          push tokens, app versions, request diagnostics, and Firebase analytics, crash and
-          performance information where enabled. Service monitoring includes technical metrics, logs
-          and traces.
+          push tokens, app versions and request diagnostics. Current mobile builds use Firebase
+          installation identifiers, push tokens and technical service metadata for notifications.
+          The Firebase Analytics, Crashlytics and Performance SDKs are not included in current
+          builds. Older builds may have sent those diagnostics. Server monitoring includes technical
+          metrics, logs and traces. We do not use advertising identifiers or track you across other
+          companies' apps.
         </li>
       </ul>
 
@@ -124,10 +127,10 @@
       </p>
       <p>
         We use service providers for hosting and database storage (Render), files and map delivery
-        (Cloudflare), sign-in and mobile messaging/diagnostics (Google and Firebase; Apple when
-        enabled), SMS (mNotify), payments (Paystack), transactional email (Resend), and monitoring
-        (Grafana). GitHub Actions runs scheduled maintenance. Providers process information
-        necessary for their role; their infrastructure may process information outside Ghana.
+        (Cloudflare), sign-in and mobile messaging (Google and Firebase; Apple when enabled), SMS
+        (mNotify), payments (Paystack), transactional email (Resend), and monitoring (Grafana).
+        GitHub Actions runs scheduled maintenance. Providers process information necessary for their
+        role; their infrastructure may process information outside Ghana.
       </p>
 
       <h2>Storage and retention</h2>

@@ -38,6 +38,9 @@ apps/**/build/
 apps/**/.flutter-plugins
 apps/**/.flutter-plugins-dependencies
 apps/**/*.iml
+apps/trotxi_*/config/production.json
+apps/trotxi_*/config/production/
+apps/trotxi_*/config/local.json
 
 # Local editor / agent tooling (machine-specific)
 .claude/

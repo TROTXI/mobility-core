@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
@@ -26,9 +25,10 @@ import 'package:trotxi_driver/data/work_repository.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_client/public_information.dart';
+import 'package:trotxi_client/optional_service.dart';
+import 'package:trotxi_client/mobile_build_config.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_driver/firebase_options.dart';
-import 'package:trotxi_driver/firebase_performance.dart';
 
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
@@ -38,22 +38,25 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      MobileBuildConfig.fromEnvironment.validate(release: kReleaseMode);
       // An explicitly selected replacement database is mandatory. Never fall
       // back to staging or reuse the old unscoped session on a bad build.
       TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      await initializeOptionalService(() async {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      });
 
       // Catch Flutter framework errors (widget build errors, layout errors, etc.)
       FlutterError.onError = (errorDetails) {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+        if (kDebugMode) FlutterError.presentError(errorDetails);
       };
 
       // Catch errors outside Flutter's error handling (async errors, isolate errors)
       PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        // No raw exceptions, URLs or identity data leave the device.
         return true;
       };
 
@@ -78,15 +81,11 @@ Future<void> main() async {
         store: tokens,
         metadata: metadata,
       );
-      client.dio.interceptors.add(PerformanceInterceptor());
       runApp(TrotxiDriverApp(client: client));
       launched = true;
     },
     (error, stack) {
-      // Catches anything thrown outside the zone above (belt-and-suspenders)
-      if (Firebase.apps.isNotEmpty) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      }
+      // Do not forward raw startup exceptions to an external collector.
       if (launched) return;
       runApp(
         const MaterialApp(
@@ -96,7 +95,7 @@ Future<void> main() async {
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'The driver app could not start. Check that this build has its API URL, session realm and public site address, or contact operations.',
+                    'The driver app could not start. This build may have missing or unapproved environment settings. Contact operations.',
                     textAlign: TextAlign.center,
                   ),
                 ),
