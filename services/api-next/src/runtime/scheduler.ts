@@ -53,6 +53,11 @@ export function batchProgress(result: JobResult): Summary {
         (result.receiptPayloadsCleared ?? 0),
     };
   }
+  // Route learning marks every non-failed trace as processed, including traces
+  // that teach no segments. Those blocked items leave the candidate query.
+  // Other jobs can keep blocked items eligible, so do not count them globally.
+  if (result.job === 'route-learning')
+    return { full: data.considered >= BATCH_LIMIT, progress: data.succeeded + data.blocked };
   return {
     full: data.considered >= BATCH_LIMIT,
     progress: data.succeeded ?? (data.accepted ?? 0) + (data.cancelled ?? 0),

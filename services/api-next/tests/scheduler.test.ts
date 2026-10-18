@@ -154,6 +154,86 @@ test('drains beyond 100, bounds work, and rejects failures instead of reporting 
   );
 });
 
+test('route learning drains terminally blocked traces into following batches', async () => {
+  const batches = [batch(100, 0, 100), batch(100, 40, 60), batch(3, 0, 3)];
+  let calls = 0;
+  await drainScheduledJob(
+    { job: 'route-learning' },
+    async () => ({
+      job: 'route-learning',
+      status: 200,
+      body: { data: batches[calls++]! },
+    }),
+    () => false,
+  );
+  assert.equal(calls, 3, 'traces with no learned segments must not postpone the next batch');
+});
+
+test('terminal route-learning progress still respects batch limits and failures', async () => {
+  let calls = 0;
+  await assert.rejects(
+    drainScheduledJob(
+      { job: 'route-learning' },
+      async () => {
+        calls++;
+        return { job: 'route-learning', status: 200, body: { data: batch(100, 0, 100) } };
+      },
+      () => false,
+    ),
+    /backlog_remaining/,
+  );
+  assert.equal(calls, 10);
+  calls = 0;
+  await assert.rejects(
+    drainScheduledJob(
+      { job: 'route-learning' },
+      async () => {
+        calls++;
+        return {
+          job: 'route-learning',
+          status: 200,
+          body: {
+            data: {
+              ...batch(100, 0, 99),
+              failed: 1,
+              failures: [{ resourceId: 'trace', reason: 'failed' }],
+            },
+          },
+        };
+      },
+      () => false,
+    ),
+    /scheduler_job_failed/,
+  );
+  assert.equal(calls, 1);
+});
+
+test('blocked payment periods remain stalled work, not terminal progress', async () => {
+  let calls = 0;
+  await assert.rejects(
+    drainScheduledJob(
+      { job: 'payments' },
+      async () => {
+        calls++;
+        return {
+          job: 'payments',
+          status: 200,
+          body: {
+            data: {
+              inbox: batch(),
+              reconciliation: batch(),
+              periods: batch(100, 0, 100),
+            },
+          },
+        };
+      },
+      () => false,
+    ),
+    /backlog_remaining/,
+  );
+  assert.equal(calls, 1);
+});
+
 test('retention backlog is drained but a stalled retention job is not a success', async () => {
   let calls = 0;
   const run = async (): Promise<JobResult> => ({
