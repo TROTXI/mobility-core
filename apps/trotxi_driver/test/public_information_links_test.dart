@@ -91,8 +91,6 @@ void main() {
   testWidgets(
     'legal links have labelled 48-pixel targets at large text sizes',
     (tester) async {
-      final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await tester.binding.setSurfaceSize(const Size(320, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
@@ -119,5 +117,7 @@ void main() {
         );
       }
     },
+    // Let testWidgets own and dispose semantics before its leak checks.
+    semanticsEnabled: true,
   );
 }
