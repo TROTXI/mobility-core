@@ -84,6 +84,8 @@ export interface RuntimeConfig {
   trustProxy: string | false;
   /** The operator account every maintenance receipt is attributed to. */
   maintenanceUserId: string;
+  /** Opt-in only after old schedules are disabled and hosting is always on. */
+  schedulerEnabled?: boolean;
 }
 
 export class ConfigurationError extends Error {}
@@ -279,6 +281,15 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
   const maintenanceUserId = (optional(env, 'REPLACEMENT_MAINTENANCE_USER_ID') ?? '').toLowerCase();
   if (maintenanceUserId && !uuid.test(maintenanceUserId))
     throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
+  const schedulerSetting = optional(env, 'REPLACEMENT_SCHEDULER_ENABLED') ?? 'false';
+  if (!['true', 'false'].includes(schedulerSetting))
+    throw new ConfigurationError('REPLACEMENT_SCHEDULER_ENABLED must be true or false');
+  const schedulerEnabled = schedulerSetting === 'true';
+  const poolSize = integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100);
+  if (schedulerEnabled && (!maintenanceUserId || poolSize < 4))
+    throw new ConfigurationError(
+      'The scheduler requires a maintenance user and a pool size of at least 4',
+    );
   // Every per-IP limit here buckets on the address the server sees. Behind a
   // load balancer that is the balancer, so one caller's burst rate-limits
   // everybody and per-IP admission stops being a control at all. The boundary
@@ -326,7 +337,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     ...(existingStaging
       ? { databaseSsl: stagingDatabase(databaseUrl, env.STAGING_DATABASE_CA_CERT).ssl }
       : {}),
-    poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
+    poolSize,
     // Drivers publish every five seconds through patchy coverage, so a short
     // threshold cries wolf all morning. Five minutes to start; tune it from what
     // the ops team actually sees rather than from a guess made before launch.
@@ -429,5 +440,6 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     },
     trustProxy,
     maintenanceUserId,
+    schedulerEnabled,
   };
 }

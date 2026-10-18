@@ -66,6 +66,19 @@ const providerKey = (mode: 'test' | 'live') =>
   ['sk', mode, randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 const PEM = '-----BEGIN PRIVATE KEY-----\\nMHc=\\n-----END PRIVATE KEY-----';
 const maintenanceUser = randomUUID();
+test('scheduler is off by default and validates explicit opt-in configuration', () => {
+  const env = environment();
+  assert.equal(readConfiguration(env).schedulerEnabled, false);
+  env.REPLACEMENT_SCHEDULER_ENABLED = 'yes';
+  refuses(env, 'REPLACEMENT_SCHEDULER_ENABLED');
+  env.REPLACEMENT_SCHEDULER_ENABLED = 'true';
+  assert.equal(readConfiguration(env).schedulerEnabled, true);
+  env.REPLACEMENT_POOL_SIZE = '3';
+  refuses(env, 'pool size');
+  env.REPLACEMENT_POOL_SIZE = '8';
+  delete env.REPLACEMENT_MAINTENANCE_USER_ID;
+  refuses(env, 'maintenance user');
+});
 test('private environment reads reject symlinks, public files, directories and oversized content', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'trotxi-env-descriptor-'));
   const file = join(dir, 'private.env');

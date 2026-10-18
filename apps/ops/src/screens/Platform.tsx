@@ -23,7 +23,8 @@ const jobs = [
   {
     label: 'Ask riders',
     path: '/v1/ops/maintenance/ask-dispatch',
-    description: 'Send seat requests for the selected service date and direction.',
+    description:
+      'Create ride-confirmation requests. The push delivery worker sends phone alerts separately.',
     group: 'Service',
     scope: 'direction',
   },
@@ -37,7 +38,8 @@ const jobs = [
   {
     label: 'Resolve no-shows',
     path: '/v1/ops/maintenance/no-shows',
-    description: 'Settle unboarded reservations for the selected service date and direction.',
+    description:
+      'Settle eligible unboarded reservations and consume their rides. Run only after the service day is finished.',
     group: 'Service',
     scope: 'direction',
   },
@@ -330,6 +332,7 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
         <p className="muted">
           These are recovery controls. Use them when a scheduled run needs investigation or a
           specific service day needs correction. Each maintenance step uses a batch limit of 100.
+          These buttons do not enable or disable the automatic schedule.
         </p>
         <section aria-labelledby="service-jobs-title">
           <div className="maintenance-heading">
@@ -368,7 +371,9 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
         <details className="maintenance-advanced">
           <summary>System upkeep and individual recovery steps</summary>
           <p className="muted">
-            Use an individual step only when diagnosing a failure in the combined workflow.
+            Payment inbox, reconciliation and period close already run inside payment maintenance.
+            Use the individual steps only to recover a specific failure, not as additional daily
+            tasks.
           </p>
           {jobs
             .filter(
