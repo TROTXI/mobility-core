@@ -72,7 +72,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/flags': {
+  '/bootstrap': {
     parameters: {
       query?: never;
       header?: never;
@@ -2440,40 +2440,6 @@ export interface paths {
     patch: operations['updatePlanPricing'];
     trace?: never;
   };
-  '/v1/ops/flags': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** list Flags */
-    get: operations['listFlags'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/v1/ops/flags/{key}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** set Flag */
-    put: operations['setFlag'];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/v1/ops/min-versions': {
     parameters: {
       query?: never;
@@ -3016,11 +2982,6 @@ export interface components {
         darkStyleUrl: string | null;
         attribution: string;
       };
-      flags: {
-        key: string;
-        enabled: boolean;
-        rolloutPercentage: number;
-      }[];
     };
     Build: {
       service: string;
@@ -3470,29 +3431,6 @@ export interface components {
     };
     FareResponse: {
       data: components['schemas']['Fare'];
-    };
-    Flag: {
-      key: string;
-      enabled: boolean;
-      rolloutPercentage: number;
-      description: string;
-      version: number;
-      editToken: string;
-    };
-    FlagEdit: {
-      enabled: boolean;
-      rolloutPercentage: number;
-      description: string;
-      reason: string;
-    };
-    FlagPage: {
-      data: components['schemas']['Flag'][];
-      page: {
-        nextCursor: string | null;
-      };
-    };
-    FlagResponse: {
-      data: components['schemas']['Flag'];
     };
     Geometry: {
       id: string;
@@ -13598,110 +13536,6 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['PlanPricingResponse'];
-        };
-      };
-      400: components['responses']['Error400'];
-      401: components['responses']['Error401'];
-      403: components['responses']['Error403'];
-      404: components['responses']['Error404'];
-      409: components['responses']['Error409'];
-      412: components['responses']['Error412'];
-      426: components['responses']['Error426'];
-      428: components['responses']['Error428'];
-      429: components['responses']['Error429'];
-      500: components['responses']['Error500'];
-      503: components['responses']['Error503'];
-    };
-  };
-  listFlags: {
-    parameters: {
-      query?: {
-        /** @description Opaque cursor bound to caller, sort and filters. */
-        cursor?: string;
-        /** @description Page size. No silent truncation. */
-        limit?: number;
-      };
-      header: {
-        /**
-         * @description Compatibility metadata only, never grants a role.
-         * @example ops
-         */
-        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
-        /**
-         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-         * @example 1
-         */
-        'X-Trotxi-Build': number;
-        /** @description Required for commuter/driver, absent for ops/worker. */
-        'X-Trotxi-Platform'?: 'ios' | 'android';
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Success */
-      200: {
-        headers: {
-          /** @description Opaque resource version; required on protected edits. */
-          ETag?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['FlagPage'];
-        };
-      };
-      400: components['responses']['Error400'];
-      401: components['responses']['Error401'];
-      403: components['responses']['Error403'];
-      404: components['responses']['Error404'];
-      426: components['responses']['Error426'];
-      429: components['responses']['Error429'];
-      500: components['responses']['Error500'];
-      503: components['responses']['Error503'];
-    };
-  };
-  setFlag: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization. */
-        'If-Match': string;
-        /** @description Caller + operation + target scoped; payload mismatch = 409. Never log secrets. */
-        'Idempotency-Key': string;
-        /**
-         * @description Compatibility metadata only, never grants a role.
-         * @example ops
-         */
-        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
-        /**
-         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-         * @example 1
-         */
-        'X-Trotxi-Build': number;
-        /** @description Required for commuter/driver, absent for ops/worker. */
-        'X-Trotxi-Platform'?: 'ios' | 'android';
-      };
-      path: {
-        key: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['FlagEdit'];
-      };
-    };
-    responses: {
-      /** @description Success */
-      200: {
-        headers: {
-          /** @description Opaque resource version; required on protected edits. */
-          ETag?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['FlagResponse'];
         };
       };
       400: components['responses']['Error400'];

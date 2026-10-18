@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Where the basemap comes from, and what has to be credited for using it.
 ///
-/// Served by `GET /flags` rather than compiled into either app (#178). Depots
+/// Served by `GET /bootstrap` rather than compiled into either app (#178). Depots
 /// and hosts change; three simultaneous app releases to move a URL is not a
 /// deployment strategy. The apps pass what they were given straight through —
 /// this package never calls the API itself, so it stays a rendering concern.

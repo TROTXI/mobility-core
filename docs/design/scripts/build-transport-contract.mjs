@@ -169,8 +169,6 @@ const selected = new Set([
   'getReadiness',
   'getBuild',
   'getBootstrap',
-  'listFlags',
-  'setFlag',
   'listMinimumVersions',
   'setMinimumVersion',
   'changeRole',

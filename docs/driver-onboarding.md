@@ -97,7 +97,7 @@ channel, so a code sent to it would trust whoever holds the phone, and no
 public endpoint resets an account because someone knows its code or address.
 
 1. Signed out, the driver taps **Forgot PIN?**. The page shows the operator
-   contact published in `/flags` and asks them to give their name, driver code
+   contact published in `/bootstrap` and asks them to give their name, driver code
    and the phone number on their record.
 2. Operations confirms who they are, then Drivers → Manage → **Reset PIN and
    email instructions**, with a reason. The reason is kept in the audit log.
@@ -148,7 +148,7 @@ an address that has since changed.
   test account.
 - The email names no app download link or support address. None is configured
   anywhere to point at, and the app's own "Forgot PIN?" page shows the
-  operator contact from `/flags`.
+  operator contact from `/bootstrap`.
 
 ## When the email goes out
 

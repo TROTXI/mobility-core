@@ -48,7 +48,7 @@ class AppConfig {
   );
 }
 
-/// Reads `GET /flags`, the one endpoint that answers without a session.
+/// Reads `GET /bootstrap`, the endpoint that answers without a session.
 ///
 /// Public on purpose: the screen that needs the operations number most is
 /// "Can't sign in?", which is reached while signed out.
@@ -67,7 +67,7 @@ class ConfigRepository {
   }
 
   Future<AppConfig> load() async {
-    final config = await client.get('/flags', wire.Bootstrap.serializer);
+    final config = await client.get('/bootstrap', wire.Bootstrap.serializer);
     try {
       await client.store.storage.write(
         _cacheKey,

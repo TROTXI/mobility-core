@@ -15,9 +15,6 @@ class _$Bootstrap extends Bootstrap {
   final BootstrapOperations operations;
   @override
   final BootstrapMapTiles mapTiles;
-  @override
-  final BuiltList<BootstrapFlagsInner> flags;
-
   factory _$Bootstrap([void Function(BootstrapBuilder)? updates]) =>
       (BootstrapBuilder()..update(updates))._build();
 
@@ -25,8 +22,7 @@ class _$Bootstrap extends Bootstrap {
       {required this.serverTime,
       required this.applications,
       required this.operations,
-      required this.mapTiles,
-      required this.flags})
+      required this.mapTiles})
       : super._();
   @override
   Bootstrap rebuild(void Function(BootstrapBuilder) updates) =>
@@ -42,8 +38,7 @@ class _$Bootstrap extends Bootstrap {
         serverTime == other.serverTime &&
         applications == other.applications &&
         operations == other.operations &&
-        mapTiles == other.mapTiles &&
-        flags == other.flags;
+        mapTiles == other.mapTiles;
   }
 
   @override
@@ -53,7 +48,6 @@ class _$Bootstrap extends Bootstrap {
     _$hash = $jc(_$hash, applications.hashCode);
     _$hash = $jc(_$hash, operations.hashCode);
     _$hash = $jc(_$hash, mapTiles.hashCode);
-    _$hash = $jc(_$hash, flags.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -64,8 +58,7 @@ class _$Bootstrap extends Bootstrap {
           ..add('serverTime', serverTime)
           ..add('applications', applications)
           ..add('operations', operations)
-          ..add('mapTiles', mapTiles)
-          ..add('flags', flags))
+          ..add('mapTiles', mapTiles))
         .toString();
   }
 }
@@ -95,11 +88,6 @@ class BootstrapBuilder implements Builder<Bootstrap, BootstrapBuilder> {
   set mapTiles(BootstrapMapTilesBuilder? mapTiles) =>
       _$this._mapTiles = mapTiles;
 
-  ListBuilder<BootstrapFlagsInner>? _flags;
-  ListBuilder<BootstrapFlagsInner> get flags =>
-      _$this._flags ??= ListBuilder<BootstrapFlagsInner>();
-  set flags(ListBuilder<BootstrapFlagsInner>? flags) => _$this._flags = flags;
-
   BootstrapBuilder() {
     Bootstrap._defaults(this);
   }
@@ -111,7 +99,6 @@ class BootstrapBuilder implements Builder<Bootstrap, BootstrapBuilder> {
       _applications = $v.applications.toBuilder();
       _operations = $v.operations.toBuilder();
       _mapTiles = $v.mapTiles.toBuilder();
-      _flags = $v.flags.toBuilder();
       _$v = null;
     }
     return this;
@@ -140,7 +127,6 @@ class BootstrapBuilder implements Builder<Bootstrap, BootstrapBuilder> {
             applications: applications.build(),
             operations: operations.build(),
             mapTiles: mapTiles.build(),
-            flags: flags.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -151,8 +137,6 @@ class BootstrapBuilder implements Builder<Bootstrap, BootstrapBuilder> {
         operations.build();
         _$failedField = 'mapTiles';
         mapTiles.build();
-        _$failedField = 'flags';
-        flags.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'Bootstrap', _$failedField, e.toString());

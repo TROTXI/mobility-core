@@ -1,4 +1,4 @@
-import { Button, Switch, Tab, TabList } from '@fluentui/react-components';
+import { Button, Tab, TabList } from '@fluentui/react-components';
 import { PlayRegular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import type { components } from '../generated/api';
@@ -10,7 +10,6 @@ import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 import { ReasonField } from '../components/ReasonField';
 
-type Flag = components['schemas']['Flag'];
 type Minimum = components['schemas']['MinimumVersion'];
 type TraceHold = components['schemas']['TraceHold'];
 const jobs = [
@@ -96,27 +95,19 @@ type Job = (typeof jobs)[number];
 
 export function Platform() {
   const { session } = useAuth();
-  const [tab, setTab] = useState<'flags' | 'versions' | 'jobs' | 'traces'>('flags');
+  const [tab, setTab] = useState<'versions' | 'jobs' | 'traces'>('versions');
   const [minimum, setMinimum] = useState<Minimum | null>(null);
   const [minimumBuild, setMinimumBuild] = useState(1);
   const [storeUrl, setStoreUrl] = useState('');
-  const [flagChange, setFlagChange] = useState<{ row: Flag; enabled: boolean } | null>(null);
   const [reason, setReason] = useState('');
-  const query = useQuery<{ flags: Flag[]; versions: Minimum[] }>(
+  const query = useQuery<Minimum[]>(
     async (signal) => {
-      const [flags, versions] = await Promise.all([
-        session.client.GET('/v1/ops/flags', {
-          params: { query: { limit: 200 }, header: opsHeaders },
-          signal,
-        }),
-        session.client.GET('/v1/ops/min-versions', {
-          params: { query: { limit: 200 }, header: opsHeaders },
-          signal,
-        }),
-      ]);
-      if (flags.error) throw new Error(flags.error.error.message);
+      const versions = await session.client.GET('/v1/ops/min-versions', {
+        params: { query: { limit: 200 }, header: opsHeaders },
+        signal,
+      });
       if (versions.error) throw new Error(versions.error.error.message);
-      return { flags: flags.data.data, versions: versions.data.data };
+      return versions.data.data;
     },
     [session],
   );
@@ -130,58 +121,16 @@ export function Platform() {
         onTabSelect={(_, data) => setTab(data.value as typeof tab)}
         style={{ marginBottom: 18 }}
       >
-        <Tab value="flags">Feature flags</Tab>
         <Tab value="versions">Minimum versions</Tab>
         <Tab value="jobs">Manual jobs</Tab>
         <Tab value="traces">Trace holds</Tab>
       </TabList>
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
-      {tab === 'flags' && (
-        <Panel title="Feature controls">
-          {query.loading ? (
-            <LoadingRows />
-          ) : !query.data?.flags.length ? (
-            <Empty />
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Flag</th>
-                  <th>Enabled</th>
-                  <th>Rollout</th>
-                  <th>Version</th>
-                </tr>
-              </thead>
-              <tbody>
-                {query.data.flags.map((row) => (
-                  <tr key={row.key}>
-                    <td>
-                      <strong>{row.key}</strong>
-                      <div className="muted">{row.description}</div>
-                    </td>
-                    <td>
-                      <Switch
-                        checked={row.enabled}
-                        onChange={(_, data) => {
-                          setReason('');
-                          setFlagChange({ row, enabled: data.checked });
-                        }}
-                      />
-                    </td>
-                    <td>{row.rolloutPercentage}%</td>
-                    <td>{row.version}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Panel>
-      )}
       {tab === 'versions' && (
         <Panel title="Supported app builds">
           {query.loading ? (
             <LoadingRows />
-          ) : !query.data?.versions.length ? (
+          ) : !query.data?.length ? (
             <Empty />
           ) : (
             <table className="data-table">
@@ -196,7 +145,7 @@ export function Platform() {
                 </tr>
               </thead>
               <tbody>
-                {query.data.versions.map((row) => (
+                {query.data.map((row) => (
                   <tr key={`${row.app}-${row.platform}`}>
                     <td>{row.app}</td>
                     <td>{row.platform}</td>
@@ -270,46 +219,8 @@ export function Platform() {
         </label>
         <ReasonField value={reason} onChange={setReason} />
       </ActionDialog>
-      <ActionDialog
-        open={Boolean(flagChange)}
-        title={
-          flagChange ? `${flagChange.enabled ? 'Turn on' : 'Turn off'} ${flagChange.row.key}` : ''
-        }
-        description={flagChange?.row.description}
-        confirmLabel={flagChange?.enabled ? 'Turn on' : 'Turn off'}
-        confirmDisabled={!reason.trim()}
-        onClose={() => setFlagChange(null)}
-        onConfirm={async () => {
-          if (!flagChange) return;
-          await setFlag(session, flagChange.row, flagChange.enabled, reason.trim());
-          query.retry();
-        }}
-      >
-        <ReasonField value={reason} onChange={setReason} />
-      </ActionDialog>
     </Page>
   );
-}
-
-async function setFlag(
-  session: ReturnType<typeof useAuth>['session'],
-  row: Flag,
-  enabled: boolean,
-  reason: string,
-) {
-  const response = await session.client.PUT('/v1/ops/flags/{key}', {
-    params: {
-      path: { key: row.key },
-      header: { ...opsHeaders, 'Idempotency-Key': crypto.randomUUID(), 'If-Match': row.editToken },
-    },
-    body: {
-      enabled,
-      rolloutPercentage: row.rolloutPercentage,
-      description: row.description,
-      reason,
-    },
-  });
-  if (response.error) throw new Error(response.error.error.message);
 }
 
 function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['session'] }) {

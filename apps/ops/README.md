@@ -43,7 +43,7 @@ VITE_OPS_BUILD=1
 ```
 
 No secret belongs in a `VITE_*` variable; Vite embeds them into the browser
-bundle. Map styles and PMTiles locations come from the API's public `/flags`
+bundle. Map styles and PMTiles locations come from the API's public `/bootstrap`
 bootstrap response.
 
 The local Vite preview is useful for layout and component development, but it

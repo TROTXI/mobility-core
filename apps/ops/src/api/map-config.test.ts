@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mapStyleFromBootstrap } from './map-config';
 
 describe('public map configuration', () => {
-  it('reads the top-level /flags Bootstrap response', () => {
+  it('reads the top-level /bootstrap response', () => {
     expect(
       mapStyleFromBootstrap(
         {
