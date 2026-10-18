@@ -210,7 +210,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [trotxi_client, trotxi_commuter, trotxi_driver, trotxi_map]
+        app: [trotxi_client, trotxi_commuter, trotxi_driver, trotxi_map, trotxi_diagnostics]
     defaults:
       run:
         working-directory: apps/${{ matrix.app }}

@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:trotxi_diagnostics/diagnostics.dart';
+import 'package:trotxi_diagnostics/firebase_diagnostics.dart';
+import 'package:trotxi_diagnostics/timing_interceptor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
@@ -26,34 +28,56 @@ import 'package:trotxi_driver/data/work_repository.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_client/public_information.dart';
+import 'package:trotxi_client/optional_service.dart';
+import 'package:trotxi_client/mobile_build_config.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_driver/firebase_options.dart';
-import 'package:trotxi_driver/firebase_performance.dart';
 
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
 
 Future<void> main() async {
   var launched = false;
+  MobileDiagnostics? diagnostics;
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      MobileBuildConfig.fromEnvironment.validate(
+        release: kReleaseMode,
+        app: 'trotxi_driver',
+      );
       // An explicitly selected replacement database is mandatory. Never fall
       // back to staging or reuse the old unscoped session on a bad build.
       TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      final firebaseReady = await initializeOptionalService(() async {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      });
+      if (firebaseReady) {
+        await initializeOptionalService(() async {
+          diagnostics = startFirebaseDiagnostics(
+            release: kReleaseMode,
+            scope:
+                '${const String.fromEnvironment('APP_ENVIRONMENT')}:${DefaultFirebaseOptions.currentPlatform.projectId}',
+          );
+        });
+      }
 
       // Catch Flutter framework errors (widget build errors, layout errors, etc.)
       FlutterError.onError = (errorDetails) {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+        if (kDebugMode) FlutterError.presentError(errorDetails);
+        diagnostics?.report(
+          errorDetails.exception,
+          errorDetails.stack ?? StackTrace.empty,
+          ErrorSource.framework,
+        );
       };
 
       // Catch errors outside Flutter's error handling (async errors, isolate errors)
       PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        diagnostics?.report(error, stack, ErrorSource.platform, fatal: true);
         return true;
       };
 
@@ -73,20 +97,22 @@ Future<void> main() async {
         tokenStore: tokens,
         metadata: metadata,
       );
+      final reporting = diagnostics;
+      if (reporting != null) {
+        transport.dio.interceptors.add(
+          DiagnosticTimingInterceptor(reporting, apiOrigin: _apiBaseUrl),
+        );
+      }
       final client = DriverApi(
         client: transport,
         store: tokens,
         metadata: metadata,
       );
-      client.dio.interceptors.add(PerformanceInterceptor());
       runApp(TrotxiDriverApp(client: client));
       launched = true;
     },
     (error, stack) {
-      // Catches anything thrown outside the zone above (belt-and-suspenders)
-      if (Firebase.apps.isNotEmpty) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      }
+      diagnostics?.report(error, stack, ErrorSource.zone, fatal: true);
       if (launched) return;
       runApp(
         const MaterialApp(
@@ -96,7 +122,7 @@ Future<void> main() async {
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'The driver app could not start. Check that this build has its API URL, session realm and public site address, or contact operations.',
+                    'The driver app could not start. This build may have missing or unapproved environment settings. Contact operations.',
                     textAlign: TextAlign.center,
                   ),
                 ),

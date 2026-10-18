@@ -31,3 +31,35 @@ paths = [
   '''.*firebase_options\.dart$''',
   '''.*GoogleService-Info\.plist$''',
 ]
+
+# The same public Firebase client keys now live in the reviewed staging build
+# definitions. Limit exceptions to the two detecting rules, these two paths
+# and the two public client fields. Other credentials in these files still scan.
+[[rules]]
+id = "gcp-api-key"
+[[rules.allowlists]]
+description = "Staging Firebase public mobile client configuration"
+condition = "AND"
+paths = ['''^apps/trotxi_(commuter|driver)/config/staging\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"FIREBASE_(ANDROID|IOS)_API_KEY":\s*"AIza[0-9A-Za-z_-]{35}",?\s*$''']
+
+# The SDK inventory prose is misread as an Auth credential. Cover only the
+# exact non-secret phrase at this path, not the whole document or rule.
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "Mobile SDK inventory prose, including its historical wording"
+condition = "AND"
+paths = ['''^docs/mobile-release-readiness\.md$''']
+regexTarget = "secret"
+regexes = ['''^advertising/ATT$''']
+
+# The generic rule also recognizes these fields once the GCP finding is
+# excluded. Keep the same field/path boundary rather than disabling the rule.
+[[rules.allowlists]]
+description = "Staging Firebase public mobile client configuration"
+condition = "AND"
+paths = ['''^apps/trotxi_(commuter|driver)/config/staging\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"FIREBASE_(ANDROID|IOS)_API_KEY":\s*"AIza[0-9A-Za-z_-]{35}",?\s*$''']

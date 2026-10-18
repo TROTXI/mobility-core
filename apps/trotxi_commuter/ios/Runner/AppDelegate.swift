@@ -1,4 +1,5 @@
 import Flutter
+import FirebasePerformance
 import UIKit
 
 @main
@@ -7,6 +8,9 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Before Firebase initialization: no automatic URL/network instrumentation.
+    Performance.sharedInstance().isInstrumentationEnabled = false
+    Performance.sharedInstance().isDataCollectionEnabled = false
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
