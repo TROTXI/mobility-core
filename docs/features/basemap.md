@@ -4,7 +4,7 @@ Source audit: 2026-10-03.
 
 Both Flutter apps and Ops integrate MapLibre. Public Ghana PMTiles, generated
 light/dark styles and glyphs are separate from private avatar storage.
-Bootstrap `GET /flags` provides map configuration; clients retain visible
+Bootstrap `GET /bootstrap` provides map configuration; clients retain visible
 OpenStreetMap/OpenMapTiles attribution.
 
 Ops registers the PMTiles protocol and bundles its MapLibre worker for the

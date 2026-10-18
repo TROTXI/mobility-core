@@ -1,4 +1,4 @@
-/** GET /flags returns Bootstrap directly, without the v1 data envelope. */
+/** GET /bootstrap returns Bootstrap directly, without the v1 data envelope. */
 export function mapStyleFromBootstrap(body: unknown, appearance: 'dark' | 'light'): string | null {
   if (!body || typeof body !== 'object' || !('mapTiles' in body)) return null;
   const tiles = body.mapTiles;

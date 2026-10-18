@@ -12,8 +12,6 @@ Name | Type | Description | Notes
 **applications** | [**BuiltList&lt;BootstrapApplicationsInner&gt;**](BootstrapApplicationsInner.md) |  | 
 **operations** | [**BootstrapOperations**](BootstrapOperations.md) |  | 
 **mapTiles** | [**BootstrapMapTiles**](BootstrapMapTiles.md) |  | 
-**flags** | [**BuiltList&lt;BootstrapFlagsInner&gt;**](BootstrapFlagsInner.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
 

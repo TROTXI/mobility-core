@@ -241,9 +241,10 @@ test('commute event history declares pagination only, without its parent status 
   }
 });
 
-test('every current operation maps to an explicitly defined replacement', () => {
+test('every retained current operation maps to an explicitly defined replacement', () => {
   assert.equal(inventory.length, 103);
   for (const row of inventory) {
+    if (row.target === 'Removed') continue;
     const [method, path] = row.target.split(' ');
     assert.ok(spec.paths[path]?.[method.toLowerCase()], row.current);
   }
@@ -461,8 +462,9 @@ test('private and ops operations declare authentication; worker access is mainte
   }
   assert.deepEqual(spec.paths['/v1/trips/{id}/live'].get.security, [{ bearerAuth: [] }]);
 });
-test('stable bootstrap is unversioned; build policy distinguishes app and platform', () => {
-  assert.deepEqual(spec.paths['/flags'].get.security, []);
+test('bootstrap is public; build policy distinguishes app and platform', () => {
+  assert.deepEqual(spec.paths['/bootstrap'].get.security, []);
+  assert.equal(spec.paths['/flags'], undefined);
   assert.equal(spec.paths['/v1/config'], undefined);
   assert.ok(spec.paths['/v1/ops/min-versions/{app}/{platform}']);
 });
@@ -542,7 +544,7 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(withoutCapturedExamples, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 190);
+  assert.equal(count, 188);
   assert.equal(runtime.paths['/v1/me/reservations/{id}'].get.operationId, 'getReservation');
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);

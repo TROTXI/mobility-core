@@ -68,7 +68,7 @@ class CantSignInPage extends StatelessWidget {
               isLast: true,
             ),
             const SizedBox(height: AppSpacing.space24),
-            // Served from /flags (#234), which answers before sign-in — which
+            // Served from /bootstrap (#234), which answers before sign-in — which
             // is the whole reason this screen can show it at all. Depots differ
             // and a number compiled into the build goes stale, so when the
             // operator has published nothing the card says so rather than

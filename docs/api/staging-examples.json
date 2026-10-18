@@ -121,63 +121,6 @@
       }
     },
     {
-      "operationId": "getBootstrap",
-      "pathTemplate": "/flags",
-      "source": "public staging HTTPS",
-      "capturedAt": "2026-09-20T00:20:54.897Z",
-      "method": "GET",
-      "path": "/flags",
-      "query": {},
-      "requestBody": null,
-      "status": 200,
-      "body": {
-        "serverTime": "2026-09-20T00:20:54.881Z",
-        "applications": [
-          {
-            "app": "commuter",
-            "platform": "ios",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          },
-          {
-            "app": "commuter",
-            "platform": "android",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          },
-          {
-            "app": "driver",
-            "platform": "ios",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          },
-          {
-            "app": "driver",
-            "platform": "android",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          }
-        ],
-        "operations": {
-          "phone": null,
-          "whatsapp": null,
-          "email": null,
-          "hours": null
-        },
-        "mapTiles": {
-          "url": "https://tiles.trotxi.com/ghana.pmtiles",
-          "styleUrl": "https://tiles.trotxi.com/style.light.json",
-          "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-          "attribution": "\u00a9 OpenStreetMap contributors"
-        },
-        "flags": []
-      }
-    },
-    {
       "operationId": "listRoutes",
       "pathTemplate": "/v1/routes",
       "source": "public staging HTTPS",
@@ -640,63 +583,6 @@
         "page": {
           "nextCursor": null
         }
-      }
-    },
-    {
-      "operationId": "getBootstrap",
-      "pathTemplate": "/flags",
-      "source": "public staging HTTPS",
-      "capturedAt": "2026-09-20T00:32:58.843Z",
-      "method": "GET",
-      "path": "/flags",
-      "query": {},
-      "requestBody": null,
-      "status": 200,
-      "body": {
-        "serverTime": "2026-09-20T00:32:59.154Z",
-        "applications": [
-          {
-            "app": "commuter",
-            "platform": "ios",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          },
-          {
-            "app": "commuter",
-            "platform": "android",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          },
-          {
-            "app": "driver",
-            "platform": "ios",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          },
-          {
-            "app": "driver",
-            "platform": "android",
-            "minSupportedBuild": 1,
-            "storeUrl": null,
-            "apiMajor": 1
-          }
-        ],
-        "operations": {
-          "phone": null,
-          "whatsapp": null,
-          "email": null,
-          "hours": null
-        },
-        "mapTiles": {
-          "url": "https://tiles.trotxi.com/ghana.pmtiles",
-          "styleUrl": "https://tiles.trotxi.com/style.light.json",
-          "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-          "attribution": "\u00a9 OpenStreetMap contributors"
-        },
-        "flags": []
       }
     },
     {

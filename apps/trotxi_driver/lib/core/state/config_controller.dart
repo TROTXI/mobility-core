@@ -5,7 +5,7 @@ import 'package:trotxi_map/trotxi_map.dart';
 
 /// Client configuration, held for the life of the app.
 ///
-/// Loaded once at start rather than per screen: `GET /flags` answers before
+/// Loaded once at start rather than per screen: `GET /bootstrap` answers before
 /// sign-in, three screens need the operations number, and a driver reaching for
 /// support is not the moment to make a network call they have to wait on.
 ///

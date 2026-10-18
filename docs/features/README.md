@@ -1,6 +1,6 @@
 # Feature documentation
 
-Index updated: 2026-10-08. Each guide records its own source-audit date.
+Index updated: 2026-10-17. Each guide records its own source-audit date.
 These documents describe the implementation on main.
 They replace the retired ADR collection. Product intent is maintained separately
 in [strategy](https://github.com/TROTXI/strategy).
@@ -22,7 +22,7 @@ setup, verification, offers, payment, reservations and driver operation.
 | GPS, ETA and retention                       | [Live positions](live-positions.md)           |
 | Shared map rendering                         | [Basemap](basemap.md)                         |
 | Profiles, avatars and erasure                | [Account lifecycle](profile-avatars.md)       |
-| Bootstrap, flags and supported builds        | [Configuration](feature-flags.md)             |
+| Bootstrap and supported builds               | [Configuration](configuration.md)             |
 | Admission and caches                         | [Rate limiting](rate-limiting.md)             |
 | Inbox and preferences                        | [Notifications](../api/notifications.md)      |
 | Ops workflows                                | [Ops guide](ops-console.md)                   |

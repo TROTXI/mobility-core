@@ -10,7 +10,7 @@ All URIs are relative to *https://trotxi-api-staging.onrender.com*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**completeEmailAccess**](PublicApi.md#completeemailaccess) | **POST** /v1/auth/email/complete | complete Email Access
-[**getBootstrap**](PublicApi.md#getbootstrap) | **GET** /flags | get Bootstrap
+[**getBootstrap**](PublicApi.md#getbootstrap) | **GET** /bootstrap | get Bootstrap
 [**getBuild**](PublicApi.md#getbuild) | **GET** /version | get Build
 [**getGeometry**](PublicApi.md#getgeometry) | **GET** /v1/route-geometries/{id} | get Geometry
 [**getHealth**](PublicApi.md#gethealth) | **GET** /healthz | get Health

@@ -1,6 +1,6 @@
 # Operation scope after stage-1 review
 
-Generated from contracts/operation-scope.mjs. 102 target operations have no direct baseline mapping: 22 are required for cutover and 9 are deferred proposals. The full 199-operation OpenAPI remains a design catalog, **not** a commitment to implement every operation in stage 3. Deferred entries are marked x-delivery-stage: deferred; do not implement or generate a launch client dependency on them. No deployed endpoints change here. An entity or accounting rule remains required even when its optional history UI is deferred.
+Generated from contracts/operation-scope.mjs. 102 target operations have no direct baseline mapping: 22 are required for cutover and 9 are deferred proposals. The full 197-operation OpenAPI remains a design catalog, **not** a commitment to implement every operation in stage 3. Deferred entries are marked x-delivery-stage: deferred; do not implement or generate a launch client dependency on them. No deployed endpoints change here. An entity or accounting rule remains required even when its optional history UI is deferred.
 
 For deferred detail GETs, versioned list rows must supply the same per-resource edit token required by If-Match; collection ETags cannot substitute. Review that consumer contract during implementation.
 

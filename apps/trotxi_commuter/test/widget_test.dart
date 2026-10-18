@@ -56,7 +56,7 @@ void main() {
   ) async {
     await init(tester);
     f.reply = (o) {
-      if (o.path == '/flags') return jsonResponse(flags());
+      if (o.path == '/bootstrap') return jsonResponse(bootstrap());
       throw DioException(
         requestOptions: o,
         type: DioExceptionType.connectionError,
@@ -73,10 +73,10 @@ void main() {
     'bootstrap minimum version blocks without querying private data',
     (tester) async {
       await init(tester);
-      f.reply = (_) => jsonResponse(flags(floor: 32));
+      f.reply = (_) => jsonResponse(bootstrap(floor: 32));
       await pump(tester);
       expect(find.text('Please update the app to continue.'), findsOneWidget);
-      expect(f.requests.map((r) => r.path), ['/flags']);
+      expect(f.requests.map((r) => r.path), ['/bootstrap']);
       await tester.binding.handlePopRoute();
       expect(find.text('Please update the app to continue.'), findsOneWidget);
       expect(await tester.runAsync(f.store.getAccessToken), 'access-Ama');
@@ -143,7 +143,7 @@ void main() {
     await tester.runAsync(() async {
       final entered = Completer<void>(), release = Completer<void>();
       f.reply = (o) async {
-        if (o.path == '/flags') return jsonResponse(flags());
+        if (o.path == '/bootstrap') return jsonResponse(bootstrap());
         if (o.path == '/v1/me') {
           entered.complete();
           await release.future;

@@ -39,7 +39,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(BootstrapApplicationsInnerApiMajorEnum.serializer)
       ..add(BootstrapApplicationsInnerAppEnum.serializer)
       ..add(BootstrapApplicationsInnerPlatformEnum.serializer)
-      ..add(BootstrapFlagsInner.serializer)
       ..add(BootstrapMapTiles.serializer)
       ..add(BootstrapOperations.serializer)
       ..add(Build.serializer)
@@ -139,10 +138,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(FareJourneyDirectionEnum.serializer)
       ..add(FarePage.serializer)
       ..add(FareResponse.serializer)
-      ..add(Flag.serializer)
-      ..add(FlagEdit.serializer)
-      ..add(FlagPage.serializer)
-      ..add(FlagResponse.serializer)
       ..add(Geometry.serializer)
       ..add(GeometryResponse.serializer)
       ..add(GeometrySource_Enum.serializer)
@@ -532,10 +527,6 @@ Serializers _$serializers = (Serializers().toBuilder()
               BuiltList, const [const FullType(BootstrapApplicationsInner)]),
           () => ListBuilder<BootstrapApplicationsInner>())
       ..addBuilderFactory(
-          const FullType(
-              BuiltList, const [const FullType(BootstrapFlagsInner)]),
-          () => ListBuilder<BootstrapFlagsInner>())
-      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CommuteLeg)]),
           () => ListBuilder<CommuteLeg>())
       ..addBuilderFactory(
@@ -578,9 +569,6 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Fare)]),
           () => ListBuilder<Fare>())
-      ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(Flag)]),
-          () => ListBuilder<Flag>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Incident)]),
           () => ListBuilder<Incident>())

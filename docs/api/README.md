@@ -36,7 +36,7 @@ are Ghana calendar dates; timestamps are instants. Weekdays use ISO 1 through 7.
 
 | Task                             | Endpoint                                                                |
 | -------------------------------- | ----------------------------------------------------------------------- |
-| Bootstrap                        | `GET /flags`                                                            |
+| Bootstrap                        | `GET /bootstrap`                                                        |
 | Social sign-in                   | `POST /v1/auth/google` or configured Apple route                        |
 | Phone sign-in                    | `POST /v1/auth/phone/request`, then `verify`                            |
 | Account                          | `GET /v1/me`                                                            |

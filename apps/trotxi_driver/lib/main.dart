@@ -245,7 +245,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         Provider<IncidentsRepository>.value(value: _incidents),
         Provider<WorkRepository>.value(value: _work),
         Provider<RouteMapRepository>.value(value: _maps),
-        // Fetched at start, not per screen: GET /flags answers before sign-in,
+        // Fetched at start, not per screen: GET /bootstrap answers before sign-in,
         // and the screen that needs the operations number most is the one a
         // driver reaches when they cannot get in (#234).
         ChangeNotifierProvider(

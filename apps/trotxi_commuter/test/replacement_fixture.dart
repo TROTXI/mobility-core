@@ -60,7 +60,7 @@ Map<String, Object?> account([String name = 'Ama']) => {
   'avatarUrl': null,
   'createdAt': timestamp,
 };
-Map<String, Object?> flags({int floor = 1}) => {
+Map<String, Object?> bootstrap({int floor = 1}) => {
   'serverTime': timestamp,
   'applications': [
     {
@@ -78,7 +78,6 @@ Map<String, Object?> flags({int floor = 1}) => {
     'darkStyleUrl': null,
     'attribution': '',
   },
-  'flags': [],
 };
 Map<String, Object?> tokens([String name = 'Ama']) => {
   'data': {
@@ -121,7 +120,7 @@ class Fixture {
   late final CommuterApi api;
   final requests = <RequestOptions>[];
   FutureOr<ResponseBody> Function(RequestOptions) reply = (o) {
-    if (o.path == '/flags') return jsonResponse(flags());
+    if (o.path == '/bootstrap') return jsonResponse(bootstrap());
     if (o.path == '/v1/me') return jsonResponse({'data': account()});
     if (o.path == '/v1/me/reservations') return jsonResponse(page([]));
     return jsonResponse({

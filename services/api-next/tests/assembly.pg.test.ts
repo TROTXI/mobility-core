@@ -210,8 +210,8 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.equal(expected.length, 190);
-  assert.equal(new Set(expected).size, 190);
+  assert.equal(expected.length, 188);
+  assert.equal(new Set(expected).size, 188);
   for (const operation of [
     'getOpsRiderDetail',
     'listOpsOperators',
@@ -231,9 +231,9 @@ test('ASM-11 the unauthenticated surface answers, and readiness tells the truth'
   const build = (await bare('/version')).json();
   assert.equal(build.service, 'trotxi-api-next');
   assert.equal(build.commit, 'assembly-test');
-  const bootstrap = (await bare('/flags')).json();
+  const bootstrap = (await bare('/bootstrap')).json();
   assert.equal(bootstrap.mapTiles.url, 'https://tiles.trotxi.test/ghana.pmtiles');
-  assert.ok(Array.isArray(bootstrap.flags));
+  assert.equal('flags' in bootstrap, false);
   // Readiness reads a row, so a database this service can no longer read has
   // to change the answer. Liveness is about this process and must not start
   // lying about it, or a rolling deploy replaces a healthy instance with one
@@ -965,7 +965,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, 189);
+  assert.equal(routed, 187);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);

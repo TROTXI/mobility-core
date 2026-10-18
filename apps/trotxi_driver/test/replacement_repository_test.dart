@@ -110,7 +110,6 @@ Map<String, Object?> bootstrap({
     'darkStyleUrl': null,
     'attribution': 'Map attribution',
   },
-  'flags': [],
 };
 
 class Adapter implements HttpClientAdapter {
