@@ -1,0 +1,6 @@
+name: trotxi_app_icons
+publish_to: none
+environment:
+  sdk: ^3.12.0
+dependencies:
+  image: 4.10.1
