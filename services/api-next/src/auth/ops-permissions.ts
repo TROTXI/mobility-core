@@ -1,6 +1,11 @@
 import type { PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
-import { fail } from '../transport/errors.js';
+import { fail, TransportError } from '../transport/errors.js';
+
+/** Recheck current authority inside each transaction of a multi-step job. */
+export type AuthorizeWork = (client: PoolClient) => Promise<void>;
+export const isAuthorizationFailure = (error: unknown): boolean =>
+  error instanceof TransportError && (error.status === 401 || error.status === 403);
 
 /** Supplied by server handlers, never by request bodies or client headers. */
 export interface AuthorizationContext {

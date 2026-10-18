@@ -330,7 +330,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           seal: cards.seal,
           open: cards.open,
           charge: (request) => provider.chargeAuthorization(request),
-          settle: (reference) => recovery.settleReference(reference),
+          settle: (reference, authorize) => recovery.settleReference(reference, authorize),
           cursorSecret: config.keys.cursorSecret,
           ...(email ? { email } : {}),
         });

@@ -13,6 +13,7 @@ import {
   disputeRank,
 } from './provider.js';
 import type { ProviderFact } from './provider.js';
+import { isAuthorizationFailure, type AuthorizeWork } from '../auth/ops-permissions.js';
 
 export interface RecoveryDependencies {
   pool: Pool;
@@ -129,7 +130,7 @@ export class PaymentRecovery {
     if (!r || r.deleted_at) fail(401, 'unauthenticated', 'Account unavailable.');
     if (r.role !== 'admin') fail(403, 'forbidden', 'Operations access required.');
   }
-  private async enqueue(raw: Buffer, source: 'webhook' | 'verify') {
+  private async enqueue(raw: Buffer, source: 'webhook' | 'verify', authorize?: AuthorizeWork) {
     if (raw.length < 1 || raw.length > 1048576)
       fail(400, 'invalid_evidence', 'Invalid evidence size.');
     const environment = this.options.provider.environment,
@@ -138,20 +139,23 @@ export class PaymentRecovery {
       raw,
       context({ environment, source, payload_hash }),
     );
-    const row = (
-      await this.options.pool.query(
-        `INSERT INTO app.payment_events(environment,source,payload_hash,ciphertext)
+    return this.tx(async (c) => {
+      await authorize?.(c);
+      const row = (
+        await c.query(
+          `INSERT INTO app.payment_events(environment,source,payload_hash,ciphertext)
    VALUES ($1,$2,$3,$4) ON CONFLICT(environment,source,payload_hash) DO NOTHING RETURNING id`,
-        [environment, source, payload_hash, ciphertext],
-      )
-    ).rows[0];
-    if (row) return row.id as string;
-    return (
-      await this.options.pool.query(
-        'SELECT id FROM app.payment_events WHERE environment=$1 AND source=$2 AND payload_hash=$3',
-        [environment, source, payload_hash],
-      )
-    ).rows[0].id as string;
+          [environment, source, payload_hash, ciphertext],
+        )
+      ).rows[0];
+      if (row) return row.id as string;
+      return (
+        await c.query(
+          'SELECT id FROM app.payment_events WHERE environment=$1 AND source=$2 AND payload_hash=$3',
+          [environment, source, payload_hash],
+        )
+      ).rows[0].id as string;
+    });
   }
   async acceptWebhook(raw: Buffer, signature: unknown) {
     if (!this.options.provider.authenticate(raw, signature))
@@ -210,9 +214,11 @@ export class PaymentRecovery {
   }
   private async process(
     id: string,
+    authorize?: AuthorizeWork,
   ): Promise<{ outcome: 'succeeded' | 'blocked' | 'failed' | 'skipped'; reason?: string }> {
     try {
       return await this.tx(async (c) => {
+        await authorize?.(c);
         const e = (
           await c.query<EventRow>(
             "SELECT * FROM app.payment_events WHERE id=$1 AND state='ready' AND available_at<=clock_timestamp() FOR UPDATE SKIP LOCKED",
@@ -340,19 +346,23 @@ export class PaymentRecovery {
         return { outcome: 'succeeded' };
       });
     } catch (error) {
+      if (isAuthorizationFailure(error)) throw error;
       const conflict = error instanceof Conflict,
         waiting = error instanceof AwaitingCollection;
       // Another worker may have succeeded since rollback. Never overwrite its
       // committed acknowledgement. No side effect survived our failed TX.
-      await this.options.pool.query(
-        `UPDATE app.payment_events SET attempts=attempts+1,
+      await this.tx(async (c) => {
+        await authorize?.(c);
+        await c.query(
+          `UPDATE app.payment_events SET attempts=attempts+1,
     state=CASE WHEN $2 OR attempts>=9 THEN 'quarantined' ELSE 'ready' END,
     reason=CASE WHEN $2 THEN 'provider_conflict' WHEN attempts>=9 THEN 'retry_exhausted' ELSE 'unexpected_error' END,
     processed_at=CASE WHEN $2 OR attempts>=9 THEN clock_timestamp() ELSE NULL END,
     available_at=clock_timestamp()+interval '1 minute'*LEAST(60,power(2,attempts))
     WHERE id=$1 AND state='ready'`,
-        [id, conflict],
-      );
+          [id, conflict],
+        );
+      });
       const reason = conflict
         ? 'provider_conflict'
         : waiting
@@ -362,7 +372,7 @@ export class PaymentRecovery {
       return { outcome: waiting ? 'blocked' : 'failed', reason };
     }
   }
-  async processInbox(limit = 100): Promise<MaintenanceResult> {
+  async processInbox(limit = 100, authorize?: AuthorizeWork): Promise<MaintenanceResult> {
     const result = empty();
     const rows = (
       await this.options.pool.query(
@@ -371,7 +381,7 @@ export class PaymentRecovery {
       )
     ).rows;
     for (const r of rows) {
-      const done = await this.process(r.id);
+      const done = await this.process(r.id, authorize);
       if (done.outcome === 'skipped') continue;
       result.considered++;
       result[done.outcome]++;
@@ -384,11 +394,16 @@ export class PaymentRecovery {
    * Verify one attempt with Paystack now and process what it says, through
    * the same persisted, deduplicated evidence path as the worker.
    */
-  async settleReference(reference: string): Promise<void> {
+  async settleReference(reference: string, authorize?: AuthorizeWork): Promise<void> {
+    if (authorize) await this.tx(authorize);
     const raw = await this.options.provider.verify(reference);
-    await this.process(await this.enqueue(raw, 'verify'));
+    await this.process(await this.enqueue(raw, 'verify', authorize), authorize);
   }
-  async reconcile(before: Date, limit = 100): Promise<MaintenanceResult> {
+  async reconcile(
+    before: Date,
+    limit = 100,
+    authorize?: AuthorizeWork,
+  ): Promise<MaintenanceResult> {
     if (!Number.isFinite(before.getTime())) fail(400, 'invalid_cutoff', 'Invalid cutoff.');
     const result = empty();
     const rows = (
@@ -400,9 +415,10 @@ export class PaymentRecovery {
     for (const row of rows) {
       result.considered++;
       try {
+        if (authorize) await this.tx(authorize);
         const raw = await this.options.provider.verify(row.reference),
-          id = await this.enqueue(raw, 'verify'),
-          done = await this.process(id);
+          id = await this.enqueue(raw, 'verify', authorize),
+          done = await this.process(id, authorize);
         // Identical pending evidence may already be processed. Re-reading it must
         // not count as a successful settlement or release the hold.
         const state = (
@@ -415,7 +431,8 @@ export class PaymentRecovery {
           result.failures.push({ resourceId: row.id, reason: done.reason ?? 'unexpected_error' });
         } else if (['pending', 'unknown'].includes(state)) result.blocked++;
         else result.succeeded++;
-      } catch {
+      } catch (error) {
+        if (isAuthorizationFailure(error)) throw error;
         result.failed++;
         result.failures.push({ resourceId: row.id, reason: 'verification_unavailable' });
       }
@@ -688,7 +705,11 @@ export class PaymentRecovery {
       );
     }
   }
-  async closeEndedPeriods(now = new Date(), limit = 100): Promise<MaintenanceResult> {
+  async closeEndedPeriods(
+    now = new Date(),
+    limit = 100,
+    authorize?: AuthorizeWork,
+  ): Promise<MaintenanceResult> {
     const result = empty();
     const rows = (
       await this.options.pool.query(
@@ -699,9 +720,10 @@ export class PaymentRecovery {
     for (const row of rows) {
       result.considered++;
       try {
-        if (await this.options.foundation.closePeriod(row.id, now)) result.succeeded++;
+        if (await this.options.foundation.closePeriod(row.id, now, authorize)) result.succeeded++;
         else result.blocked++;
       } catch (e) {
+        if (isAuthorizationFailure(e)) throw e;
         // A period that is refused because something it funds has not settled
         // yet is blocked, not broken: nothing is wrong, the work is not done.
         // Reporting it as a failure sends an operator looking for a fault that
@@ -740,15 +762,17 @@ export class PaymentRecovery {
       periods: 'runPeriodClose',
       all: 'runPayments',
     }[kind];
-    await this.tx((c) => this.admin(c, actor, operation));
+    const authorize: AuthorizeWork = (c) => this.admin(c, actor, operation);
+    await this.tx(authorize);
     const now = new Date();
-    if (kind === 'inbox') return this.processInbox(limit);
-    if (kind === 'reconciliation') return this.reconcile(new Date(now.getTime() - 3600000), limit);
-    if (kind === 'periods') return this.closeEndedPeriods(now, limit);
+    if (kind === 'inbox') return this.processInbox(limit, authorize);
+    if (kind === 'reconciliation')
+      return this.reconcile(new Date(now.getTime() - 3600000), limit, authorize);
+    if (kind === 'periods') return this.closeEndedPeriods(now, limit, authorize);
     return {
-      inbox: await this.processInbox(limit),
-      reconciliation: await this.reconcile(new Date(now.getTime() - 3600000), limit),
-      periods: await this.closeEndedPeriods(now, limit),
+      inbox: await this.processInbox(limit, authorize),
+      reconciliation: await this.reconcile(new Date(now.getTime() - 3600000), limit, authorize),
+      periods: await this.closeEndedPeriods(now, limit, authorize),
     };
   }
   private review(row: Record<string, any>) {

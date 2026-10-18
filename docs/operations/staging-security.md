@@ -158,6 +158,13 @@ client headers cannot grant a permission. Worker origin is the immutable
 Workers are refused ordinary authenticated reads and commands even when claiming
 to be the Ops client. Public endpoints remain public.
 
+Payment maintenance and auto-renewal carry the same actor and operation through
+each work transaction, including checkout, evidence processing, failure updates
+and period closure. Authorization failures stop the batch instead of becoming
+per-item failures. Provider requests get a fresh check before dispatch. A request
+already sent cannot be recalled; signed webhooks still settle independently, and
+a newly authorized run can recover pending work.
+
 No role migration or automatic promotion is performed. Existing admins retain
 dispatch but lose the sensitive actions above; existing superadmins retain them.
 The configured non-human worker remains an ordinary admin, not a superadmin.
