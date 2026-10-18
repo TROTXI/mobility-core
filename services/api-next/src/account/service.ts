@@ -14,6 +14,7 @@ import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cancelCredentialSms } from '../notifications/driver-sms.js';
 import type { ErasureJournal } from './erasure-journal.js';
 import { requireRecentPasskey, requireSuperadmin, teamLock } from '../auth/ops-team.js';
+import { sanitizeAvatar } from './avatar-image.js';
 
 /** The person's own photo. Either app they hold, because it is theirs. */
 export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
@@ -70,7 +71,7 @@ const id = (value: unknown): string => {
   return (value as string).toLowerCase();
 };
 /**
- * What a stored avatar may be. Anything else is refused, not transcoded.
+ * Cheap envelope checks before authorization and bounded image decoding.
  *
  * Each type has its own static call site rather than a function looked up by
  * the declared type: a request field must never choose what gets called.
@@ -448,10 +449,13 @@ export class AccountService {
       }, lock);
       if (!prepared) return this.avatar(actor);
       task = prepared;
+      // Authorization and replay checks precede native decoding. Keep the
+      // original fingerprint for idempotency, but only store sanitized pixels.
+      const clean = await sanitizeAvatar(bytes, type, this.maxAvatarBytes);
       const stored = await this.options.avatars.put({
         userId: actor.userId,
         objectKey: prepared.reference,
-        bytes,
+        bytes: clean,
         contentType: type,
       });
       putFinished = true;

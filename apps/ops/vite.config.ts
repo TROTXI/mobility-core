@@ -27,7 +27,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: { port: 4175 },
     preview: { port: 4175 },
-    build: { sourcemap: true },
+    // dist is published directly. Do not ship original source in public maps.
+    build: { sourcemap: false },
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',

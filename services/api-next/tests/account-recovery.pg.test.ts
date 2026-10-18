@@ -7,6 +7,7 @@ import { AccountService } from '../src/account/service.js';
 import { accessTokens } from '../src/auth/credentials.js';
 import { createTransportApp } from '../src/http/app.js';
 import { purgeExpiredCommandPayloads } from '../src/runtime/receipt-retention.js';
+import { avatarPng as png } from './helpers/avatar-fixture.js';
 
 function gate() {
   let release!: () => void;
@@ -15,7 +16,6 @@ function gate() {
   });
   return { promise, release };
 }
-const png = Buffer.from('89504e470d0a1a0a0011223344556677', 'hex');
 
 test('ACR-10 expired command payloads clear under runtime grants without changing identities or audit links', async (t) => {
   const f = await setup(t);
