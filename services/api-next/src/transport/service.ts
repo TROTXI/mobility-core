@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import type { AuthorizationContext } from '../auth/ops-permissions.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { cursorCodec } from './cursor.js';
@@ -88,7 +89,11 @@ export interface Dependencies {
   cursorSecret: Buffer;
   // Must validate session/credential revocation using this transaction, not a
   // client role claim. There is no permissive default until identity lands.
-  authorizeSession: (client: PoolClient, actor: Actor) => Promise<AuthorizedActor | void>;
+  authorizeSession: (
+    client: PoolClient,
+    actor: Actor,
+    context?: AuthorizationContext,
+  ) => Promise<AuthorizedActor | void>;
   // Trip lock is already held. Validate/release/update affected reservations
   // using THIS client or throw; never commit or call external services here.
   coordinateReservations?: (client: PoolClient, change: ReservationChange) => Promise<void>;
@@ -180,7 +185,7 @@ export class TransportService {
     actor: Actor,
     operation: string,
   ): Promise<string | null> {
-    const authorized = await this.deps.authorizeSession(client, actor);
+    const authorized = await this.deps.authorizeSession(client, actor, { operation });
     const user =
       authorized ??
       (
@@ -550,7 +555,7 @@ export class TransportService {
         AND v.effective_from<=(($1::date+s.local_departure) AT TIME ZONE s.time_zone)
         AND (v.effective_to IS NULL OR v.effective_to>(($1::date+s.local_departure) AT TIME ZONE s.time_zone))`;
     const candidates = await this.transaction(async (c) => {
-      await this.authorize(c, actor, 'createTrip');
+      await this.authorize(c, actor, 'runTripGeneration');
       const now = (await c.query('SELECT clock_timestamp() now')).rows[0].now as Date;
       const today = now.toISOString().slice(0, 10);
       if (day < today || Date.parse(day) > Date.parse(today) + 31 * 86400000)
@@ -575,7 +580,7 @@ export class TransportService {
     for (const candidate of candidates) {
       try {
         const created = await this.transaction(async (c) => {
-          await this.authorize(c, actor, 'createTrip');
+          await this.authorize(c, actor, 'runTripGeneration');
           await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
             `generate-trip:${candidate.departure_id}:${day}`,
           ]);

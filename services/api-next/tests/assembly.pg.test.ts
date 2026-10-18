@@ -11,8 +11,143 @@ import { runJob } from '../src/runtime/maintenance.js';
 import { jobFailed } from '../src/runtime/job-outcome.js';
 import { TransportService } from '../src/transport/service.js';
 import type { Backend } from '../src/runtime/compose.js';
+import { maintenanceOperations, financeOperations } from '../src/auth/ops-permissions.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
+
+test('SEC-OPS current permissions protect every maintenance and finance handler, including replay', async (t) => {
+  const { f, backend, call } = await assembled(t);
+  const day = new Date().toISOString().slice(0, 10);
+  const workerId = (await f.owner.query("INSERT INTO app.users(role) VALUES('admin') RETURNING id"))
+    .rows[0].id;
+  const workerSession = (
+    await f.owner.query(
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at,issued_for)
+    VALUES($1,clock_timestamp()+interval '1 hour',clock_timestamp(),'maintenance') RETURNING *`,
+      [workerId],
+    )
+  ).rows[0];
+  const workerToken = await backend.auth.tokens.sign(
+    { userId: workerId, sessionId: workerSession.id },
+    'admin',
+    workerSession.created_at,
+    workerSession.expires_at,
+  );
+  // Reserve a second superadmin so revocation can obey the last-superadmin invariant.
+  await f.owner.query("INSERT INTO app.users(role,is_superadmin) VALUES('admin',true)");
+  const cases = Object.entries(contract.paths).flatMap(([path, methods]) =>
+    Object.entries(methods)
+      .filter(
+        ([, op]) =>
+          maintenanceOperations.has(op.operationId) || financeOperations.has(op.operationId),
+      )
+      .map(([method, op]) => ({ path, method, name: op.operationId })),
+  );
+  assert.equal(cases.length, maintenanceOperations.size + financeOperations.size);
+  for (const item of cases) {
+    const payload =
+      item.name === 'initiateRefund'
+        ? { amount: { amountMinor: 1, currency: 'GHS' }, reason: 'Review fixture' }
+        : item.name === 'resolvePaymentReview'
+          ? { decision: 'resolved', reason: 'Review fixture' }
+          : item.name === 'createFare'
+            ? {
+                amount: { amountMinor: 1, currency: 'GHS' },
+                effectiveFrom: new Date(Date.now() + 86400000).toISOString(),
+                note: 'Review fixture',
+              }
+            : item.name === 'updatePlanPricing'
+              ? { reason: 'Review fixture', takeRateBp: 1000 }
+              : item.name === 'runTripGeneration'
+                ? { serviceDate: day, limit: 1 }
+                : ['runAskDispatch', 'runReservationDefaults', 'runNoShows'].includes(item.name)
+                  ? { travelDate: day, direction: 'outbound', limit: 1 }
+                  : { limit: 1 };
+    const url = item.path.replace('{id}', randomUUID()).replace('{plan}', 'monthly');
+    const adminToken = await tokenFor(backend, f.adminId);
+    const send = (token?: string, client = 'ops') =>
+      backend.app.inject({
+        method: item.method.toUpperCase() as 'POST' | 'PATCH',
+        url,
+        payload,
+        headers: {
+          authorization: `Bearer ${token ?? adminToken}`,
+          'x-trotxi-client': client,
+          'x-trotxi-build': '9',
+          'idempotency-key': randomUUID(),
+          'if-match': '"fixture:1"',
+        },
+      });
+    const denied = await send();
+    assert.equal(denied.statusCode, 403, `${item.name}: ${denied.body}`);
+    assert.equal(denied.json().error.code, 'superadmin_required', item.name);
+    const worker = await send(workerToken, maintenanceOperations.has(item.name) ? 'worker' : 'ops');
+    if (maintenanceOperations.has(item.name))
+      assert.equal(worker.statusCode, 200, `${item.name}: ${worker.body}`);
+    else {
+      assert.equal(worker.statusCode, 403, `${item.name}: ${worker.body}`);
+      assert.equal(worker.json().error.code, 'worker_scope_required');
+    }
+  }
+  assert.equal((await call('GET', '/v1/ops/trips')).statusCode, 200);
+  const disguisedWorker = await call('GET', '/v1/ops/trips', { token: workerToken, client: 'ops' });
+  assert.equal(disguisedWorker.statusCode, 403);
+  assert.equal(disguisedWorker.json().error.code, 'worker_scope_required');
+  const actor = await backend.auth.tokens.verify(`Bearer ${await tokenFor(backend, f.adminId)}`);
+  assert.ok(actor);
+  await assert.rejects(
+    backend.app.transport.command(
+      actor,
+      'runGpsRetention',
+      'collection',
+      { limit: 1 },
+      randomUUID(),
+    ),
+    { code: 'superadmin_required' },
+  );
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [f.adminId]);
+  const key = randomUUID();
+  const first = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 1 },
+    key,
+  });
+  assert.equal(first.statusCode, 200, first.body);
+  const replay = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 1 },
+    key,
+  });
+  assert.equal(replay.statusCode, 200, replay.body);
+  const fareKey = randomUUID();
+  const farePayload = {
+    amount: { amountMinor: 100, currency: 'GHS' },
+    effectiveFrom: new Date(Date.now() + 86400000).toISOString(),
+    note: 'Security test fare',
+  };
+  const fareUrl = `/v1/ops/routes/${f.input.routeId}/fares`;
+  const fare = await call('POST', fareUrl, { payload: farePayload, key: fareKey });
+  assert.equal(fare.statusCode, 201, fare.body);
+  const fareReplay = await call('POST', fareUrl, { payload: farePayload, key: fareKey });
+  assert.equal(fareReplay.statusCode, 201, fareReplay.body);
+  await f.owner.query('UPDATE app.users SET is_superadmin=false WHERE id=$1', [f.adminId]);
+  const lostFinance = await call('POST', fareUrl, { payload: farePayload, key: fareKey });
+  assert.equal(lostFinance.statusCode, 403);
+  assert.equal(lostFinance.json().error.code, 'superadmin_required');
+  const revoked = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 1 },
+    key,
+  });
+  assert.equal(revoked.statusCode, 403);
+  assert.equal(revoked.json().error.code, 'superadmin_required');
+  await f.owner.query('UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE id=$1', [
+    workerSession.id,
+  ]);
+  const expired = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 1 },
+    token: workerToken,
+    client: 'worker',
+  });
+  assert.equal(expired.statusCode, 401);
+});
 // Provider-shaped, assembled at runtime rather than committed as a literal, and
 // held so the webhook below signs with the same secret the backend was given.
 const PAYSTACK_KEY = ['sk', 'test', randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
@@ -283,7 +418,8 @@ test('ASM-12 the worker acts as a real operator and always gives the session bac
 });
 
 test('ASM-13 the worker client is the maintenance surface and nothing else', async (t) => {
-  const { call } = await assembled(t);
+  const { f, call } = await assembled(t);
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [f.adminId]);
   const run = (client: string, platform?: string) =>
     call('POST', '/v1/ops/maintenance/gps-retention', { payload: { limit: 5 }, client, platform });
   assert.equal((await run('worker')).statusCode, 403);
@@ -302,6 +438,7 @@ test('ASM-13 the worker client is the maintenance surface and nothing else', asy
 
 test('ASM-24 manual and worker maintenance have distinct append-only starts and outcomes', async (t) => {
   const { f, backend, call } = await assembled(t);
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [f.adminId]);
   const manual = await call('POST', '/v1/ops/maintenance/gps-retention', {
     payload: { limit: 5 },
   });
@@ -393,6 +530,7 @@ test('ASM-24 manual and worker maintenance have distinct append-only starts and 
 
 test('ASM-25 a failed outcome write cannot report an audited success', async (t) => {
   const { f, backend, call } = await assembled(t);
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [f.adminId]);
   const original = backend.maintenanceAudit.finish.bind(backend.maintenanceAudit);
   backend.maintenanceAudit.finish = async () => {
     throw new Error('audit_outcome_unavailable');

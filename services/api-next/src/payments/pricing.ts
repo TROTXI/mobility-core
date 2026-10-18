@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import type { SessionAuthorizer } from '../auth/ops-permissions.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail, requireReason } from '../transport/errors.js';
@@ -20,7 +21,7 @@ export type PricingOperation = (typeof pricingOperations)[number];
 
 export interface PricingOptions {
   pool: Pool;
-  authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: SessionAuthorizer;
   cursorSecret: Buffer;
   now?: () => Date;
 }
@@ -72,8 +73,8 @@ export class Pricing {
       c.release();
     }
   }
-  private async authorize(c: PoolClient, actor: Actor, role = 'admin') {
-    await this.options.authorizeSession(c, actor);
+  private async authorize(c: PoolClient, actor: Actor, role = 'admin', operation?: string) {
+    await this.options.authorizeSession(c, actor, { operation });
     const user = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE', [
         id(actor.userId),
@@ -269,7 +270,7 @@ export class Pricing {
     query: Record<string, string | undefined>,
   ): Promise<Outcome> {
     return this.tx(async (c) => {
-      await this.authorize(c, actor);
+      await this.authorize(c, actor, 'admin', operation);
       const limit = query.limit === undefined ? 50 : Number(query.limit);
       if (
         !Number.isInteger(limit) ||
@@ -345,7 +346,7 @@ export class Pricing {
     const keyHash = digest(`${actor.userId}:${operation}:${scope}:${key}`);
     const inputHash = digest(canonical(input));
     return this.tx(async (c) => {
-      await this.authorize(c, actor);
+      await this.authorize(c, actor, 'admin', operation);
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`pricing:${keyHash}`]);
       const prior = (
         await c.query(

@@ -118,6 +118,68 @@ maintenance run, historical log removal and credential resets are recorded.
 No account, PIN, historical run, secret or live infrastructure setting is changed
 by the checked-in code alone.
 
-The wider review's OTP-abuse policy, driver lockout policy, API documentation
-hardening and Firebase console restrictions need their own verified evidence.
+The wider review's OTP-abuse policy, driver lockout policy and Firebase console
+restrictions need their own verified evidence.
 This cutover does not certify those controls or a complete SQL-injection audit.
+
+## API hardening policy
+
+### Email sign-in
+
+Email/password login retains its six-attempt email/source-IP budget and adds a
+30-attempt account budget across all source IPs and API replicas. Both run before
+credential lookup or password verification. Keys are HMAC digests of normalized
+identity, not raw email addresses. The database updates each counter atomically.
+Known and unknown accounts consume the same budgets and return the same errors.
+
+The fixed clock-minute window resets within 60 seconds. Rejected requests do not
+extend it, and no persistent account lock is set. A sustained attacker can still
+consume future windows; these limits reduce guessing, not provide immunity to
+targeted denial of service. Admission storage failure refuses sign-in. Signup and
+recovery keep their separate source and mail-issuance limits.
+
+### Ops permissions
+
+| Action                                            | Regular admin | Superadmin                | Maintenance session |
+| ------------------------------------------------- | ------------- | ------------------------- | ------------------- |
+| Operational reads and dispatch                    | Allowed       | Allowed                   | Denied              |
+| Existing offer workflow                           | Allowed       | Allowed                   | Denied              |
+| Read payment history, reviews, fares and pricing  | Allowed       | Allowed                   | Denied              |
+| Initiate refunds or resolve/waive payment reviews | Denied        | Allowed                   | Denied              |
+| Create fares or change plan pricing               | Denied        | Allowed                   | Denied              |
+| Run the twelve reviewed maintenance operations    | Denied        | Allowed                   | Allowed             |
+| Team access administration                        | Denied        | Existing superadmin rules | Denied              |
+
+Service handlers supply the operation to the session authorizer. It reads current
+role, superadmin status, session origin, expiry, revocation and passkey elevation
+under database locks. Permission is checked before replay or writes. Tokens and
+client headers cannot grant a permission. Worker origin is the immutable
+`auth_sessions.issued_for='maintenance'` field, not `X-Trotxi-Client`.
+Workers are refused ordinary authenticated reads and commands even when claiming
+to be the Ops client. Public endpoints remain public.
+
+No role migration or automatic promotion is performed. Existing admins retain
+dispatch but lose the sensitive actions above; existing superadmins retain them.
+The configured non-human worker remains an ordinary admin, not a superadmin.
+Before rollout, confirm an authorized human superadmin is available through the
+existing Team & access workflow. Worker sessions and durable audit records remain
+unchanged. No shared staging accounts were modified to implement this policy.
+
+### Documentation access
+
+`REPLACEMENT_DEPLOYMENT_ENVIRONMENT=production` disables `/docs` and `/docs/json`
+(404), including production deployments using test payments. Staging exposes a
+read-only endpoint catalogue and JSON specification. `NODE_ENV` does not select
+this policy because staging also uses optimized production Node builds. Isolated
+application factories default to disabled unless explicitly configured read-only.
+
+The staging page uses no JavaScript, CDN, credential inputs or browser storage.
+Its CSP blocks scripts, embedding, form submission and external resources. The
+API still requires its normal authentication and permissions. Production API
+discovery is not prevented by hiding documentation; security must not rely on it.
+
+Ops and Dart code generation use the checked-in contract under
+`docs/design/contracts/`, not a production documentation URL. Set
+`REPLACEMENT_DOCS_URL` to approved external documentation if exposing a link from
+production configuration; production defaults to the repository documentation
+instead of advertising the disabled `/docs` route.

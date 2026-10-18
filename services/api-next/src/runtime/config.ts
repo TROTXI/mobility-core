@@ -28,6 +28,8 @@ export interface KeyMaterial {
   paystackEvidence: Buffer;
 }
 export interface RuntimeConfig {
+  /** Production never registers the API documentation routes. */
+  apiDocumentation?: 'read-only' | 'disabled';
   /** Pinned staging service and preserved purpose-separated key derivation. */
   existingStaging?: boolean;
   databaseUrl: string;
@@ -70,7 +72,7 @@ export interface RuntimeConfig {
   };
   mapTiles: MapTiles;
   support: SupportContacts;
-  /** Absent means the service's own /docs, which is what it serves. */
+  /** Staging defaults to /docs; production defaults to the checked-in documentation. */
   docsUrl?: string;
   floors: {
     ops: number;
@@ -301,6 +303,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     throw new ConfigurationError('Erasure journal encryption key must be dedicated');
   return {
     existingStaging,
+    apiDocumentation: deployment === 'production' ? 'disabled' : 'read-only',
     ...(erasureJournal ? { erasureJournal } : {}),
     ...(optional(env, 'FIREBASE_SERVICE_ACCOUNT')
       ? { firebaseServiceAccount: required(env, 'FIREBASE_SERVICE_ACCOUNT') }
@@ -402,12 +405,12 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       email: optional(env, 'REPLACEMENT_OPERATIONS_EMAIL'),
       hours: optional(env, 'REPLACEMENT_OPERATIONS_HOURS'),
     },
-    // No default. The service describes itself at /docs, which is what the
-    // config service falls back to. The previous default named a domain
-    // nobody owns, so every client was told where the documentation was and
-    // sent somewhere that does not resolve. Set this only when the docs move
-    // to a real host, and it still has to be an absolute https URL.
-    docsUrl: optional(env, 'REPLACEMENT_DOCS_URL') ? url(env, 'REPLACEMENT_DOCS_URL') : undefined,
+    // Do not advertise the disabled production route through bootstrap.
+    docsUrl: optional(env, 'REPLACEMENT_DOCS_URL')
+      ? url(env, 'REPLACEMENT_DOCS_URL')
+      : deployment === 'production'
+        ? 'https://github.com/TROTXI/mobility-core/tree/main/docs/features'
+        : undefined,
     floors: {
       ops: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1, 1_000_000),
       driver: {

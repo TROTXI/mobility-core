@@ -187,6 +187,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       pool,
       cursorSecret: config.keys.cursorSecret,
       credentialReplayKey: config.keys.credentialReplay,
+      apiDocumentation: config.apiDocumentation,
       ...(email ? { driverEmail: email } : {}),
       ...(sms ? { driverSms: sms } : {}),
       authProviders: config.providers,

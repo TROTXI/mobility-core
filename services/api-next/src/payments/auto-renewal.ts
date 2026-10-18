@@ -72,7 +72,7 @@ export interface RenewalEmail {
 export interface AutoRenewalOptions {
   pool: Pool;
   environment: 'test' | 'live';
-  authorizeSession: (c: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: import('../auth/ops-permissions.js').SessionAuthorizer;
   financial: FinancialFoundation;
   pricing: Pricing;
   /** Seal and open the saved card's secret part, bound to its rider. */
@@ -182,8 +182,8 @@ export class AutoRenewals {
     ).rows[0];
     if (user?.role !== 'commuter') fail(403, 'forbidden', 'Auto-renewal is for commuter accounts.');
   }
-  private async operator(c: PoolClient, actor: Actor) {
-    await this.options.authorizeSession(c, actor);
+  private async operator(c: PoolClient, actor: Actor, operation?: string) {
+    await this.options.authorizeSession(c, actor, { operation });
     const user = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL', [actor.userId])
     ).rows[0];
@@ -567,7 +567,7 @@ export class AutoRenewals {
     const now = this.now();
     const sent: string[] = [];
     const due = await this.tx(async (c) => {
-      await this.operator(c, actor);
+      await this.operator(c, actor, 'runAutoRenewals');
       // A renewal fulfilled since the last run is paid, never lapsed.
       await c.query(
         `UPDATE app.auto_renewals r SET state='paid',next_attempt_at=NULL,updated_at=clock_timestamp()

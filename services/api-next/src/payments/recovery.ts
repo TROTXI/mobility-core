@@ -18,7 +18,7 @@ export interface RecoveryDependencies {
   pool: Pool;
   provider: PaystackEvidence;
   foundation: FinancialFoundation;
-  authorizeSession: (c: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: import('../auth/ops-permissions.js').SessionAuthorizer;
   cursorSecret: Buffer;
   // 013 supplies reservation/pause coordination. Never commit or call an
   // external service here: a thrown error must roll back the complete reversal.
@@ -121,11 +121,11 @@ export class PaymentRecovery {
       c.release();
     }
   }
-  private async admin(c: PoolClient, actor: Actor) {
+  private async admin(c: PoolClient, actor: Actor, operation?: string) {
     const r = (
       await c.query('SELECT role,deleted_at FROM app.users WHERE id=$1 FOR SHARE', [actor.userId])
     ).rows[0];
-    await this.options.authorizeSession(c, actor);
+    await this.options.authorizeSession(c, actor, { operation });
     if (!r || r.deleted_at) fail(401, 'unauthenticated', 'Account unavailable.');
     if (r.role !== 'admin') fail(403, 'forbidden', 'Operations access required.');
   }
@@ -734,7 +734,13 @@ export class PaymentRecovery {
     limit = 100,
   ) {
     limitOf(limit);
-    await this.tx((c) => this.admin(c, actor));
+    const operation = {
+      inbox: 'runPaymentInbox',
+      reconciliation: 'runPaymentReconciliation',
+      periods: 'runPeriodClose',
+      all: 'runPayments',
+    }[kind];
+    await this.tx((c) => this.admin(c, actor, operation));
     const now = new Date();
     if (kind === 'inbox') return this.processInbox(limit);
     if (kind === 'reconciliation') return this.reconcile(new Date(now.getTime() - 3600000), limit);
@@ -805,7 +811,7 @@ export class PaymentRecovery {
     const keyHash = digest(key),
       input = digest(canonical(body));
     return this.tx(async (c) => {
-      await this.admin(c, actor);
+      await this.admin(c, actor, 'resolvePaymentReview');
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         JSON.stringify([actor.userId, id, keyHash]),
       ]);

@@ -11,7 +11,7 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { createReplacementApp } from '../src/http/replacement.js';
 import { AuthService } from '../src/auth/service.js';
 import { PhoneOtp } from '../src/auth/phone-otp.js';
-import { purgeExpiredEmailAccess } from '../src/auth/email-auth.js';
+import { EmailAuth, purgeExpiredEmailAccess } from '../src/auth/email-auth.js';
 import { StandbyService } from '../src/membership/standby.js';
 import type { Purchases } from '../src/payments/purchases.js';
 import type { SmsSender } from '../src/notifications/mnotify.js';
@@ -2542,6 +2542,72 @@ async function registeredEmail(f: Awaited<ReturnType<typeof setup>>) {
     }),
   );
 }
+test('EMAIL-11 rotating source IPs and concurrent replicas share atomic account admission', async (t) => {
+  const f = await setup(t);
+  data(await f.request('POST', '/v1/auth/email/signup', emailRegistration));
+  data(
+    await f.request('POST', '/v1/auth/email/complete', {
+      token: await emailToken(f),
+      password: emailPassword,
+    }),
+    204,
+  );
+  // Track returned counts as well as outcomes so crossing a real clock-minute
+  // boundary cannot make this integration test intermittently fail.
+  let admitted = 0;
+  const pool = {
+    query: async (sql: string, args: unknown[]) => {
+      const result = await f.runtime.query(sql, args);
+      if (
+        sql.includes('INSERT INTO app.admission_counters') &&
+        String(args[0]).startsWith('email-password-account:') &&
+        result.rows[0].count <= 30
+      )
+        admitted++;
+      return result;
+    },
+  } as unknown as pg.Pool;
+  const replicas = [0, 1].map(
+    () =>
+      new EmailAuth({
+        pool,
+        secret: Buffer.alloc(32, 6),
+        authorize: async () => {},
+        issue: async () => {},
+      }),
+  );
+  for (const email of [emailRegistration.email, 'unknown@example.test']) {
+    admitted = 0;
+    const results = await Promise.allSettled(
+      Array.from({ length: 48 }, (_, i) =>
+        replicas[i % 2]!.handle(
+          'signInEmail',
+          undefined,
+          { email: i % 2 ? email.toUpperCase() : email, password: 'incorrect' },
+          `198.51.100.${i}`,
+        ),
+      ),
+    );
+    const codes = results.map((result) => {
+      assert.equal(result.status, 'rejected');
+      return (result as PromiseRejectedResult).reason.code;
+    });
+    // The password hasher independently caps concurrent work at two requests.
+    // Admitted attempts can therefore report auth_busy, but must still spend
+    // the shared account budget before reaching that bounded hashing stage.
+    assert.equal(
+      codes.filter((code) => code === 'invalid_credentials' || code === 'auth_busy').length,
+      admitted,
+    );
+    assert.ok(codes.includes('invalid_credentials'));
+    assert.equal(codes.filter((code) => code === 'rate_limited').length, 48 - admitted);
+    assert.ok(admitted >= 30);
+  }
+  const subjects = (await f.owner.query('SELECT subject FROM app.admission_counters')).rows;
+  assert.equal(subjects.filter((r) => r.subject.startsWith('email-password-account:')).length, 2);
+  assert.ok(subjects.every((r) => !r.subject.includes('@') && !r.subject.includes('198.51')));
+});
+
 test('EMAIL-01 any email domain, full names, proof before password, no automatic phone verification', async (t) => {
   const f = await setup(t);
   assert.equal(

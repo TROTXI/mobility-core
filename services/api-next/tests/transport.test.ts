@@ -218,6 +218,7 @@ test('only the Ops website origin passes a browser preflight, and a real request
 test('the service describes itself at /docs, from the contract it routes from', async () => {
   const pool = new Pool();
   const app = await createTransportApp({
+    apiDocumentation: 'read-only',
     pool,
     coordinateReservations: rejectBookingChanges,
     cursorSecret: Buffer.alloc(32, 9),
@@ -258,19 +259,50 @@ test('the service describes itself at /docs, from the contract it routes from', 
     const page = await app.inject({ method: 'GET', url: '/docs' });
     assert.equal(page.statusCode, 200);
     assert.match(page.headers['content-type'] as string, /text\/html/);
-    assert.match(page.body, /spec-url="\/docs\/json"/);
+    assert.match(page.body, /href="\/docs\/json"/);
+    assert.doesNotMatch(page.body, /<script|persist-auth|localStorage|sessionStorage|<input/);
+    assert.match(String(page.headers['content-security-policy']), /default-src 'none'/);
+    assert.equal(page.headers['referrer-policy'], 'no-referrer');
+    assert.equal(page.headers['x-content-type-options'], 'nosniff');
+    assert.equal(page.headers['x-frame-options'], 'DENY');
 
-    // Both are deliberately open, which is what the old service did. If that
-    // is ever tightened, this is the line that should fail and be changed on
-    // purpose rather than the surface quietly closing or opening.
+    // Explicit staging docs are public, but never grant endpoint access.
     assert.equal(
       (await app.inject({ method: 'GET', url: '/docs/json', headers: {} })).statusCode,
       200,
       'no authorization header required',
     );
+    assert.equal((await app.inject({ method: 'GET', url: '/v1/ops/trips' })).statusCode, 401);
   } finally {
     await app.close();
     await pool.end();
+  }
+});
+
+test('API documentation is absent by default and when disabled in production', async () => {
+  for (const apiDocumentation of [undefined, 'disabled'] as const) {
+    const pool = new Pool();
+    const app = await createTransportApp({
+      apiDocumentation,
+      pool,
+      coordinateReservations: rejectBookingChanges,
+      cursorSecret: Buffer.alloc(32, 9),
+      verifyAccess: async () => null,
+      authorizeSession: async () => {
+        throw new Error('not reached');
+      },
+      minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+    });
+    try {
+      for (const url of ['/docs', '/docs/json']) {
+        assert.equal((await app.inject({ method: 'GET', url })).statusCode, 404);
+        assert.equal((await app.inject({ method: 'HEAD', url })).statusCode, 404);
+      }
+      assert.equal((await app.inject({ method: 'GET', url: '/v1/ops/trips' })).statusCode, 401);
+    } finally {
+      await app.close();
+      await pool.end();
+    }
   }
 });
 

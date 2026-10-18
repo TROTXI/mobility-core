@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import type { SessionAuthorizer } from '../auth/ops-permissions.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
@@ -58,7 +59,7 @@ export interface FinancialDependencies {
   environment: 'test' | 'live';
   /** Only historical-model tests may opt out. Runtime always requires an offer. */
   requireOffer?: boolean;
-  authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: SessionAuthorizer;
   subscriptionActive?: (client: PoolClient, userId: string, purchaseId: string) => Promise<void>;
   // These MUST use this transaction client. No HTTP/provider calls or commits.
   // 012 supplies applicable account/period blocks; 013 supplies pause/reservation
