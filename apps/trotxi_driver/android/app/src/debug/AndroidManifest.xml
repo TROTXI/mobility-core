@@ -13,5 +13,7 @@
          DEBUG MANIFEST ONLY. The release build keeps the default, so shipped
          builds still refuse cleartext and staging/production are HTTPS anyway.
     -->
-    <application android:usesCleartextTraffic="true" />
+    <application android:usesCleartextTraffic="true">
+        <meta-data android:name="firebase_performance_collection_deactivated" android:value="true" />
+    </application>
 </manifest>

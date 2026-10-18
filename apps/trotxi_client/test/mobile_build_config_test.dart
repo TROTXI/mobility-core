@@ -157,17 +157,13 @@ void main() {
         isNot(contains(staging['FIREBASE_ANDROID_API_KEY'])));
   });
 
-  test(
-      'optional telemetry and sensitive request logging cannot return unnoticed',
-      () {
+  test('analytics and sensitive request logging cannot return unnoticed', () {
     for (final app in ['commuter', 'driver']) {
       final path = '$root/apps/trotxi_$app';
       for (final file in ['pubspec.yaml', 'pubspec.lock']) {
         final contents = File('$path/$file').readAsStringSync();
         for (final sdk in [
           'firebase_analytics',
-          'firebase_crashlytics',
-          'firebase_performance',
           'firebase_auth',
           'google_mobile_ads',
           'app_tracking_transparency'
@@ -180,6 +176,22 @@ void main() {
       expect(main, contains('initializeOptionalService'));
       expect(main, contains('MobileBuildConfig.fromEnvironment.validate'));
       expect(main, isNot(contains('ApiDebugInterceptor')));
+      expect(main, contains('startFirebaseDiagnostics'));
+      expect(main, contains('release: kReleaseMode'));
+      final android = File('$path/android/app/src/main/AndroidManifest.xml')
+          .readAsStringSync();
+      expect(
+          android,
+          contains(
+              'android:name="firebase_crashlytics_collection_enabled" android:value="false"'));
+      expect(
+          android,
+          contains(
+              'android:name="firebase_performance_collection_enabled" android:value="false"'));
+      expect(File('$path/android/app/build.gradle.kts').readAsStringSync(),
+          isNot(contains('id("com.google.firebase.firebase-perf")')));
+      expect(File('$path/ios/Runner/AppDelegate.swift').readAsStringSync(),
+          contains('isInstrumentationEnabled = false'));
       expect(File('$path/android/app/build.gradle.kts').readAsStringSync(),
           contains('validate_mobile_build.dart'));
       expect(

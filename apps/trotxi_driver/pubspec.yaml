@@ -46,6 +46,8 @@ dependencies:
   trotxi_map:
     path: ../trotxi_map
   firebase_core: ^4.11.0
+  trotxi_diagnostics:
+    path: ../trotxi_diagnostics
   flutter_secure_storage: ^10.3.1
   provider: ^6.1.5+1
   intl: ^0.20.3

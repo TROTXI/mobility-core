@@ -35,6 +35,7 @@ infra/docker/volumes/
 # Flutter / Dart
 apps/**/.dart_tool/
 apps/**/build/
+apps/**/android/.kotlin/
 apps/**/.flutter-plugins
 apps/**/.flutter-plugins-dependencies
 apps/**/*.iml

@@ -4,6 +4,15 @@
     "artifact": "iOS debug simulator",
     "manifests": [
       {
+        "path": "Firebase_FirebaseABTesting.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
         "path": "Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
@@ -18,6 +27,15 @@
         }
       },
       {
+        "path": "Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
         "path": "Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
@@ -27,6 +45,37 @@
             {
               "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
               "NSPrivacyAccessedAPITypeReasons": ["1C8F.1"]
+            }
+          ]
+        }
+      },
+      {
+        "path": "Firebase_FirebaseCrashlytics.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [
+            {
+              "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
+              "NSPrivacyCollectedDataTypeLinked": false,
+              "NSPrivacyCollectedDataTypeTracking": false,
+              "NSPrivacyCollectedDataTypePurposes": [
+                "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+              ]
+            },
+            {
+              "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherDiagnosticData",
+              "NSPrivacyCollectedDataTypeLinked": false,
+              "NSPrivacyCollectedDataTypeTracking": false,
+              "NSPrivacyCollectedDataTypePurposes": [
+                "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+              ]
+            }
+          ],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": [
+            {
+              "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+              "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
             }
           ]
         }
@@ -168,6 +217,15 @@
         }
       },
       {
+        "path": "GoogleUtilities_GoogleUtilities-MethodSwizzler.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
         "path": "GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
@@ -215,6 +273,15 @@
       },
       {
         "path": "Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
+        "path": "Promises_Promises.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
           "NSPrivacyTrackingDomains": [],
@@ -288,6 +355,15 @@
     "artifact": "iOS debug simulator",
     "manifests": [
       {
+        "path": "Firebase_FirebaseABTesting.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
         "path": "Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
@@ -302,6 +378,15 @@
         }
       },
       {
+        "path": "Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
         "path": "Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
@@ -311,6 +396,37 @@
             {
               "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
               "NSPrivacyAccessedAPITypeReasons": ["1C8F.1"]
+            }
+          ]
+        }
+      },
+      {
+        "path": "Firebase_FirebaseCrashlytics.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [
+            {
+              "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
+              "NSPrivacyCollectedDataTypeLinked": false,
+              "NSPrivacyCollectedDataTypeTracking": false,
+              "NSPrivacyCollectedDataTypePurposes": [
+                "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+              ]
+            },
+            {
+              "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherDiagnosticData",
+              "NSPrivacyCollectedDataTypeLinked": false,
+              "NSPrivacyCollectedDataTypeTracking": false,
+              "NSPrivacyCollectedDataTypePurposes": [
+                "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+              ]
+            }
+          ],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": [
+            {
+              "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+              "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
             }
           ]
         }
@@ -452,6 +568,15 @@
         }
       },
       {
+        "path": "GoogleUtilities_GoogleUtilities-MethodSwizzler.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
         "path": "GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
@@ -499,6 +624,15 @@
       },
       {
         "path": "Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy",
+        "declarations": {
+          "NSPrivacyCollectedDataTypes": [],
+          "NSPrivacyTrackingDomains": [],
+          "NSPrivacyTracking": false,
+          "NSPrivacyAccessedAPITypes": []
+        }
+      },
+      {
+        "path": "Promises_Promises.bundle/PrivacyInfo.xcprivacy",
         "declarations": {
           "NSPrivacyCollectedDataTypes": [],
           "NSPrivacyTrackingDomains": [],

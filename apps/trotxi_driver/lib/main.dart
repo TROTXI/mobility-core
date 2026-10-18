@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:trotxi_diagnostics/diagnostics.dart';
+import 'package:trotxi_diagnostics/firebase_diagnostics.dart';
+import 'package:trotxi_diagnostics/timing_interceptor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
@@ -35,6 +38,7 @@ const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
 
 Future<void> main() async {
   var launched = false;
+  MobileDiagnostics? diagnostics;
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
@@ -43,20 +47,34 @@ Future<void> main() async {
       // back to staging or reuse the old unscoped session on a bad build.
       TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
-      await initializeOptionalService(() async {
+      final firebaseReady = await initializeOptionalService(() async {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
       });
+      if (firebaseReady) {
+        await initializeOptionalService(() async {
+          diagnostics = startFirebaseDiagnostics(
+            release: kReleaseMode,
+            scope:
+                '${const String.fromEnvironment('APP_ENVIRONMENT')}:${DefaultFirebaseOptions.currentPlatform.projectId}',
+          );
+        });
+      }
 
       // Catch Flutter framework errors (widget build errors, layout errors, etc.)
       FlutterError.onError = (errorDetails) {
         if (kDebugMode) FlutterError.presentError(errorDetails);
+        diagnostics?.report(
+          errorDetails.exception,
+          errorDetails.stack ?? StackTrace.empty,
+          ErrorSource.framework,
+        );
       };
 
       // Catch errors outside Flutter's error handling (async errors, isolate errors)
       PlatformDispatcher.instance.onError = (error, stack) {
-        // No raw exceptions, URLs or identity data leave the device.
+        diagnostics?.report(error, stack, ErrorSource.platform, fatal: true);
         return true;
       };
 
@@ -76,6 +94,12 @@ Future<void> main() async {
         tokenStore: tokens,
         metadata: metadata,
       );
+      final reporting = diagnostics;
+      if (reporting != null) {
+        transport.dio.interceptors.add(
+          DiagnosticTimingInterceptor(reporting, apiOrigin: _apiBaseUrl),
+        );
+      }
       final client = DriverApi(
         client: transport,
         store: tokens,
@@ -85,7 +109,7 @@ Future<void> main() async {
       launched = true;
     },
     (error, stack) {
-      // Do not forward raw startup exceptions to an external collector.
+      diagnostics?.report(error, stack, ErrorSource.zone, fatal: true);
       if (launched) return;
       runApp(
         const MaterialApp(

@@ -32,8 +32,13 @@ denial remains possible; camera and notification consent are separate.
 
 The app describes identity/profile and photo, assignments, boarding, incidents,
 work requests and device notification registration. Firebase Core and Messaging
-remain for push; Analytics, Crashlytics and Performance are removed from current
-mobile builds. Historical provider data is not deleted by this change. It explains
+remain for push. Release builds use Crashlytics for filtered Dart errors and native
+crash reports, including native exception text and device/app metadata. Performance
+receives sampled operation timings and Android app lifecycle metrics. Our reporting
+code excludes identity, request contents/URLs, payment details and GPS coordinates.
+Automatic network tracing is disabled and Firebase Analytics remains absent.
+The first launch under the new diagnostics policy discards locally queued legacy
+crash reports; this does not delete historical provider data. The notice explains
 precise active-trip location, eligible rider/operations access, and safe use.
 It does not describe payments as driver salary, advertise 24/7 support, or claim
 an incident form summons emergency help.
