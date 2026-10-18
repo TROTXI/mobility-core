@@ -104,12 +104,12 @@ export function LiveMap({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`${apiBaseUrl}/flags`, { signal: controller.signal })
+    void fetch(`${apiBaseUrl}/bootstrap`, { signal: controller.signal })
       .then((response) =>
         response.ok ? response.json() : Promise.reject(new Error('map_config_unavailable')),
       )
       .then((body: unknown) => {
-        // GET /flags is a public Bootstrap object, not a {data: ...} envelope.
+        // GET /bootstrap is a public object, not a {data: ...} envelope.
         const style = mapStyleFromBootstrap(body, appearance);
         if (!style) throw new Error('map_style_unavailable');
         setBootstrap(body);

@@ -127,15 +127,28 @@ class HelpSupportPage extends StatelessWidget {
               ],
               const SizedBox(height: 28),
               Text(
-                'Privacy and account',
+                'Legal and account',
                 style: AppTypography.title.copyWith(color: colors.textPrimary),
               ),
               const SizedBox(height: 12),
               _linkTile(
                 context,
+                icon: Icons.description_outlined,
+                title: 'Terms and Conditions',
+                onTap: () => _open(context, TrotxiPublicInformation.terms),
+              ),
+              _linkTile(
+                context,
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privacy notice',
                 onTap: () => _open(context, TrotxiPublicInformation.privacy),
+              ),
+              _linkTile(
+                context,
+                icon: Icons.tune_outlined,
+                title: 'Privacy choices',
+                onTap: () =>
+                    _open(context, TrotxiPublicInformation.privacyChoices),
               ),
               _linkTile(
                 context,
@@ -196,6 +209,7 @@ class HelpSupportPage extends StatelessWidget {
           leading: Icon(icon, color: colors.actionSecondary),
           title: Text(
             title,
+            semanticsLabel: external ? '$title, opens outside the app' : title,
             style: AppTypography.label.copyWith(color: colors.textPrimary),
           ),
           subtitle: subtitle == null

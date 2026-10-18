@@ -21,6 +21,7 @@
         </picture>
       </a>
       <nav aria-label="Public information">
+        <a href="./terms">Terms</a>
         <a href="./privacy" aria-current="page">Privacy</a>
         <a href="./delete-account">Account deletion</a>
       </nav>
@@ -28,7 +29,7 @@
     <main id="content">
       <p class="eyebrow">Trotxi Commuter &amp; Trotxi Driver</p>
       <h1>Your information. Clear boundaries.</h1>
-      <p class="muted">Privacy notice · Updated 29 September 2026</p>
+      <p class="muted">Privacy notice · Updated 17 October 2026</p>
       <p>
         This notice describes the Trotxi pilot commuter and driver apps and the operations website
         that supports them. It explains the information we use, why we use it, who can access it,
@@ -77,9 +78,17 @@
         </li>
         <li>
           <strong>Devices and reliability:</strong> session and device-registration information,
-          push tokens, app versions, request diagnostics, and Firebase analytics, crash and
-          performance information where enabled. Service monitoring includes technical metrics, logs
-          and traces.
+          push tokens, app versions and request diagnostics. Current mobile builds use Firebase
+          installation identifiers, push tokens and technical service metadata for notifications.
+          Release builds use Firebase Crashlytics for crash reports, including native crash stacks,
+          native exception messages and device/app metadata. App-reported Dart errors use fixed
+          categories and filtered stack traces. Firebase Performance records selected operation
+          timings and technical device/app metadata; Android also records app lifecycle performance.
+          Our reporting code does not attach names, contact details, account IDs, request URLs,
+          headers or bodies, payment details, or GPS coordinates. Automatic network tracing and
+          Firebase Analytics are not enabled. Older builds may have sent broader diagnostics. Server
+          monitoring includes technical metrics, logs and traces. We do not use advertising
+          identifiers or track you across other companies' apps.
         </li>
       </ul>
 
@@ -123,14 +132,20 @@
       </p>
       <p>
         We use service providers for hosting and database storage (Render), files and map delivery
-        (Cloudflare), sign-in and mobile messaging/diagnostics (Google and Firebase; Apple when
-        enabled), SMS (mNotify), payments (Paystack), transactional email (Resend), and monitoring
-        (Grafana). GitHub Actions runs scheduled maintenance. Providers process information
-        necessary for their role; their infrastructure may process information outside Ghana.
+        (Cloudflare), sign-in and mobile messaging (Google and Firebase; Apple when enabled), SMS
+        (mNotify), payments (Paystack), transactional email (Resend), and monitoring (Grafana and
+        Firebase Crashlytics/Performance). GitHub Actions runs scheduled maintenance. Providers
+        process information necessary for their role; their infrastructure may process information
+        outside Ghana.
       </p>
 
       <h2>Storage and retention</h2>
       <ul>
+        <li>
+          <strong>Mobile diagnostics:</strong> provider retention applies to crash and performance
+          reports. Removing an SDK, signing out or deleting a Trotxi account does not automatically
+          erase reports already held by Firebase. Contact us about diagnostic-data requests.
+        </li>
         <li>
           <strong>Offline driver fixes:</strong> the protected queue holds at most 1,440 fixes.
           Entries older than 24 hours expire when the queue is next processed. Signing out clears
@@ -170,7 +185,7 @@
         important.
       </p>
 
-      <h2>Your choices and requests</h2>
+      <h2 id="choices">Your choices and requests</h2>
       <p>
         You can edit supported profile fields and your optional photo, manage permissions in device
         settings, and sign out. Commuters can initiate account deletion from Profile → Security
@@ -192,7 +207,7 @@
       </p>
     </main>
     <footer>
-      Trotxi · <a href="./privacy">Privacy notice</a> ·
+      Trotxi · <a href="./terms">Terms and Conditions</a> · <a href="./privacy">Privacy notice</a> ·
       <a href="./delete-account">Account deletion</a>
     </footer>
   </body>

@@ -28,6 +28,8 @@ export interface KeyMaterial {
   paystackEvidence: Buffer;
 }
 export interface RuntimeConfig {
+  /** Production never registers the API documentation routes. */
+  apiDocumentation?: 'read-only' | 'disabled';
   /** Pinned staging service and preserved purpose-separated key derivation. */
   existingStaging?: boolean;
   databaseUrl: string;
@@ -70,7 +72,7 @@ export interface RuntimeConfig {
   };
   mapTiles: MapTiles;
   support: SupportContacts;
-  /** Absent means the service's own /docs, which is what it serves. */
+  /** Staging defaults to /docs; production defaults to the checked-in documentation. */
   docsUrl?: string;
   floors: {
     ops: number;
@@ -82,6 +84,8 @@ export interface RuntimeConfig {
   trustProxy: string | false;
   /** The operator account every maintenance receipt is attributed to. */
   maintenanceUserId: string;
+  /** Opt-in only after old schedules are disabled and hosting is always on. */
+  schedulerEnabled?: boolean;
 }
 
 export class ConfigurationError extends Error {}
@@ -277,6 +281,15 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
   const maintenanceUserId = (optional(env, 'REPLACEMENT_MAINTENANCE_USER_ID') ?? '').toLowerCase();
   if (maintenanceUserId && !uuid.test(maintenanceUserId))
     throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
+  const schedulerSetting = optional(env, 'REPLACEMENT_SCHEDULER_ENABLED') ?? 'false';
+  if (!['true', 'false'].includes(schedulerSetting))
+    throw new ConfigurationError('REPLACEMENT_SCHEDULER_ENABLED must be true or false');
+  const schedulerEnabled = schedulerSetting === 'true';
+  const poolSize = integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100);
+  if (schedulerEnabled && (!maintenanceUserId || poolSize < 4))
+    throw new ConfigurationError(
+      'The scheduler requires a maintenance user and a pool size of at least 4',
+    );
   // Every per-IP limit here buckets on the address the server sees. Behind a
   // load balancer that is the balancer, so one caller's burst rate-limits
   // everybody and per-IP admission stops being a control at all. The boundary
@@ -301,6 +314,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     throw new ConfigurationError('Erasure journal encryption key must be dedicated');
   return {
     existingStaging,
+    apiDocumentation: deployment === 'production' ? 'disabled' : 'read-only',
     ...(erasureJournal ? { erasureJournal } : {}),
     ...(optional(env, 'FIREBASE_SERVICE_ACCOUNT')
       ? { firebaseServiceAccount: required(env, 'FIREBASE_SERVICE_ACCOUNT') }
@@ -323,7 +337,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     ...(existingStaging
       ? { databaseSsl: stagingDatabase(databaseUrl, env.STAGING_DATABASE_CA_CERT).ssl }
       : {}),
-    poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
+    poolSize,
     // Drivers publish every five seconds through patchy coverage, so a short
     // threshold cries wolf all morning. Five minutes to start; tune it from what
     // the ops team actually sees rather than from a guess made before launch.
@@ -402,12 +416,12 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       email: optional(env, 'REPLACEMENT_OPERATIONS_EMAIL'),
       hours: optional(env, 'REPLACEMENT_OPERATIONS_HOURS'),
     },
-    // No default. The service describes itself at /docs, which is what the
-    // config service falls back to. The previous default named a domain
-    // nobody owns, so every client was told where the documentation was and
-    // sent somewhere that does not resolve. Set this only when the docs move
-    // to a real host, and it still has to be an absolute https URL.
-    docsUrl: optional(env, 'REPLACEMENT_DOCS_URL') ? url(env, 'REPLACEMENT_DOCS_URL') : undefined,
+    // Do not advertise the disabled production route through bootstrap.
+    docsUrl: optional(env, 'REPLACEMENT_DOCS_URL')
+      ? url(env, 'REPLACEMENT_DOCS_URL')
+      : deployment === 'production'
+        ? 'https://github.com/TROTXI/mobility-core/tree/main/docs/features'
+        : undefined,
     floors: {
       ops: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1, 1_000_000),
       driver: {
@@ -426,5 +440,6 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     },
     trustProxy,
     maintenanceUserId,
+    schedulerEnabled,
   };
 }

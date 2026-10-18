@@ -12,6 +12,7 @@ import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_details_page.da
 import 'package:trotxi_commuter/Features/Home/widgets/home_overview.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/widgets/figma_commuter_icon.dart';
+import 'package:trotxi_commuter/core/widgets/commuter_root_header.dart';
 import '../Trips/ride_rating_card.dart';
 import '../Trips/ride_journey_cards.dart';
 import '../Trips/confirm_ride_page.dart';
@@ -50,7 +51,6 @@ class HomeTab extends ConsumerStatefulWidget {
     this.onShowRoutes,
     this.onShowWallet,
     this.onShowSupport,
-    this.onShowProfile,
     this.isActive = true,
   });
 
@@ -63,7 +63,6 @@ class HomeTab extends ConsumerStatefulWidget {
   final VoidCallback? onShowRoutes;
   final VoidCallback? onShowWallet;
   final VoidCallback? onShowSupport;
-  final VoidCallback? onShowProfile;
   final bool isActive;
 
   @override
@@ -346,38 +345,29 @@ class _HomeTabState extends ConsumerState<HomeTab> with WidgetsBindingObserver {
               ],
             ),
           ),
-          if (AppThemeControllerScope.maybeOf(context) case final controller?)
-            IconButton(
+          CommuterHeaderAction(
+            tooltip: 'Open notifications',
+            onPressed: _showInbox,
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: colors.iconDefault,
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (AppThemeControllerScope.maybeOf(context)
+              case final controller?) ...[
+            CommuterHeaderAction(
               tooltip: Theme.of(context).brightness == Brightness.dark
                   ? 'Switch to light mode'
                   : 'Switch to dark mode',
               onPressed: () => controller.toggle(Theme.of(context).brightness),
-              icon: FigmaCommuterIcon(
+              child: FigmaCommuterIcon(
                 Theme.of(context).brightness == Brightness.dark
                     ? CommuterIcon.sun
                     : CommuterIcon.moon,
               ),
             ),
-          if (widget.onShowProfile != null)
-            IconButton(
-              tooltip: 'Open profile',
-              onPressed: widget.onShowProfile,
-              icon: CircleAvatar(
-                radius: 16,
-                backgroundColor: colors.actionPrimaryDefault,
-                backgroundImage: widget.userData.avatarUrl?.isNotEmpty == true
-                    ? NetworkImage(widget.userData.avatarUrl!)
-                    : null,
-                child: widget.userData.avatarUrl?.isNotEmpty == true
-                    ? null
-                    : Text(
-                        _firstName[0].toUpperCase(),
-                        style: AppTypography.label.copyWith(
-                          color: colors.actionOnPrimary,
-                        ),
-                      ),
-              ),
-            ),
+          ],
         ],
       ),
     );

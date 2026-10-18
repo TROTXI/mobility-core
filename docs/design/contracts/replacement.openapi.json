@@ -166,7 +166,7 @@
         "x-sensitive": false
       }
     },
-    "/flags": {
+    "/bootstrap": {
       "get": {
         "operationId": "getBootstrap",
         "summary": "get Bootstrap",
@@ -180,106 +180,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Bootstrap"
-                },
-                "examples": {
-                  "staging_6": {
-                    "summary": "Staging 2026-09-20T00:20:54.897Z — identifiers/personal fields sanitized",
-                    "value": {
-                      "serverTime": "2026-09-20T00:20:54.881Z",
-                      "applications": [
-                        {
-                          "app": "commuter",
-                          "platform": "ios",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        },
-                        {
-                          "app": "commuter",
-                          "platform": "android",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        },
-                        {
-                          "app": "driver",
-                          "platform": "ios",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        },
-                        {
-                          "app": "driver",
-                          "platform": "android",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        }
-                      ],
-                      "operations": {
-                        "phone": null,
-                        "whatsapp": null,
-                        "email": null,
-                        "hours": null
-                      },
-                      "mapTiles": {
-                        "url": "https://tiles.trotxi.com/ghana.pmtiles",
-                        "styleUrl": "https://tiles.trotxi.com/style.light.json",
-                        "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-                        "attribution": "© OpenStreetMap contributors"
-                      },
-                      "flags": []
-                    }
-                  },
-                  "staging_17": {
-                    "summary": "Staging 2026-09-20T00:32:58.843Z — identifiers/personal fields sanitized",
-                    "value": {
-                      "serverTime": "2026-09-20T00:32:59.154Z",
-                      "applications": [
-                        {
-                          "app": "commuter",
-                          "platform": "ios",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        },
-                        {
-                          "app": "commuter",
-                          "platform": "android",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        },
-                        {
-                          "app": "driver",
-                          "platform": "ios",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        },
-                        {
-                          "app": "driver",
-                          "platform": "android",
-                          "minSupportedBuild": 1,
-                          "storeUrl": null,
-                          "apiMajor": 1
-                        }
-                      ],
-                      "operations": {
-                        "phone": null,
-                        "whatsapp": null,
-                        "email": null,
-                        "hours": null
-                      },
-                      "mapTiles": {
-                        "url": "https://tiles.trotxi.com/ghana.pmtiles",
-                        "styleUrl": "https://tiles.trotxi.com/style.light.json",
-                        "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-                        "attribution": "© OpenStreetMap contributors"
-                      },
-                      "flags": []
-                    }
-                  }
                 }
               }
             }
@@ -6233,7 +6133,7 @@
                       }
                     }
                   },
-                  "staging_14": {
+                  "staging_13": {
                     "summary": "Staging 2026-09-20T00:27:24.196Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -6266,7 +6166,7 @@
                       }
                     }
                   },
-                  "staging_18": {
+                  "staging_16": {
                     "summary": "Staging 2026-09-20T00:33:05.278Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -7311,7 +7211,7 @@
                       }
                     }
                   },
-                  "staging_12": {
+                  "staging_11": {
                     "summary": "Staging 2026-09-20T00:27:24.421Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": [
@@ -7346,7 +7246,7 @@
                       }
                     }
                   },
-                  "staging_16": {
+                  "staging_15": {
                     "summary": "Staging 2026-09-20T00:33:43.807Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": [
@@ -7608,7 +7508,7 @@
                   "$ref": "#/components/schemas/PurchaseResponse"
                 },
                 "examples": {
-                  "staging_13": {
+                  "staging_12": {
                     "summary": "Staging 2026-09-20T00:27:09.434Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -7638,7 +7538,7 @@
                       }
                     }
                   },
-                  "staging_19": {
+                  "staging_17": {
                     "summary": "Staging 2026-09-20T00:33:44.035Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -7800,7 +7700,7 @@
                   "$ref": "#/components/schemas/CommuteRequestPage"
                 },
                 "examples": {
-                  "staging_15": {
+                  "staging_14": {
                     "summary": "Staging 2026-09-20T00:29:20.635Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": [],
@@ -9366,7 +9266,7 @@
                   "$ref": "#/components/schemas/RoutePage"
                 },
                 "examples": {
-                  "staging_7": {
+                  "staging_6": {
                     "summary": "Staging 2026-09-20T00:20:55.086Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": [
@@ -9516,7 +9416,7 @@
                   "$ref": "#/components/schemas/RouteResponse"
                 },
                 "examples": {
-                  "staging_8": {
+                  "staging_7": {
                     "summary": "Staging 2026-09-20T00:20:55.272Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -9667,7 +9567,7 @@
                   "$ref": "#/components/schemas/SchedulePage"
                 },
                 "examples": {
-                  "staging_9": {
+                  "staging_8": {
                     "summary": "Staging 2026-09-20T00:20:55.458Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": [
@@ -9914,7 +9814,7 @@
                   "$ref": "#/components/schemas/PatternVersionResponse"
                 },
                 "examples": {
-                  "staging_10": {
+                  "staging_9": {
                     "summary": "Staging 2026-09-20T00:20:55.975Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -9974,7 +9874,7 @@
                       }
                     }
                   },
-                  "staging_11": {
+                  "staging_10": {
                     "summary": "Staging 2026-09-20T00:20:56.590Z — identifiers/personal fields sanitized",
                     "value": {
                       "data": {
@@ -10490,6 +10390,19 @@
                   "awaiting-fix": {
                     "value": {
                       "data": {
+                        "trip": {
+                          "id": "trip-demo",
+                          "departureId": "departure-demo",
+                          "serviceDate": "2026-09-14",
+                          "runNumber": 1,
+                          "routeId": "route-demo",
+                          "patternId": "pattern-demo",
+                          "patternVersionId": "pattern-version-demo",
+                          "direction": "outbound",
+                          "scheduledAt": "2026-09-14T10:00:00Z",
+                          "status": "active",
+                          "vehicleLabel": null
+                        },
                         "tripId": "trip-demo",
                         "patternVersionId": "pattern-version-demo",
                         "geometryId": null,
@@ -19317,269 +19230,6 @@
         "x-sensitive": false
       }
     },
-    "/v1/ops/flags": {
-      "get": {
-        "operationId": "listFlags",
-        "summary": "list Flags",
-        "tags": ["ops"],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            },
-            "description": "Opaque cursor bound to caller, sort and filters."
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 200,
-              "default": 50
-            },
-            "description": "Page size. No silent truncation."
-          },
-          {
-            "name": "X-Trotxi-Client",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": ["commuter", "driver", "ops", "worker"]
-            },
-            "description": "Compatibility metadata only, never grants a role.",
-            "example": "ops"
-          },
-          {
-            "name": "X-Trotxi-Build",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
-            "example": 1
-          },
-          {
-            "name": "X-Trotxi-Platform",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": ["ios", "android"]
-            },
-            "description": "Required for commuter/driver, absent for ops/worker."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlagPage"
-                }
-              }
-            },
-            "headers": {
-              "ETag": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Opaque resource version; required on protected edits."
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "426": {
-            "$ref": "#/components/responses/Error426"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          },
-          "503": {
-            "$ref": "#/components/responses/Error503"
-          }
-        },
-        "x-authorization": "ops",
-        "x-retry": "safe_read",
-        "x-sensitive": false,
-        "x-list-order": "key ASC"
-      }
-    },
-    "/v1/ops/flags/{key}": {
-      "put": {
-        "operationId": "setFlag",
-        "summary": "set Flag",
-        "tags": ["ops"],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            },
-            "description": "Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization."
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            },
-            "description": "Caller + operation + target scoped; payload mismatch = 409. Never log secrets."
-          },
-          {
-            "name": "X-Trotxi-Client",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": ["commuter", "driver", "ops", "worker"]
-            },
-            "description": "Compatibility metadata only, never grants a role.",
-            "example": "ops"
-          },
-          {
-            "name": "X-Trotxi-Build",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
-            "example": 1
-          },
-          {
-            "name": "X-Trotxi-Platform",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": ["ios", "android"]
-            },
-            "description": "Required for commuter/driver, absent for ops/worker."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlagEdit"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlagResponse"
-                }
-              }
-            },
-            "headers": {
-              "ETag": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Opaque resource version; required on protected edits."
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "412": {
-            "$ref": "#/components/responses/Error412"
-          },
-          "426": {
-            "$ref": "#/components/responses/Error426"
-          },
-          "428": {
-            "$ref": "#/components/responses/Error428"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          },
-          "503": {
-            "$ref": "#/components/responses/Error503"
-          }
-        },
-        "x-authorization": "ops",
-        "x-retry": "idempotency_key",
-        "x-sensitive": false
-      }
-    },
     "/v1/ops/min-versions": {
       "get": {
         "operationId": "listMinimumVersions",
@@ -22660,6 +22310,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
         "required": ["idToken"],
@@ -23008,32 +22666,9 @@
             },
             "required": ["url", "styleUrl", "darkStyleUrl", "attribution"],
             "additionalProperties": false
-          },
-          "flags": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "key": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 200
-                },
-                "enabled": {
-                  "type": "boolean"
-                },
-                "rolloutPercentage": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 100
-                }
-              },
-              "required": ["key", "enabled", "rolloutPercentage"],
-              "additionalProperties": false
-            }
           }
         },
-        "required": ["serverTime", "applications", "operations", "mapTiles", "flags"],
+        "required": ["serverTime", "applications", "operations", "mapTiles"],
         "additionalProperties": false
       },
       "Build": {
@@ -24539,9 +24174,17 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
-        "required": ["email", "firstName", "lastName"],
+        "required": ["email", "firstName", "lastName", "acceptedTerms", "termsVersion"],
         "additionalProperties": false
       },
       "ErrorResponse": {
@@ -24734,99 +24377,6 @@
         "required": ["data"],
         "additionalProperties": false
       },
-      "Flag": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "rolloutPercentage": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 2000
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          },
-          "editToken": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
-          }
-        },
-        "required": ["key", "enabled", "rolloutPercentage", "description", "version", "editToken"],
-        "additionalProperties": false
-      },
-      "FlagEdit": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "rolloutPercentage": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 2000
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 2000
-          }
-        },
-        "required": ["enabled", "rolloutPercentage", "description", "reason"],
-        "additionalProperties": false
-      },
-      "FlagPage": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Flag"
-            }
-          },
-          "page": {
-            "type": "object",
-            "properties": {
-              "nextCursor": {
-                "nullable": true,
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128
-              }
-            },
-            "required": ["nextCursor"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["data", "page"],
-        "additionalProperties": false
-      },
-      "FlagResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/Flag"
-          }
-        },
-        "required": ["data"],
-        "additionalProperties": false
-      },
       "Geometry": {
         "type": "object",
         "properties": {
@@ -24876,6 +24426,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 8192
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
         "required": ["idToken"],
@@ -25055,6 +24613,14 @@
       "LiveTrip": {
         "type": "object",
         "properties": {
+          "trip": {
+            "description": "Current trip details included with the live snapshot so clients do not issue a second read.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Trip"
+              }
+            ]
+          },
           "tripId": {
             "type": "string",
             "minLength": 1,
@@ -25120,6 +24686,7 @@
           }
         },
         "required": [
+          "trip",
           "tripId",
           "patternVersionId",
           "geometryId",
@@ -29066,9 +28633,17 @@
             "minLength": 12,
             "maxLength": 128,
             "pattern": "(?=.*[A-Z])(?=.*[0-9])(?=.*[\\x21-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\x7e])"
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "termsVersion": {
+            "type": "string",
+            "pattern": "^2026-10-14$"
           }
         },
-        "required": ["firstName", "lastName", "email", "password"],
+        "required": ["firstName", "lastName", "email", "password", "acceptedTerms", "termsVersion"],
         "additionalProperties": false
       },
       "PhoneSignInRequest": {

@@ -20,15 +20,67 @@ void main() {
         ),
       ),
     );
+    await tester.tap(find.text('Terms and Conditions'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Privacy notice'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Request account deletion'));
     await tester.pumpAndSettle();
     expect(opened, [
+      TrotxiPublicInformation.terms,
       TrotxiPublicInformation.privacy,
       TrotxiPublicInformation.deletion,
     ]);
   });
+
+  testWidgets('browser exceptions leave Terms readable as a copyable URL', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PublicInformationLinks(
+            open: (_) async => throw Exception('No browser'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Terms and Conditions'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SelectableText), findsOneWidget);
+    expect(find.text(TrotxiPublicInformation.terms.toString()), findsOneWidget);
+  });
+
+  testWidgets(
+    'legal links have labelled 48-pixel targets at large text sizes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: const Scaffold(
+              body: SingleChildScrollView(child: PublicInformationLinks()),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(
+        find.bySemanticsLabel('Terms and Conditions, opens in browser'),
+        findsOneWidget,
+      );
+      for (final button in find.byType(TextButton).evaluate()) {
+        expect(
+          tester.getSize(find.byWidget(button.widget)).height,
+          greaterThanOrEqualTo(48),
+        );
+      }
+    },
+    // Let testWidgets own and dispose semantics before its leak checks.
+    semanticsEnabled: true,
+  );
 
   testWidgets('failed browser launch leaves a copyable page address', (
     tester,

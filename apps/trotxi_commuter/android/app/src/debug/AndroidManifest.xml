@@ -5,5 +5,7 @@
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Local rehearsal only. Release builds do not include this config. -->
-    <application android:networkSecurityConfig="@xml/debug_network_security_config" />
+    <application android:networkSecurityConfig="@xml/debug_network_security_config">
+        <meta-data android:name="firebase_performance_collection_deactivated" android:value="true" />
+    </application>
 </manifest>

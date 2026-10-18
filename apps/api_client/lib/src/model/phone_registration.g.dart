@@ -17,6 +17,10 @@ class _$PhoneRegistration extends PhoneRegistration {
   final String email;
   @override
   final String password;
+  @override
+  final bool acceptedTerms;
+  @override
+  final String termsVersion;
 
   factory _$PhoneRegistration(
           [void Function(PhoneRegistrationBuilder)? updates]) =>
@@ -27,7 +31,9 @@ class _$PhoneRegistration extends PhoneRegistration {
       required this.lastName,
       this.otherNames,
       required this.email,
-      required this.password})
+      required this.password,
+      required this.acceptedTerms,
+      required this.termsVersion})
       : super._();
   @override
   PhoneRegistration rebuild(void Function(PhoneRegistrationBuilder) updates) =>
@@ -45,7 +51,9 @@ class _$PhoneRegistration extends PhoneRegistration {
         lastName == other.lastName &&
         otherNames == other.otherNames &&
         email == other.email &&
-        password == other.password;
+        password == other.password &&
+        acceptedTerms == other.acceptedTerms &&
+        termsVersion == other.termsVersion;
   }
 
   @override
@@ -56,6 +64,8 @@ class _$PhoneRegistration extends PhoneRegistration {
     _$hash = $jc(_$hash, otherNames.hashCode);
     _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jc(_$hash, password.hashCode);
+    _$hash = $jc(_$hash, acceptedTerms.hashCode);
+    _$hash = $jc(_$hash, termsVersion.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -67,7 +77,9 @@ class _$PhoneRegistration extends PhoneRegistration {
           ..add('lastName', lastName)
           ..add('otherNames', otherNames)
           ..add('email', email)
-          ..add('password', password))
+          ..add('password', password)
+          ..add('acceptedTerms', acceptedTerms)
+          ..add('termsVersion', termsVersion))
         .toString();
   }
 }
@@ -96,6 +108,15 @@ class PhoneRegistrationBuilder
   String? get password => _$this._password;
   set password(String? password) => _$this._password = password;
 
+  bool? _acceptedTerms;
+  bool? get acceptedTerms => _$this._acceptedTerms;
+  set acceptedTerms(bool? acceptedTerms) =>
+      _$this._acceptedTerms = acceptedTerms;
+
+  String? _termsVersion;
+  String? get termsVersion => _$this._termsVersion;
+  set termsVersion(String? termsVersion) => _$this._termsVersion = termsVersion;
+
   PhoneRegistrationBuilder() {
     PhoneRegistration._defaults(this);
   }
@@ -108,6 +129,8 @@ class PhoneRegistrationBuilder
       _otherNames = $v.otherNames;
       _email = $v.email;
       _password = $v.password;
+      _acceptedTerms = $v.acceptedTerms;
+      _termsVersion = $v.termsVersion;
       _$v = null;
     }
     return this;
@@ -138,6 +161,10 @@ class PhoneRegistrationBuilder
               email, r'PhoneRegistration', 'email'),
           password: BuiltValueNullFieldError.checkNotNull(
               password, r'PhoneRegistration', 'password'),
+          acceptedTerms: BuiltValueNullFieldError.checkNotNull(
+              acceptedTerms, r'PhoneRegistration', 'acceptedTerms'),
+          termsVersion: BuiltValueNullFieldError.checkNotNull(
+              termsVersion, r'PhoneRegistration', 'termsVersion'),
         );
     replace(_$result);
     return _$result;

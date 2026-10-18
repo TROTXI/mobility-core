@@ -8,6 +8,8 @@ import 'package:trotxi_commuter/core/auth/password_requirements.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
+import 'package:trotxi_commuter/core/widgets/terms_acceptance.dart';
+import 'package:trotxi_client/public_information.dart';
 
 enum _Step { signIn, signUp, credentials, code, finish, reset }
 
@@ -46,6 +48,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       : _Step.signIn;
   bool _busy = false;
   bool _showPassword = false;
+  bool _acceptedTerms = false;
   String? _error;
   String? _message;
   String? _challengeId;
@@ -97,6 +100,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
       _message = null;
       _password.clear();
       _confirm.clear();
+      if (step == _Step.signIn) _acceptedTerms = false;
     });
   }
 
@@ -271,6 +275,8 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
         otherNames: _other.text.trim().isEmpty ? null : _other.text.trim(),
         email: _email.text.trim(),
         password: _password.text,
+        acceptedTerms: _acceptedTerms,
+        termsVersion: TrotxiPublicInformation.currentTermsVersion,
       );
       TextInput.finishAutofillContext();
       if (!mounted) return;
@@ -659,6 +665,15 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                       ),
                                     ),
                                   ),
+                                if (_step == _Step.credentials ||
+                                    _step == _Step.finish) ...[
+                                  TermsAcceptance(
+                                    accepted: _acceptedTerms,
+                                    onChanged: (value) =>
+                                        setState(() => _acceptedTerms = value),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 if (_step == _Step.code)
                                   _input(
                                     'Six-digit code',
@@ -748,6 +763,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                   ),
                                   const PublicInformationLinks(
                                     showDeletion: false,
+                                    showTerms: false,
                                   ),
                                 ],
                               ],
@@ -779,7 +795,8 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
                                     _busy ||
                                         ((_step == _Step.credentials ||
                                                 _step == _Step.finish) &&
-                                            (validateNewPassword(
+                                            (!_acceptedTerms ||
+                                                validateNewPassword(
                                                       _password.text,
                                                     ) !=
                                                     null ||

@@ -34,7 +34,6 @@ import 'package:trotxi_api_client/src/model/boarding_result.dart';
 import 'package:trotxi_api_client/src/model/boarding_result_response.dart';
 import 'package:trotxi_api_client/src/model/bootstrap.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_applications_inner.dart';
-import 'package:trotxi_api_client/src/model/bootstrap_flags_inner.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_map_tiles.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_operations.dart';
 import 'package:trotxi_api_client/src/model/build.dart';
@@ -105,10 +104,6 @@ import 'package:trotxi_api_client/src/model/fare_input.dart';
 import 'package:trotxi_api_client/src/model/fare_journey.dart';
 import 'package:trotxi_api_client/src/model/fare_page.dart';
 import 'package:trotxi_api_client/src/model/fare_response.dart';
-import 'package:trotxi_api_client/src/model/flag.dart';
-import 'package:trotxi_api_client/src/model/flag_edit.dart';
-import 'package:trotxi_api_client/src/model/flag_page.dart';
-import 'package:trotxi_api_client/src/model/flag_response.dart';
 import 'package:trotxi_api_client/src/model/geometry.dart';
 import 'package:trotxi_api_client/src/model/geometry_response.dart';
 import 'package:trotxi_api_client/src/model/google_sign_in.dart';
@@ -396,7 +391,6 @@ part 'serializers.g.dart';
   BoardingResultResponse,
   Bootstrap,
   BootstrapApplicationsInner,
-  BootstrapFlagsInner,
   BootstrapMapTiles,
   BootstrapOperations,
   Build,
@@ -467,10 +461,6 @@ part 'serializers.g.dart';
   FareJourney,
   FarePage,
   FareResponse,
-  Flag,
-  FlagEdit,
-  FlagPage,
-  FlagResponse,
   Geometry,
   GeometryResponse,
   GoogleSignIn,

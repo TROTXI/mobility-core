@@ -4,14 +4,15 @@ import 'trotxi_client.dart';
 /// Age comes from the server plus monotonic elapsed time, never the rider's
 /// wall clock. Count request latency conservatively rather than extending TTL.
 class CommuterTripSnapshot {
-  CommuterTripSnapshot(
-      {required this.trip,
-      required this.live,
-      required this.elapsed,
-      this.geometry,
-      this.stops = const [],
-      this.routeName,
-      this.mapWarning});
+  CommuterTripSnapshot({
+    required this.trip,
+    required this.live,
+    required this.elapsed,
+    this.geometry,
+    this.stops = const [],
+    this.routeName,
+    this.mapWarning,
+  });
   final Trip trip;
   final LiveTrip live;
   final Duration Function() elapsed;
@@ -54,7 +55,7 @@ class CommuterTripSnapshot {
 /// latest revision, a straight-line ETA, or a reason to guess stop identity.
 class CommuterTripTracking {
   CommuterTripTracking(this.data, this.tripId)
-      : generation = data.sessionGeneration;
+    : generation = data.sessionGeneration;
   final CommuterDataClient data;
   final String tripId;
   final int generation;
@@ -89,13 +90,14 @@ class CommuterTripTracking {
     final watch = Stopwatch()..start();
     final live = await data.liveTrip(tripId);
     check();
-    final trip = await data.trip(tripId);
-    check();
+    final trip = live.trip;
     if (live.tripId != tripId ||
         trip.id != tripId ||
         live.patternVersionId != trip.patternVersionId) {
       throw const ApiException(
-          502, 'The live position did not match this trip.');
+        502,
+        'The live position did not match this trip.',
+      );
     }
     if (_versionId != trip.patternVersionId) {
       _versionId = trip.patternVersionId;
@@ -115,7 +117,9 @@ class CommuterTripTracking {
         if (geometry.id != live.geometryId ||
             geometry.patternVersionId != trip.patternVersionId) {
           throw const ApiException(
-              502, 'Route geometry does not belong to this trip.');
+            502,
+            'Route geometry does not belong to this trip.',
+          );
         }
         _geometry = geometry;
       }
@@ -124,7 +128,8 @@ class CommuterTripTracking {
       if (e is UnauthorizedException ||
           e is UpgradeRequiredException ||
           e is RateLimitException ||
-          e is ApiException && e.statusCode == 403) rethrow;
+          e is ApiException && e.statusCode == 403)
+        rethrow;
       _geometry = null;
       warning = 'Route line unavailable; no substitute route is drawn.';
     }
@@ -137,15 +142,19 @@ class CommuterTripTracking {
             pattern.direction.name != trip.direction.name) {
           throw const ApiException(502, 'Pattern identity mismatch.');
         }
-        final version =
-            await data.patternVersion(trip.patternId, trip.patternVersionId);
+        final version = await data.patternVersion(
+          trip.patternId,
+          trip.patternVersionId,
+        );
         check();
         if (version.id != trip.patternVersionId ||
             version.patternId != trip.patternId) {
           throw const ApiException(502, 'Stop version identity mismatch.');
         }
-        _stops = List.unmodifiable(version.stops.toList()
-          ..sort((a, b) => a.ordinal.compareTo(b.ordinal)));
+        _stops = List.unmodifiable(
+          version.stops.toList()
+            ..sort((a, b) => a.ordinal.compareTo(b.ordinal)),
+        );
         // Route is a current-time catalogue projection, not the authority for
         // a trip's historical/future stops. Its optional label may be absent.
         try {
@@ -164,18 +173,20 @@ class CommuterTripTracking {
       if (e is UnauthorizedException ||
           e is UpgradeRequiredException ||
           e is RateLimitException ||
-          e is ApiException && e.statusCode == 403) rethrow;
+          e is ApiException && e.statusCode == 403)
+        rethrow;
       warning ??=
           'Stop details unavailable. Live access is checked separately.';
     }
     check();
     return CommuterTripSnapshot(
-        trip: trip,
-        live: live,
-        elapsed: () => watch.elapsed,
-        geometry: _geometry,
-        stops: _stops ?? const [],
-        routeName: _routeName,
-        mapWarning: warning);
+      trip: trip,
+      live: live,
+      elapsed: () => watch.elapsed,
+      geometry: _geometry,
+      stops: _stops ?? const [],
+      routeName: _routeName,
+      mapWarning: warning,
+    );
   }
 }

@@ -4,7 +4,6 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/BottomNavigation/commuter_navigation.dart';
 import 'package:trotxi_commuter/Features/Search/commuter_search.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Navbar/navbar.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/home_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/help_support_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/pass_tab.dart';
@@ -316,7 +315,6 @@ class _HomePageState extends State<HomePage> {
         onShowRoutes: _showRoutes,
         onShowWallet: () => _goToDestination(CommuterDestination.wallet),
         onShowSupport: _showSupport,
-        onShowProfile: () => _goToDestination(CommuterDestination.profile),
       ),
       ReservationTripsTab(client: widget.client),
       WalletTab(client: widget.client),
@@ -324,18 +322,9 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      appBar: _selected == CommuterDestination.home
-          ? null
-          : Navbar(
-              userData: userData,
-              userName: userData.displayName,
-              onProfile: () => _goToDestination(CommuterDestination.profile),
-              onSearch: () => showCommuterSearch(
-                context,
-                client: widget.client,
-                onDestination: _goToDestination,
-              ),
-            ),
+      // Every persistent destination owns the same Figma root header. Keeping
+      // it inside each scroll view prevents the old logo bar from doubling the
+      // page title and keeps the bell/theme actions aligned across tabs.
       // None of the 4 tabs hosts a TextField directly (edits happen in
       // pushed pages/dialogs, which have their own Scaffolds), so this
       // Scaffold never needs to shrink for the keyboard — and a stuck/

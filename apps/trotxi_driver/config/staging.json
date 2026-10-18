@@ -1,0 +1,13 @@
+{
+  "APP_ENVIRONMENT": "staging",
+  "API_BASE_URL": "https://trotxi-api-staging.onrender.com",
+  "API_SESSION_REALM": "staging-1",
+  "PUBLIC_SITE_URL": "https://trotxi-ops-staging.onrender.com",
+  "FIREBASE_PROJECT_ID": "trotxi-501218",
+  "FIREBASE_SENDER_ID": "431341307838",
+  "FIREBASE_ANDROID_APP_ID": "1:431341307838:android:95c73d83390d6229ff1bef",
+  "FIREBASE_ANDROID_API_KEY": "AIzaSyBWmYDIMd1q2NVNBJIETOEXZp3a3t3uHEI",
+  "FIREBASE_IOS_APP_ID": "1:431341307838:ios:2bd968c3c2c9d369ff1bef",
+  "FIREBASE_IOS_API_KEY": "AIzaSyA4tqnxHVIbYDj_aqB4toHgmpSK23mbbY8",
+  "FIREBASE_IOS_BUNDLE_ID": "com.trotxi.trotxiDriver"
+}

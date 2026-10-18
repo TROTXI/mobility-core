@@ -81,6 +81,8 @@ void main() {
           'firstName': 'Ama',
           'lastName': 'Mensah',
           'otherNames': 'Akua',
+          'acceptedTerms': true,
+          'termsVersion': '2026-10-14',
         });
         return jsonResponse({
           'data': {'message': 'Check your inbox.'},
@@ -103,6 +105,8 @@ void main() {
         find.byType(TextFormField).at(3),
         'ama@outlook.com',
       );
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
       await tester.tap(find.text('Send verification email'));
       await tester.pumpAndSettle();
       expect(find.text('Check your inbox.'), findsOneWidget);

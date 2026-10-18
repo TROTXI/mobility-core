@@ -1,4 +1,4 @@
-/// Public, sign-in-free pages: the privacy notice and the deletion request.
+/// Public, sign-in-free terms, privacy notice and deletion request pages.
 /// These are information/request links, never authenticated API endpoints.
 ///
 /// The site is a build input (`PUBLIC_SITE_URL`), like the API address, so a
@@ -7,8 +7,11 @@
 class TrotxiPublicInformation {
   TrotxiPublicInformation._();
   static const site = String.fromEnvironment('PUBLIC_SITE_URL');
+  static const currentTermsVersion = '2026-10-14';
 
+  static Uri get terms => _page('terms');
   static Uri get privacy => _page('privacy');
+  static Uri get privacyChoices => privacy.replace(fragment: 'choices');
   static Uri get deletion => _page('delete-account');
 
   static Uri _page(String path) =>
@@ -18,9 +21,11 @@ class TrotxiPublicInformation {
   /// (plain HTTP only for a local site while developing).
   static void ensureConfigured({bool release = false}) {
     final uri = Uri.tryParse(site);
-    final local = const {'localhost', '127.0.0.1', '10.0.2.2'}.contains(
-      uri?.host,
-    );
+    final local = const {
+      'localhost',
+      '127.0.0.1',
+      '10.0.2.2',
+    }.contains(uri?.host);
     if (uri == null ||
         !uri.hasScheme ||
         uri.host.isEmpty ||

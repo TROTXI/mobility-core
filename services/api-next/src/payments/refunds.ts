@@ -3,13 +3,14 @@ import type { Pool, PoolClient } from 'pg';
 import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { fail } from '../transport/errors.js';
+import type { SessionAuthorizer } from '../auth/ops-permissions.js';
 
 export const refundOperations = ['initiateRefund', 'listRefundInitiations'] as const;
 export class RefundInitiation {
   constructor(
     private options: {
       pool: Pool;
-      authorizeSession: (c: PoolClient, a: Actor) => Promise<void>;
+      authorizeSession: SessionAuthorizer;
       environment: 'test' | 'live';
       initiate: (reference: string, amount: number, intentId: string) => Promise<string>;
     },
@@ -28,8 +29,8 @@ export class RefundInitiation {
       c.release();
     }
   }
-  private async authorize(c: PoolClient, a: Actor) {
-    await this.options.authorizeSession(c, a);
+  private async authorize(c: PoolClient, a: Actor, operation: string) {
+    await this.options.authorizeSession(c, a, { operation });
     const u = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE', [
         a.userId,
@@ -56,7 +57,7 @@ export class RefundInitiation {
   }
   async read(actor: Actor, purchaseId: string): Promise<Outcome> {
     return this.tx(async (c) => {
-      await this.authorize(c, actor);
+      await this.authorize(c, actor, 'listRefundInitiations');
       const id = this.id(purchaseId);
       if (!(await c.query('SELECT 1 FROM app.purchases WHERE id=$1', [id])).rowCount)
         fail(404, 'not_found', 'Resource not found.');
@@ -82,7 +83,7 @@ export class RefundInitiation {
     )
       fail(400, 'invalid_request', 'Supply a positive cash amount, reason and request key.');
     const prepared = await this.tx(async (c) => {
-      await this.authorize(c, actor);
+      await this.authorize(c, actor, 'initiateRefund');
       if (this.options.environment !== 'test')
         fail(503, 'test_only', 'Refund initiation is enabled for TEST payments only.');
       const id = this.id(purchaseId);

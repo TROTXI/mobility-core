@@ -71,9 +71,6 @@ named(
       darkStyleUrl: z.url().nullable(),
       attribution: text(1000),
     }),
-    flags: z.array(
-      obj({ key: text(), enabled: z.boolean(), rolloutPercentage: z.number().min(0).max(100) }),
-    ),
   }),
 );
 named(
@@ -227,7 +224,17 @@ named(
   }),
 );
 named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled: z.boolean() }));
-named('GoogleSignIn', obj({ idToken: text(8192) }));
+named(
+  'GoogleSignIn',
+  obj({
+    idToken: text(8192),
+    acceptedTerms: z.literal(true).optional(),
+    termsVersion: z
+      .string()
+      .regex(/^2026-10-14$/)
+      .optional(),
+  }),
+);
 named(
   'OpsGoogleSignIn',
   obj({
@@ -275,6 +282,8 @@ named(
     otherNames: text(80).nullable().optional(),
     email: z.email().max(320),
     password: newPassword,
+    acceptedTerms: z.literal(true),
+    termsVersion: z.string().regex(/^2026-10-14$/),
   }),
 );
 named(
@@ -284,6 +293,8 @@ named(
     firstName: text(60),
     lastName: text(60),
     otherNames: text(80).nullable().optional(),
+    acceptedTerms: z.literal(true),
+    termsVersion: z.string().regex(/^2026-10-14$/),
   }),
 );
 named('EmailAddress', obj({ email: z.email().max(320) }));
@@ -332,6 +343,11 @@ named(
     nonce: text(256).optional(),
     authorizationCode: text(4096).optional(),
     displayName: text(100).optional(),
+    acceptedTerms: z.literal(true).optional(),
+    termsVersion: z
+      .string()
+      .regex(/^2026-10-14$/)
+      .optional(),
   }),
 );
 named(
@@ -1015,6 +1031,9 @@ named(
 named(
   'LiveTrip',
   obj({
+    trip: schemas.Trip.describe(
+      'Current trip details included with the live snapshot so clients do not issue a second read.',
+    ),
     tripId: id,
     patternVersionId: id,
     geometryId: id.nullable(),
@@ -1294,26 +1313,6 @@ named(
     priceMultiplierBp: z.int().positive().optional(),
     takeRateBp: z.int().min(0).max(10000).optional(),
     creditPerRide: money.optional(),
-    reason: note,
-  }),
-);
-named(
-  'Flag',
-  obj({
-    key: text(),
-    enabled: z.boolean(),
-    rolloutPercentage: z.number().min(0).max(100),
-    description: note,
-    version,
-    editToken: text(128),
-  }),
-);
-named(
-  'FlagEdit',
-  obj({
-    enabled: z.boolean(),
-    rolloutPercentage: z.number().min(0).max(100),
-    description: note,
     reason: note,
   }),
 );
@@ -1766,7 +1765,7 @@ get('/', 'getRoot', 'Root', { stable: true });
 get('/healthz', 'getHealth', 'Health', { stable: true });
 get('/readyz', 'getReadiness', 'Health', { stable: true });
 get('/version', 'getBuild', 'Build', { stable: true });
-get('/flags', 'getBootstrap', 'Bootstrap', { stable: true });
+get('/bootstrap', 'getBootstrap', 'Bootstrap', { stable: true });
 post('/v1/auth/ops/google', 'signInOpsGoogle', 'OpsGoogleSignIn', 'Tokens', {
   retry: 'credential',
   sensitive: true,
@@ -2262,8 +2261,6 @@ list('/v1/ops/routes/{id}/fares', 'listFares', 'Fare');
 post('/v1/ops/routes/{id}/fares', 'createFare', 'FareInput', 'Fare', { status: 201 });
 list('/v1/ops/plan-pricing', 'listPlanPricing', 'PlanPricing');
 edit('patch', '/v1/ops/plan-pricing/{plan}', 'updatePlanPricing', 'PricingEdit', 'PlanPricing');
-list('/v1/ops/flags', 'listFlags', 'Flag');
-edit('put', '/v1/ops/flags/{key}', 'setFlag', 'FlagEdit', 'Flag');
 list('/v1/ops/min-versions', 'listMinimumVersions', 'MinimumVersion');
 edit(
   'put',
@@ -2403,6 +2400,19 @@ export const exampleCases = [
     schema: 'LiveTripResponse',
     value: {
       data: {
+        trip: {
+          id: 'trip-demo',
+          departureId: 'departure-demo',
+          serviceDate: '2026-09-14',
+          runNumber: 1,
+          routeId: 'route-demo',
+          patternId: 'pattern-demo',
+          patternVersionId: 'pattern-version-demo',
+          direction: 'outbound',
+          scheduledAt: '2026-09-14T10:00:00Z',
+          status: 'active',
+          vehicleLabel: null,
+        },
         tripId: 'trip-demo',
         patternVersionId: 'pattern-version-demo',
         geometryId: null,

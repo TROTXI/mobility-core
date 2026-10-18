@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import type { AuthorizationContext } from '../auth/ops-permissions.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { cursorCodec } from './cursor.js';
@@ -88,12 +89,18 @@ export interface Dependencies {
   cursorSecret: Buffer;
   // Must validate session/credential revocation using this transaction, not a
   // client role claim. There is no permissive default until identity lands.
-  authorizeSession: (client: PoolClient, actor: Actor) => Promise<AuthorizedActor | void>;
+  authorizeSession: (
+    client: PoolClient,
+    actor: Actor,
+    context?: AuthorizationContext,
+  ) => Promise<AuthorizedActor | void>;
   // Trip lock is already held. Validate/release/update affected reservations
   // using THIS client or throw; never commit or call external services here.
   coordinateReservations?: (client: PoolClient, change: ReservationChange) => Promise<void>;
   /** When a running bus counts as gone quiet on the ops board. */
   staleFixAfterSeconds?: number;
+  /** Test override. Production uses the short bounded live-trip cache default. */
+  liveCacheMs?: number;
 }
 export function canonical(value: Json): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -153,7 +160,7 @@ export class TransportService {
     this.catalog = new Catalog(deps.cursorSecret);
     this.fleet = new Fleet(deps.cursorSecret);
     this.gps = new Gps(deps.cursorSecret);
-    this.trips = new Trips(deps.cursorSecret);
+    this.trips = new Trips(deps.cursorSecret, deps.liveCacheMs);
   }
   private async transaction<T>(
     work: (client: PoolClient) => Promise<T>,
@@ -178,7 +185,7 @@ export class TransportService {
     actor: Actor,
     operation: string,
   ): Promise<string | null> {
-    const authorized = await this.deps.authorizeSession(client, actor);
+    const authorized = await this.deps.authorizeSession(client, actor, { operation });
     const user =
       authorized ??
       (
@@ -271,10 +278,12 @@ export class TransportService {
       // unique (trip, clientFixId) row and payload digest are the durable
       // receipt. Never cache past assignment/session checks in a second,
       // seven-day command receipt, nor retain an extra receipt per GPS fix.
-      return this.transaction(async (client) => {
+      const result = await this.transaction(async (client) => {
         const driverId = await this.authorize(client, actor, operation);
         return this.gps.execute(client, actor, operation, target, body, randomUUID(), driverId);
       });
+      this.trips.invalidateLiveTrip(target);
+      return result;
     }
     const catalog = (catalogCommands as readonly string[]).includes(operation);
     const fleet = (fleetCommands as readonly string[]).includes(operation);
@@ -285,7 +294,7 @@ export class TransportService {
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
     const keyHash = digest(key),
       inputHash = digest(canonical(body));
-    return this.transaction(async (client) => {
+    const result = await this.transaction(async (client) => {
       // Fixed lock order: receipt -> session/user/driver -> trip -> references.
       // It is the same for different HTTP workers and application instances.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
@@ -400,6 +409,20 @@ export class TransportService {
       );
       return result;
     });
+    if (operation === 'runRouteLearning' || operation === 'runGpsRetention')
+      this.trips.clearLiveCache();
+    else if (
+      [
+        'assignTrip',
+        'rescheduleTrip',
+        'cancelTrip',
+        'startTrip',
+        'completeTrip',
+        'recordArrival',
+      ].includes(operation)
+    )
+      this.trips.invalidateLiveTrip(target);
+    return result;
   }
   /**
    * Trip reads for a signed-in rider. Not readCatalog: those authorize the ops
@@ -532,7 +555,7 @@ export class TransportService {
         AND v.effective_from<=(($1::date+s.local_departure) AT TIME ZONE s.time_zone)
         AND (v.effective_to IS NULL OR v.effective_to>(($1::date+s.local_departure) AT TIME ZONE s.time_zone))`;
     const candidates = await this.transaction(async (c) => {
-      await this.authorize(c, actor, 'createTrip');
+      await this.authorize(c, actor, 'runTripGeneration');
       const now = (await c.query('SELECT clock_timestamp() now')).rows[0].now as Date;
       const today = now.toISOString().slice(0, 10);
       if (day < today || Date.parse(day) > Date.parse(today) + 31 * 86400000)
@@ -557,7 +580,7 @@ export class TransportService {
     for (const candidate of candidates) {
       try {
         const created = await this.transaction(async (c) => {
-          await this.authorize(c, actor, 'createTrip');
+          await this.authorize(c, actor, 'runTripGeneration');
           await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
             `generate-trip:${candidate.departure_id}:${day}`,
           ]);

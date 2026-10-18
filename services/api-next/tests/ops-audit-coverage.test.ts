@@ -43,7 +43,7 @@ const evidence = {
     'releaseAccountRestriction',
   ],
   pricing_events: ['createFare', 'updatePlanPricing'],
-  config_events: ['changeRole', 'setFlag', 'setMinimumVersion'],
+  config_events: ['changeRole', 'setMinimumVersion'],
   payment_review_commands: ['resolvePaymentReview'],
   standby_events: ['offerStandby'],
   gps_events: ['createTraceHold', 'releaseTraceHold'],

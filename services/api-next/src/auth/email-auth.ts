@@ -8,6 +8,7 @@ import { sharedAdmission } from '../runtime/admission.js';
 import { hashToken, newRefresh } from './credentials.js';
 import { fullName } from './full-name.js';
 import { checkPassword, hashPassword } from './password.js';
+import { recordCommuterTermsAcceptance } from './terms.js';
 
 export const publicEmailOperations = [
   'requestEmailSignup',
@@ -306,6 +307,8 @@ export class EmailAuth {
         ])
       ).rows[0];
       if (user?.role !== 'commuter') return;
+      if (!actor && !reset)
+        await recordCommuterTermsAcceptance(c, userId, body, 'commuter_email_signup');
       const old = (
         await c.query('SELECT * FROM app.email_credentials WHERE user_id=$1 FOR UPDATE', [userId])
       ).rows[0];
@@ -437,6 +440,14 @@ export class EmailAuth {
       const email = normalizeEmail(body.email);
       await this.budget(email, ip);
       if (name !== 'signInEmail') return this.request(body, name === 'requestPasswordReset');
+      // One account budget across source IPs and service replicas. Fixed clock
+      // windows expire within a minute; rejected attempts never extend them.
+      const account = createHmac('sha256', this.options.secret).update(email).digest('hex');
+      if (
+        (await sharedAdmission(this.options.pool).spend(`email-password-account:${account}`))
+          .count > 30
+      )
+        fail(429, 'rate_limited', 'Too many attempts. Please wait a minute.');
       const cr = (
         await this.options.pool.query(
           `SELECT e.* FROM app.email_credentials e JOIN app.users u ON u.id=e.user_id

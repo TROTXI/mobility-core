@@ -14,13 +14,14 @@ Current implementation: 2026-10-03.
 
 ## Configuration and builds
 
-Both mobile apps require explicit `API_BASE_URL`, `API_SESSION_REALM` and
-`PUBLIC_SITE_URL` build definitions; an app missing one shows a start-up error
-instead of falling back to staging. `PUBLIC_SITE_URL` is the site that serves
-the privacy notice and deletion-request pages. Use a new realm after replacing
-a disposable database; there is no implicit backend or old-token fallback.
+Both mobile apps require an explicit environment file, including
+`APP_ENVIRONMENT`, `API_BASE_URL`, `API_SESSION_REALM`, `PUBLIC_SITE_URL` and
+Firebase project/application identifiers. Android and Xcode validate these
+before compilation; startup repeats the same checks. `PUBLIC_SITE_URL` serves
+the privacy notice and deletion-request pages. There is no implicit backend or
+old-token fallback. A database replacement needs a reviewed realm-policy update.
 
-The rider app keeps its staging values in `trotxi_commuter/config/staging.json`:
+Each app keeps its staging values in `config/staging.json`:
 
 ```sh
 cd apps/trotxi_commuter
@@ -28,11 +29,16 @@ flutter run --dart-define-from-file=config/staging.json
 flutter build apk --dart-define-from-file=config/staging.json
 ```
 
-A production build passes its own file (for example `config/production.json`
-with the production API, a new realm and the production site). No code
-changes are needed to switch environments.
-Android emulators reach a local backend at `http://10.0.2.2:3001`;
-iOS simulators use `http://127.0.0.1:3001`. Release builds require HTTPS.
+Production remains blocked until its distinct API, public site, session realm,
+Firebase project and sender are approved in the shared environment policy.
+It then uses `config/production.json` and
+`config/production/google-services.json`, not staging provider defaults.
+For local debug builds copy staging.json to ignored `config/local.json`, select
+`APP_ENVIRONMENT=local`, `API_SESSION_REALM=local-development`, and use
+`http://10.0.2.2:3001` on Android or `http://127.0.0.1:3001` on an iOS simulator.
+Keep staging Firebase for local testing. Local release/profile builds are refused.
+See [mobile release readiness](../docs/mobile-release-readiness.md) for commands,
+the SDK inventory, privacy-review evidence and remaining release gates.
 
 Regenerate the replacement client using `pnpm codegen:replacement`, then
 `dart run build_runner build` in `apps/api_client`. The checked-in

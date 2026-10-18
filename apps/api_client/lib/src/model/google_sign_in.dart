@@ -12,11 +12,19 @@ part 'google_sign_in.g.dart';
 ///
 /// Properties:
 /// * [idToken]
+/// * [acceptedTerms]
+/// * [termsVersion]
 @BuiltValue()
 abstract class GoogleSignIn
     implements Built<GoogleSignIn, GoogleSignInBuilder> {
   @BuiltValueField(wireName: r'idToken')
   String get idToken;
+
+  @BuiltValueField(wireName: r'acceptedTerms')
+  bool? get acceptedTerms;
+
+  @BuiltValueField(wireName: r'termsVersion')
+  String? get termsVersion;
 
   GoogleSignIn._();
 
@@ -46,6 +54,20 @@ class _$GoogleSignInSerializer implements PrimitiveSerializer<GoogleSignIn> {
       object.idToken,
       specifiedType: const FullType(String),
     );
+    if (object.acceptedTerms != null) {
+      yield r'acceptedTerms';
+      yield serializers.serialize(
+        object.acceptedTerms,
+        specifiedType: const FullType(bool),
+      );
+    }
+    if (object.termsVersion != null) {
+      yield r'termsVersion';
+      yield serializers.serialize(
+        object.termsVersion,
+        specifiedType: const FullType(String),
+      );
+    }
   }
 
   @override
@@ -77,6 +99,20 @@ class _$GoogleSignInSerializer implements PrimitiveSerializer<GoogleSignIn> {
             specifiedType: const FullType(String),
           ) as String;
           result.idToken = valueDes;
+          break;
+        case r'acceptedTerms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptedTerms = valueDes;
+          break;
+        case r'termsVersion':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.termsVersion = valueDes;
           break;
         default:
           unhandled.add(key);

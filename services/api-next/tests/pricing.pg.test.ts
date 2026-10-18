@@ -17,6 +17,7 @@ import { PaymentRecovery } from '../src/payments/recovery.js';
 import { PaystackEvidence } from '../src/payments/provider.js';
 import { AutoRenewals, cardBox } from '../src/payments/auto-renewal.js';
 import { TransactionalEmail } from '../src/notifications/email.js';
+import { TransportError } from '../src/transport/errors.js';
 
 type Response = { statusCode: number; body: string; json(): any };
 function expectStatus(response: Response, code: number) {
@@ -1615,7 +1616,11 @@ test('PRC-09 deleted rider is absent from Ops profile reads while restricted pur
 });
 
 /** The offered fixture plus card auto-renewal wired to its own clock and Paystack stand-in. */
-async function renewalFixture(t: TestContext, email?: TransactionalEmail) {
+async function renewalFixture(
+  t: TestContext,
+  email?: TransactionalEmail,
+  beforeAuthorize?: () => void,
+) {
   const f = await offeredFixture(t);
   await f.verify();
   let clock = new Date();
@@ -1673,7 +1678,10 @@ async function renewalFixture(t: TestContext, email?: TransactionalEmail) {
   renewals = new AutoRenewals({
     pool: f.runtime,
     environment: 'test',
-    authorizeSession: f.dependencies.authorizeSession,
+    authorizeSession: async (c, actor, context) => {
+      if (context?.operation === 'runAutoRenewals') beforeAuthorize?.();
+      await f.dependencies.authorizeSession(c, actor);
+    },
     financial,
     pricing: f.pricing,
     seal: box.seal,
@@ -1742,6 +1750,30 @@ async function renewalFixture(t: TestContext, email?: TransactionalEmail) {
   };
 }
 const DAY_MS = 86_400_000;
+
+for (const status of [401, 403]) {
+  for (const deniedAt of [2, 3, 5, 6]) {
+    test(`AR-AUTH ${status} at work boundary ${deniedAt} stops the renewal batch`, async (t) => {
+      let checks = 0;
+      const denied = new TransportError(status, 'test_authority_removed', 'Authority removed.');
+      const f = await renewalFixture(t, undefined, () => {
+        if (++checks === deniedAt) throw denied;
+      });
+      await f.rider('setAutoRenewal', { enabled: true });
+      const first = await f.subscribe();
+      f.at(new Date((await f.endOf(first.id)).getTime() - 3 * DAY_MS + 60_000));
+      await assert.rejects(f.run(), (error) => error === denied);
+      assert.equal(checks, deniedAt, '401/403 must escape all per-item catches');
+      assert.equal(f.charges.length, deniedAt <= 5 ? 0 : 1);
+      const purchases = (
+        await f.owner.query('SELECT state FROM app.purchases WHERE renewal_of=$1', [first.id])
+      ).rows;
+      if (deniedAt <= 3)
+        assert.equal(purchases.length, 0, 'checkout cannot use stale authorization');
+      else assert.equal(purchases[0].state, 'awaiting_payment', 'no unauthorized settlement');
+    });
+  }
+}
 
 test('AR-01 a card is saved only with consent, sealed, and shown by its last four digits', async (t) => {
   const f = await renewalFixture(t);

@@ -28,6 +28,10 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
             detect --source=/repo --redact --verbose --exit-code=1
+      - name: Verify secret scan exceptions stay narrow
+        env:
+          GITLEAKS_DOCKER: '1'
+        run: node --test .github/scripts/gitleaks-config.test.mjs
 
   # The analysis is free; publishing it is not. Uploading SARIF to the
   # code-scanning API needs GitHub Advanced Security, a paid add-on on a private

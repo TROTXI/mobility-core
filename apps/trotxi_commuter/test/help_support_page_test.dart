@@ -23,10 +23,12 @@ void main() {
 
     expect(find.text('Payment history'), findsOneWidget);
     expect(find.text('info@trotxi.com'), findsOneWidget);
+    expect(find.text('Terms and Conditions'), findsOneWidget);
     expect(find.text('Privacy notice'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();
     expect(find.text('Request account deletion'), findsOneWidget);
+    expect(find.text('Privacy choices'), findsOneWidget);
     expect(find.textContaining('Please try again later'), findsNothing);
   });
 }

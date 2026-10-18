@@ -122,7 +122,6 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteEvents**](doc/OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteSlots**](doc/OpsApi.md#listcommuteslots) | **GET** /v1/ops/commute-slots | list Commute Slots
 [*OpsApi*](doc/OpsApi.md) | [**listFares**](doc/OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
-[*OpsApi*](doc/OpsApi.md) | [**listFlags**](doc/OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [*OpsApi*](doc/OpsApi.md) | [**listMinimumVersions**](doc/OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
 [*OpsApi*](doc/OpsApi.md) | [**listOpsAccountErasures**](doc/OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [*OpsApi*](doc/OpsApi.md) | [**listOpsAuditEvents**](doc/OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
@@ -159,7 +158,6 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**resolvePaymentReview**](doc/OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
 [*OpsApi*](doc/OpsApi.md) | [**retireCommuteSlot**](doc/OpsApi.md#retirecommuteslot) | **POST** /v1/ops/commute-slots/{id}/retire | retire Commute Slot
 [*OpsApi*](doc/OpsApi.md) | [**runPersonalPauseResumes**](doc/OpsApi.md#runpersonalpauseresumes) | **POST** /v1/ops/maintenance/personal-pause-resumes | run Personal Pause Resumes
-[*OpsApi*](doc/OpsApi.md) | [**setFlag**](doc/OpsApi.md#setflag) | **PUT** /v1/ops/flags/{key} | set Flag
 [*OpsApi*](doc/OpsApi.md) | [**setMinimumVersion**](doc/OpsApi.md#setminimumversion) | **PUT** /v1/ops/min-versions/{app}/{platform} | set Minimum Version
 [*OpsApi*](doc/OpsApi.md) | [**updateDriver**](doc/OpsApi.md#updatedriver) | **PATCH** /v1/ops/drivers/{id} | update Driver
 [*OpsApi*](doc/OpsApi.md) | [**updateOperatorAccess**](doc/OpsApi.md#updateoperatoraccess) | **POST** /v1/ops/team/members/{id}/access | update Operator Access
@@ -180,7 +178,7 @@ Class | Method | HTTP request | Description
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runTripGeneration**](doc/OpsOrScopedWorkerApi.md#runtripgeneration) | **POST** /v1/ops/maintenance/trip-generation | run Trip Generation
 [*ProviderSignatureApi*](doc/ProviderSignatureApi.md) | [**receivePaystackWebhook**](doc/ProviderSignatureApi.md#receivepaystackwebhook) | **POST** /webhooks/paystack | receive Paystack Webhook
 [*PublicApi*](doc/PublicApi.md) | [**completeEmailAccess**](doc/PublicApi.md#completeemailaccess) | **POST** /v1/auth/email/complete | complete Email Access
-[*PublicApi*](doc/PublicApi.md) | [**getBootstrap**](doc/PublicApi.md#getbootstrap) | **GET** /flags | get Bootstrap
+[*PublicApi*](doc/PublicApi.md) | [**getBootstrap**](doc/PublicApi.md#getbootstrap) | **GET** /bootstrap | get Bootstrap
 [*PublicApi*](doc/PublicApi.md) | [**getBuild**](doc/PublicApi.md#getbuild) | **GET** /version | get Build
 [*PublicApi*](doc/PublicApi.md) | [**getGeometry**](doc/PublicApi.md#getgeometry) | **GET** /v1/route-geometries/{id} | get Geometry
 [*PublicApi*](doc/PublicApi.md) | [**getHealth**](doc/PublicApi.md#gethealth) | **GET** /healthz | get Health
@@ -280,7 +278,6 @@ Class | Method | HTTP request | Description
  - [BoardingResultResponse](doc/BoardingResultResponse.md)
  - [Bootstrap](doc/Bootstrap.md)
  - [BootstrapApplicationsInner](doc/BootstrapApplicationsInner.md)
- - [BootstrapFlagsInner](doc/BootstrapFlagsInner.md)
  - [BootstrapMapTiles](doc/BootstrapMapTiles.md)
  - [BootstrapOperations](doc/BootstrapOperations.md)
  - [Build](doc/Build.md)
@@ -350,10 +347,6 @@ Class | Method | HTTP request | Description
  - [FareJourney](doc/FareJourney.md)
  - [FarePage](doc/FarePage.md)
  - [FareResponse](doc/FareResponse.md)
- - [Flag](doc/Flag.md)
- - [FlagEdit](doc/FlagEdit.md)
- - [FlagPage](doc/FlagPage.md)
- - [FlagResponse](doc/FlagResponse.md)
  - [Geometry](doc/Geometry.md)
  - [GeometryResponse](doc/GeometryResponse.md)
  - [GeometryStopDistancesInner](doc/GeometryStopDistancesInner.md)

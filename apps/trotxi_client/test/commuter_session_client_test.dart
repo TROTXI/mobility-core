@@ -111,8 +111,11 @@ void main() {
     expect(storage.values.values.single, isNot(contains('123456')));
   });
 
-  test('phone/password sign-in uses the generated contract and stores only tokens', () async {
-    final result = await sessions.signInPhonePassword('0241234567', 'a unique long password');
+  test(
+      'phone/password sign-in uses the generated contract and stores only tokens',
+      () async {
+    final result = await sessions.signInPhonePassword(
+        '0241234567', 'a unique long password');
     expect(result.id, 'rider-1');
     expect(requests.single.path, '/v1/auth/phone/password');
     expect(bodyOf(requests.single), {
@@ -120,7 +123,8 @@ void main() {
       'password': 'a unique long password',
     });
     expect(await store.getRefreshToken(), 'r-1');
-    expect(storage.values.values.single, isNot(contains('a unique long password')));
+    expect(storage.values.values.single,
+        isNot(contains('a unique long password')));
   });
 
   test(
@@ -133,13 +137,17 @@ void main() {
         email: 'ama@outlook.com',
         firstName: 'Ama',
         lastName: 'Mensah',
-        otherNames: 'Akua');
+        otherNames: 'Akua',
+        acceptedTerms: true,
+        termsVersion: '2026-10-14');
     expect(requests.last.path, '/v1/auth/email/signup');
     expect(bodyOf(requests.last), {
       'email': 'ama@outlook.com',
       'firstName': 'Ama',
       'lastName': 'Mensah',
-      'otherNames': 'Akua'
+      'otherNames': 'Akua',
+      'acceptedTerms': true,
+      'termsVersion': '2026-10-14'
     });
     await sessions.requestPasswordReset('ama@outlook.com');
     expect(requests.last.path, '/v1/auth/email/reset');

@@ -20,7 +20,7 @@ type Method = 'qr' | 'code' | 'photo' | 'no_show';
 type Evidence = { rid: string; jti?: string; proofUser?: string };
 export interface BoardingOptions {
   pool: Pool;
-  authorizeSession: (c: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: import('../auth/ops-permissions.js').SessionAuthorizer;
   proofKey: Buffer;
   now?: () => Date;
   // Resolve a stored object key to a short-lived URL, never trust a QR/photo URL.
@@ -59,8 +59,13 @@ export class BoardingService {
       c.release();
     }
   }
-  private async authorize(c: PoolClient, actor: Actor, role: 'driver' | 'commuter' | 'admin') {
-    await this.options.authorizeSession(c, actor);
+  private async authorize(
+    c: PoolClient,
+    actor: Actor,
+    role: 'driver' | 'commuter' | 'admin',
+    operation?: string,
+  ) {
+    await this.options.authorizeSession(c, actor, { operation });
     const u = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE', [
         actor.userId,
@@ -293,7 +298,7 @@ export class BoardingService {
       canonical({ input: normalized, reservationId: reservationId ? id(reservationId) : null }),
     );
     const admitted = await this.tx(async (c) => {
-      const driver = await this.authorize(c, actor, op === 'runNoShows' ? 'admin' : 'driver');
+      const driver = await this.authorize(c, actor, op === 'runNoShows' ? 'admin' : 'driver', op);
       await this.trip(c, target, driver);
       if (method !== 'code') return true;
       const budget = (
@@ -315,7 +320,7 @@ export class BoardingService {
       );
     let audit: { tripId: string; reservationId: string; method: Method } | undefined;
     const result = await this.tx(async (c) => {
-      const driver = await this.authorize(c, actor, op === 'runNoShows' ? 'admin' : 'driver');
+      const driver = await this.authorize(c, actor, op === 'runNoShows' ? 'admin' : 'driver', op);
       await this.trip(c, target, driver); // foreign and missing trips are both 404
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`boarding:${kh}`]);
       const receipt = (
@@ -479,7 +484,7 @@ export class BoardingService {
     )
       fail(400, 'invalid_request', 'Invalid service-day batch.');
     const rows = await this.tx(async (c) => {
-      await this.authorize(c, actor, 'admin');
+      await this.authorize(c, actor, 'admin', 'runNoShows');
       return (
         await c.query(
           `SELECT r.id,r.trip_id FROM app.reservations r JOIN app.commute_selections s ON s.id=r.selection_id

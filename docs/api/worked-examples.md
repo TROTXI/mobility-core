@@ -321,7 +321,9 @@ Content-Type: application/json
   "email": "rider@example.invalid",
   "firstName": "Ama",
   "otherNames": "Akua",
-  "lastName": "Mensah"
+  "lastName": "Mensah",
+  "acceptedTerms": true,
+  "termsVersion": "2026-10-14"
 }
 ```
 
@@ -399,7 +401,9 @@ Content-Type: application/json
   "otherNames": "Akua",
   "lastName": "Mensah",
   "email": "rider@example.invalid",
-  "password": "Example unique long passphrase1!"
+  "password": "Example unique long passphrase1!",
+  "acceptedTerms": true,
+  "termsVersion": "2026-10-14"
 }
 ```
 

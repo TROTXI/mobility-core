@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import { checkOpsPermission } from './ops-permissions.js';
 import { createHmac } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
@@ -16,6 +17,7 @@ import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 import { phoneIdentity, phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
 import { fullName } from './full-name.js';
 import { checkPassword, hashPassword } from './password.js';
+import { recordCommuterTermsAcceptance } from './terms.js';
 import { sharedAdmission } from '../runtime/admission.js';
 import {
   EmailAuth,
@@ -261,6 +263,7 @@ export class AuthService {
     client: PoolClient,
     actor: Actor,
     options: {
+      operation?: string;
       allowUnelevated?: boolean;
       allowPinSetup?: boolean;
       allowPhoneRegistration?: boolean;
@@ -275,6 +278,7 @@ export class AuthService {
     client: PoolClient,
     actor: Actor,
     options: {
+      operation?: string;
       allowUnelevated?: boolean;
       allowPinSetup?: boolean;
       allowPhoneRegistration?: boolean;
@@ -283,7 +287,7 @@ export class AuthService {
     const user = await this.user(client, actor.userId);
     const session = (
       await client.query(
-        `SELECT id,
+        `SELECT id,issued_for,
           (admin_verified_at IS NOT NULL
             AND admin_verified_at > clock_timestamp() - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
             AS elevated
@@ -310,6 +314,7 @@ export class AuthService {
       fail(403, 'pin_change_required', 'Set your own PIN before you continue.');
     if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
       fail(403, 'passkey_required', 'Use your passkey to continue.');
+    checkOpsPermission(user, session.issued_for, options.operation);
     return { role: user.role, driverId: driver?.id ?? null };
   };
 
@@ -363,6 +368,8 @@ export class AuthService {
       displayName?: string;
       authorizationCode?: string;
       invitationToken?: string;
+      acceptedTerms?: unknown;
+      termsVersion?: unknown;
     },
     opsOnly = false,
   ) {
@@ -469,6 +476,12 @@ export class AuthService {
             [displayName, identity.email],
           )
         ).rows[0]!;
+        await recordCommuterTermsAcceptance(
+          client,
+          user.id,
+          input,
+          provider === 'google' ? 'commuter_google_signup' : 'commuter_apple_signup',
+        );
         await client.query(
           'INSERT INTO app.auth_identities(user_id,provider,subject,provider_token_ciphertext) VALUES ($1,$2,$3,$4)',
           [user.id, provider, identity.providerId, encrypted],
@@ -988,6 +1001,7 @@ export class AuthService {
         ).rowCount
       )
         fail(409, 'email_unavailable', 'This email address belongs to another account.');
+      await recordCommuterTermsAcceptance(c, user.id, body, 'commuter_phone_signup');
       await c.query(
         `UPDATE app.users SET display_name=$2,first_name=$3,last_name=$4,other_names=$5,
            phone_registration_pending=false WHERE id=$1`,

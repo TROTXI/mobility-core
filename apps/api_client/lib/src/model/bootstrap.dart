@@ -4,7 +4,6 @@
 
 // ignore_for_file: unused_element
 import 'package:trotxi_api_client/src/model/bootstrap_applications_inner.dart';
-import 'package:trotxi_api_client/src/model/bootstrap_flags_inner.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_map_tiles.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_operations.dart';
@@ -20,7 +19,6 @@ part 'bootstrap.g.dart';
 /// * [applications]
 /// * [operations]
 /// * [mapTiles]
-/// * [flags]
 @BuiltValue()
 abstract class Bootstrap implements Built<Bootstrap, BootstrapBuilder> {
   @BuiltValueField(wireName: r'serverTime')
@@ -34,9 +32,6 @@ abstract class Bootstrap implements Built<Bootstrap, BootstrapBuilder> {
 
   @BuiltValueField(wireName: r'mapTiles')
   BootstrapMapTiles get mapTiles;
-
-  @BuiltValueField(wireName: r'flags')
-  BuiltList<BootstrapFlagsInner> get flags;
 
   Bootstrap._();
 
@@ -81,11 +76,6 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     yield serializers.serialize(
       object.mapTiles,
       specifiedType: const FullType(BootstrapMapTiles),
-    );
-    yield r'flags';
-    yield serializers.serialize(
-      object.flags,
-      specifiedType: const FullType(BuiltList, [FullType(BootstrapFlagsInner)]),
     );
   }
 
@@ -140,14 +130,6 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
             specifiedType: const FullType(BootstrapMapTiles),
           ) as BootstrapMapTiles;
           result.mapTiles.replace(valueDes);
-          break;
-        case r'flags':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType:
-                const FullType(BuiltList, [FullType(BootstrapFlagsInner)]),
-          ) as BuiltList<BootstrapFlagsInner>;
-          result.flags.replace(valueDes);
           break;
         default:
           unhandled.add(key);

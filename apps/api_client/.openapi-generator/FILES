@@ -21,7 +21,6 @@ doc/BoardingResult.md
 doc/BoardingResultResponse.md
 doc/Bootstrap.md
 doc/BootstrapApplicationsInner.md
-doc/BootstrapFlagsInner.md
 doc/BootstrapMapTiles.md
 doc/BootstrapOperations.md
 doc/Build.md
@@ -94,10 +93,6 @@ doc/FareInput.md
 doc/FareJourney.md
 doc/FarePage.md
 doc/FareResponse.md
-doc/Flag.md
-doc/FlagEdit.md
-doc/FlagPage.md
-doc/FlagResponse.md
 doc/Geometry.md
 doc/GeometryResponse.md
 doc/GoogleSignIn.md
@@ -407,7 +402,6 @@ lib/src/model/boarding_result.dart
 lib/src/model/boarding_result_response.dart
 lib/src/model/bootstrap.dart
 lib/src/model/bootstrap_applications_inner.dart
-lib/src/model/bootstrap_flags_inner.dart
 lib/src/model/bootstrap_map_tiles.dart
 lib/src/model/bootstrap_operations.dart
 lib/src/model/build.dart
@@ -479,10 +473,6 @@ lib/src/model/fare_input.dart
 lib/src/model/fare_journey.dart
 lib/src/model/fare_page.dart
 lib/src/model/fare_response.dart
-lib/src/model/flag.dart
-lib/src/model/flag_edit.dart
-lib/src/model/flag_page.dart
-lib/src/model/flag_response.dart
 lib/src/model/geometry.dart
 lib/src/model/geometry_response.dart
 lib/src/model/google_sign_in.dart

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:trotxi_client/mobile_build_config.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
@@ -39,12 +41,27 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _photoUrl;
   bool _uploading = false;
   int _photoRevision = 0;
+  String? _version;
 
   @override
   void initState() {
     super.initState();
     _readDeviceState();
     _readPhoto();
+    _readVersion();
+  }
+
+  Future<void> _readVersion() async {
+    try {
+      final package = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(
+          () => _version = '${package.version} (${package.buildNumber})',
+        );
+      }
+    } catch (_) {
+      // Optional device metadata must not block profile access.
+    }
   }
 
   /// A missing photo is the ordinary case, not an error worth showing: the
@@ -378,6 +395,12 @@ class _ProfilePageState extends State<ProfilePage> {
         const SizedBox(height: AppSpacing.space8),
         Text(
           'Using a shared phone? Sign out at the end of your shift.',
+          textAlign: TextAlign.center,
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          '${_version == null ? 'Trotxi Driver' : 'Version $_version'} · ${MobileBuildConfig.fromEnvironment.environment}',
           textAlign: TextAlign.center,
           style: AppTypography.caption.copyWith(color: colors.textSecondary),
         ),

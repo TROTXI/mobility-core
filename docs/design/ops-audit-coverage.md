@@ -14,7 +14,7 @@
 | New-rider standby offers and rider transitions                                                 | `standby_events`                                                  |
 | No-show decisions that change a reservation                                                    | `boarding_events`                                                 |
 | Fare publication and plan pricing                                                              | `pricing_events`                                                  |
-| Feature flags, minimum app versions and administrator role changes                             | `config_events`                                                   |
+| Minimum app versions and administrator role changes                                            | `config_events`                                                   |
 | Operator passkey reset                                                                         | `admin_passkey_events`                                            |
 | Operator invitations, activation, access changes, commuter deletion and first-superadmin setup | `ops_team_events`                                                 |
 | Manual payment-review decisions                                                                | `payment_review_commands` (decision and reason only)              |

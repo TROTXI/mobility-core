@@ -3,7 +3,7 @@ import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { setup } from './helpers/financial-fixture.js';
-import { ConfigService, inRollout } from '../src/config/service.js';
+import { ConfigService } from '../src/config/service.js';
 import { MembershipService } from '../src/membership/service.js';
 import { createTransportApp } from '../src/http/app.js';
 
@@ -134,7 +134,7 @@ test('CFG-01 the unauthenticated endpoints answer without any client metadata', 
 
 test('CFG-02 start-up tells a client what it needs and nothing private', async (t) => {
   const f = await fixture(t);
-  const boot = expectStatus(await f.bare('/flags'), 200);
+  const boot = expectStatus(await f.bare('/bootstrap'), 200);
   assert.deepEqual(boot.mapTiles, {
     url: 'https://tiles.example/{z}/{x}/{y}.png',
     styleUrl: 'https://tiles.example/style.json',
@@ -153,7 +153,7 @@ test('CFG-02 start-up tells a client what it needs and nothing private', async (
     ],
     'an unconfigured floor is the one the deployment was composed with',
   );
-  assert.deepEqual(boot.flags, [], 'no flags are published until ops sets one');
+  assert.equal('flags' in boot, false, 'unused rollout controls are not part of app bootstrap');
 });
 
 test('CFG-03 a stored build floor governs admission, not a constructor value', async (t) => {
@@ -191,130 +191,21 @@ test('CFG-03 a stored build floor governs admission, not a constructor value', a
       .statusCode,
     200,
   );
-  const boot = expectStatus(await f.bare('/flags'), 200);
+  const boot = expectStatus(await f.bare('/bootstrap'), 200);
   assert.partialDeepStrictEqual(
     boot.applications.find((a: any) => a.app === 'commuter' && a.platform === 'android'),
     { minSupportedBuild: 50, storeUrl: 'https://play.example/app' },
   );
 });
 
-test('CFG-04 a flag fully on or off reads the same to everyone', async (t) => {
-  const f = await fixture(t);
-  expectStatus(
-    await f.call('PUT', '/v1/ops/flags/commute.transfers', {
-      payload: { enabled: true, rolloutPercentage: 100, description: 'Everyone' },
-      match: '*',
-    }),
-    200,
-  );
-  expectStatus(
-    await f.call('PUT', '/v1/ops/flags/map.live', {
-      payload: { enabled: false, rolloutPercentage: 100, description: 'Off for now' },
-      match: '*',
-    }),
-    200,
-  );
-  assert.deepEqual(
-    expectStatus(await f.bare('/flags'), 200).flags,
-    [
-      { key: 'commute.transfers', enabled: true, rolloutPercentage: 100 },
-      { key: 'map.live', enabled: false, rolloutPercentage: 100 },
-    ],
-    'at 100% or switched off there is nothing to bucket, so anonymous and signed-in agree',
-  );
-  assert.equal(
-    JSON.stringify(expectStatus(await f.bare('/flags'), 200).flags).includes('description'),
-    false,
-    'and the ops description is not part of what a client is told',
-  );
-
-  // Editing one needs the token the ops list hands out.
-  assert.equal(
-    (
-      await f.call('PUT', '/v1/ops/flags/map.live', {
-        payload: { enabled: true, rolloutPercentage: 50, description: 'Half' },
-        match: '*',
-      })
-    ).statusCode,
-    412,
-    'a flag that exists cannot be overwritten blind',
-  );
-  const current = expectStatus(await f.call('GET', '/v1/ops/flags'), 200).find(
-    (x: any) => x.key === 'map.live',
-  );
-  const edited = expectStatus(
-    await f.call('PUT', '/v1/ops/flags/map.live', {
-      payload: { enabled: true, rolloutPercentage: 50, description: 'Half' },
-      match: `"flag:map.live:${current.version}"`,
-    }),
-    200,
-  );
-  assert.equal(edited.version, current.version + 1);
-  assert.equal(
-    expectStatus(await f.bare('/flags'), 200).flags.find((x: any) => x.key === 'map.live')
-      .rolloutPercentage,
-    50,
-  );
-});
-
-test('CFG-04b a partial rollout is decided per person, and only from sign-in', async (t) => {
-  const f = await fixture(t);
-  expectStatus(
-    await f.call('PUT', '/v1/ops/flags/map.live', {
-      payload: { enabled: true, rolloutPercentage: 50, description: 'Half' },
-      match: '*',
-    }),
-    200,
-  );
-  const flag = async (response: Promise<Response>) =>
-    expectStatus(await response, 200).flags.find((x: { key: string }) => x.key === 'map.live');
-
-  // Nobody to bucket before sign-in, so a half-released feature stays hidden
-  // rather than being shown to an arbitrary anonymous half.
-  assert.deepEqual(await flag(f.bare('/flags')), {
-    key: 'map.live',
-    enabled: false,
-    rolloutPercentage: 50,
-  });
-
-  // Signed in, the answer is that person's bucket, and the same one each time.
-  const expected = inRollout(f.actor.userId, 'map.live', 50);
-  const asRider = await flag(f.call('GET', '/flags', { who: 'rider' }));
-  assert.equal(asRider.enabled, expected);
-  assert.equal((await flag(f.call('GET', '/flags', { who: 'rider' }))).enabled, expected);
-  assert.equal(asRider.rolloutPercentage, 50, 'the percentage is still reported');
-
-  // A token the service does not accept is anonymous, not an error: this
-  // endpoint answers on the sign-in screen and must never refuse.
-  const rejected = f.app.inject({
-    method: 'GET',
-    url: '/flags',
-    headers: { authorization: 'Bearer not-a-session' },
-  }) as Promise<Response>;
-  assert.equal((await flag(rejected)).enabled, false);
-
-  // Switched off wins over any bucket. An existing flag needs its own token.
-  const current = expectStatus(await f.call('GET', '/v1/ops/flags'), 200).find(
-    (x: { key: string }) => x.key === 'map.live',
-  );
-  expectStatus(
-    await f.call('PUT', '/v1/ops/flags/map.live', {
-      payload: { enabled: false, rolloutPercentage: 100, description: 'Off' },
-      match: `"flag:map.live:${current.version}"`,
-    }),
-    200,
-  );
-  assert.equal((await flag(f.call('GET', '/flags', { who: 'rider' }))).enabled, false);
-});
-
 test('CFG-05 configuration is ops work, attributable and replayable', async (t) => {
   const f = await fixture(t);
   assert.equal(
     (
-      await f.call('PUT', '/v1/ops/flags/x.y', {
+      await f.call('PUT', '/v1/ops/min-versions/commuter/android', {
         who: 'rider',
         client: 'ops',
-        payload: { enabled: true, rolloutPercentage: 0, description: 'nope' },
+        payload: { minSupportedBuild: 25, apiMajor: 1, storeUrl: 'https://play.example/app' },
         match: '*',
       })
     ).statusCode,
@@ -323,27 +214,27 @@ test('CFG-05 configuration is ops work, attributable and replayable', async (t) 
   );
   assert.equal(
     (
-      await f.call('PUT', '/v1/ops/flags/x.y', {
-        payload: { enabled: true, rolloutPercentage: 0, description: 'no token' },
+      await f.call('PUT', '/v1/ops/min-versions/commuter/android', {
+        payload: { minSupportedBuild: 25, apiMajor: 1, storeUrl: 'https://play.example/app' },
       })
     ).statusCode,
     428,
   );
   const key = randomUUID();
-  const payload = { enabled: true, rolloutPercentage: 25, description: 'Replay me' };
+  const payload = { minSupportedBuild: 25, apiMajor: 1, storeUrl: 'https://play.example/app' };
   const first = expectStatus(
-    await f.call('PUT', '/v1/ops/flags/x.y', { payload, match: '*', key }),
+    await f.call('PUT', '/v1/ops/min-versions/commuter/android', { payload, match: '*', key }),
     200,
   );
   const replay = expectStatus(
-    await f.call('PUT', '/v1/ops/flags/x.y', { payload, match: '*', key }),
+    await f.call('PUT', '/v1/ops/min-versions/commuter/android', { payload, match: '*', key }),
     200,
   );
-  assert.equal(replay.version, first.version, 'a replay does not bump the flag again');
+  assert.equal(replay.version, first.version, 'a replay does not bump the floor again');
   assert.equal(
     (
-      await f.call('PUT', '/v1/ops/flags/x.y', {
-        payload: { ...payload, rolloutPercentage: 30 },
+      await f.call('PUT', '/v1/ops/min-versions/commuter/android', {
+        payload: { ...payload, minSupportedBuild: 30 },
         match: '*',
         key,
       })
@@ -357,12 +248,12 @@ test('CFG-05 configuration is ops work, attributable and replayable', async (t) 
   ).rows;
   assert.equal(events.length, 1);
   assert.partialDeepStrictEqual(events[0], {
-    action: 'setFlag',
-    target: 'x.y',
+    action: 'setMinimumVersion',
+    target: 'commuter:android',
     reason: 'Test reason',
   });
   assert.deepEqual(events[0].before_state, {});
-  assert.equal(events[0].after_state.rolloutPercentage, 25);
+  assert.equal(events[0].after_state.minSupportedBuild, 25);
 });
 
 test('CFG-06 a role change is attributable and never strands the service without an admin', async (t) => {
@@ -470,22 +361,22 @@ test('CFG-08 two administrators creating the same floor do not both win', async 
 test('CFG-09 a replay answers with what that command did', async (t) => {
   const f = await fixture(t);
   const key = randomUUID();
-  const payload = { enabled: false, rolloutPercentage: 25, description: 'mine' };
+  const payload = { minSupportedBuild: 25, apiMajor: 1, storeUrl: 'https://play.example/app' };
   const mine = expectStatus(
-    await f.call('PUT', '/v1/ops/flags/p.q', { payload, match: '*', key }),
+    await f.call('PUT', '/v1/ops/min-versions/commuter/android', { payload, match: '*', key }),
     200,
   );
   // Somebody else moves it on.
-  const current = expectStatus(await f.call('GET', '/v1/ops/flags'), 200)[0];
+  const current = expectStatus(await f.call('GET', '/v1/ops/min-versions'), 200)[0];
   expectStatus(
-    await f.call('PUT', '/v1/ops/flags/p.q', {
-      payload: { enabled: true, rolloutPercentage: 99, description: 'theirs' },
-      match: `"flag:p.q:${current.version}"`,
+    await f.call('PUT', '/v1/ops/min-versions/commuter/android', {
+      payload: { ...payload, minSupportedBuild: 99 },
+      match: current.editToken,
     }),
     200,
   );
   const replay = expectStatus(
-    await f.call('PUT', '/v1/ops/flags/p.q', { payload, match: '*', key }),
+    await f.call('PUT', '/v1/ops/min-versions/commuter/android', { payload, match: '*', key }),
     200,
   );
   assert.deepEqual(replay, mine, "not another administrator's change wearing this command's name");
@@ -517,42 +408,36 @@ test('CFG-10 a role nobody can use is not granted, and ops learns no phone numbe
 
 test('CFG-11 the ops lists honour what they declare', async (t) => {
   const f = await fixture(t);
-  for (const key of ['a.one', 'b.two', 'c.three'])
+  for (const [app, platform] of [
+    ['commuter', 'ios'],
+    ['commuter', 'android'],
+    ['driver', 'ios'],
+  ] as const)
     expectStatus(
-      await f.call('PUT', `/v1/ops/flags/${key}`, {
-        payload: { enabled: true, rolloutPercentage: 100, description: key },
+      await f.call('PUT', `/v1/ops/min-versions/${app}/${platform}`, {
+        payload: { minSupportedBuild: 10, apiMajor: 1, storeUrl: 'https://store.example/app' },
         match: '*',
       }),
       200,
     );
-  const page = await f.call('GET', '/v1/ops/flags?limit=2');
+  const page = await f.call('GET', '/v1/ops/min-versions?limit=2');
   const first = expectStatus(page, 200);
   assert.equal(first.length, 2);
   const cursor = page.json().page.nextCursor;
-  assert.ok(cursor, 'three flags do not fit a page of two');
+  assert.ok(cursor, 'three floors do not fit a page of two');
   assert.equal(
     expectStatus(
-      await f.call('GET', `/v1/ops/flags?limit=2&cursor=${encodeURIComponent(cursor)}`),
+      await f.call('GET', `/v1/ops/min-versions?limit=2&cursor=${encodeURIComponent(cursor)}`),
       200,
     ).length,
     1,
   );
-  assert.equal((await f.call('GET', '/v1/ops/flags?bogus=1')).statusCode, 400);
-  assert.equal((await f.call('GET', '/v1/ops/flags?limit=0')).statusCode, 400);
-  // A key the contract allows is reachable, and one it does not is refused.
-  const long = 'a' + '.b'.repeat(60);
-  assert.equal(long.length, 121);
-  expectStatus(
-    await f.call('PUT', `/v1/ops/flags/${long}`, {
-      payload: { enabled: false, rolloutPercentage: 0, description: 'long' },
-      match: '*',
-    }),
-    200,
-  );
+  assert.equal((await f.call('GET', '/v1/ops/min-versions?bogus=1')).statusCode, 400);
+  assert.equal((await f.call('GET', '/v1/ops/min-versions?limit=0')).statusCode, 400);
   assert.equal(
     (
-      await f.call('PUT', '/v1/ops/flags/abc%00def', {
-        payload: { enabled: false, rolloutPercentage: 0, description: 'null byte' },
+      await f.call('PUT', '/v1/ops/min-versions/commuter/web', {
+        payload: { minSupportedBuild: 10, apiMajor: 1, storeUrl: 'https://store.example/app' },
         match: '*',
       })
     ).statusCode,
@@ -560,34 +445,44 @@ test('CFG-11 the ops lists honour what they declare', async (t) => {
   );
 });
 
-test('CFG-15 a flag change says why, and the reason is kept', async (t) => {
+test('CFG-15 a floor change says why, and the reason is kept', async (t) => {
   const f = await fixture(t);
-  const blank = await f.call('PUT', '/v1/ops/flags/map.live', {
-    payload: { enabled: true, rolloutPercentage: 10, description: 'Pilot', reason: ' ' },
+  const blank = await f.call('PUT', '/v1/ops/min-versions/driver/android', {
+    payload: {
+      minSupportedBuild: 10,
+      apiMajor: 1,
+      storeUrl: 'https://play.example/driver',
+      reason: ' ',
+    },
     match: '*',
   });
   assert.equal(blank.statusCode, 400, blank.body);
   assert.equal(blank.json().error.code, 'reason_required');
   expectStatus(
-    await f.call('PUT', '/v1/ops/flags/map.live', {
-      payload: { enabled: true, rolloutPercentage: 10, description: 'Pilot', reason: 'Field test' },
+    await f.call('PUT', '/v1/ops/min-versions/driver/android', {
+      payload: {
+        minSupportedBuild: 10,
+        apiMajor: 1,
+        storeUrl: 'https://play.example/driver',
+        reason: 'Release floor',
+      },
       match: '*',
     }),
     200,
   );
   assert.equal(
-    (await f.owner.query("SELECT reason FROM app.config_events WHERE target='map.live'")).rows[0]
-      .reason,
-    'Field test',
+    (await f.owner.query("SELECT reason FROM app.config_events WHERE target='driver:android'"))
+      .rows[0].reason,
+    'Release floor',
   );
 });
 
 test('CFG-12 a rider is told they are not an administrator, whatever else they got wrong', async (t) => {
   const f = await fixture(t);
-  const refused = await f.call('PUT', '/v1/ops/flags/x.y', {
+  const refused = await f.call('PUT', '/v1/ops/min-versions/commuter/android', {
     who: 'rider',
     client: 'ops',
-    payload: { enabled: true, rolloutPercentage: 0, description: 'nope' },
+    payload: { minSupportedBuild: 10, apiMajor: 1, storeUrl: 'https://play.example/app' },
   });
   assert.equal(refused.statusCode, 403, refused.body);
   assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.config_events')).rows[0].n, 0);
@@ -660,7 +555,7 @@ test('CFG-14 concurrent legacy demotions cannot bypass team account deletion', a
 
 /** Ops actions that must say why; tests that do not test the reason supply one. */
 function withReason(url: string, payload: unknown): unknown {
-  if (!/^\/v1\/ops\/(flags|min-versions)\//.test(url)) return payload;
+  if (!/^\/v1\/ops\/min-versions\//.test(url)) return payload;
   if (payload === undefined) return { reason: 'Test reason' };
   if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('reason' in payload))
     return { ...payload, reason: 'Test reason' };

@@ -13,10 +13,12 @@ class PublicInformationLinks extends StatelessWidget {
     super.key,
     this.open = _openExternally,
     this.showDeletion = true,
+    this.showTerms = true,
   });
 
   final Future<bool> Function(Uri) open;
   final bool showDeletion;
+  final bool showTerms;
 
   Future<void> _show(BuildContext context, Uri uri) async {
     try {
@@ -44,20 +46,22 @@ class PublicInformationLinks extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = TextButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      minimumSize: const Size(0, 44),
+      minimumSize: const Size(48, 48),
       textStyle: AppTypography.caption,
       foregroundColor: context.appColors.textSecondary,
     );
     Widget link(String text, Uri uri) => TextButton(
       style: style,
       onPressed: () => _show(context, uri),
-      child: Text(text),
+      child: Text(text, semanticsLabel: '$text, opens in browser'),
     );
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 4,
       children: [
+        if (showTerms)
+          link('Terms and Conditions', TrotxiPublicInformation.terms),
         link('Privacy notice', TrotxiPublicInformation.privacy),
         if (showDeletion)
           link('Request account deletion', TrotxiPublicInformation.deletion),

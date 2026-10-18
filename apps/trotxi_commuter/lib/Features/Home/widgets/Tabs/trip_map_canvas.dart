@@ -1,6 +1,57 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:trotxi_client/commuter_trip_tracking.dart';
 import 'package:trotxi_map/trotxi_map.dart';
+
+/// Calculates the route camera in Dart instead of relying on MapLibre's native
+/// iOS bounds fitting while the platform view is still settling.
+@visibleForTesting
+CameraPosition tripRouteCamera(
+  List<LatLng> points,
+  Size viewport, {
+  double padding = 28,
+}) {
+  assert(points.isNotEmpty);
+  var south = points.first.latitude,
+      north = south,
+      west = points.first.longitude,
+      east = west;
+  for (final point in points.skip(1)) {
+    if (point.latitude < south) south = point.latitude;
+    if (point.latitude > north) north = point.latitude;
+    if (point.longitude < west) west = point.longitude;
+    if (point.longitude > east) east = point.longitude;
+  }
+
+  // Give a single point and very short corridors a little breathing room.
+  south -= .001;
+  north += .001;
+  west -= .001;
+  east += .001;
+
+  double worldY(double latitude) {
+    final radians = latitude.clamp(-85.0511, 85.0511) * math.pi / 180;
+    final sine = math.sin(radians).clamp(-.9999, .9999);
+    return .5 - math.log((1 + sine) / (1 - sine)) / (4 * math.pi);
+  }
+
+  final longitudeFraction = (east - west).abs() / 360;
+  final latitudeFraction = (worldY(north) - worldY(south)).abs();
+  final width = math.max(1.0, viewport.width - padding * 2);
+  final height = math.max(1.0, viewport.height - padding * 2);
+  double zoomFor(double pixels, double fraction) =>
+      fraction <= 0 ? 16 : math.log(pixels / 256 / fraction) / math.ln2;
+  final zoom = math
+      .min(zoomFor(width, longitudeFraction), zoomFor(height, latitudeFraction))
+      .clamp(1.0, 16.0)
+      .toDouble();
+
+  return CameraPosition(
+    target: LatLng((south + north) / 2, (west + east) / 2),
+    zoom: zoom,
+  );
+}
 
 /// Only server coordinates are drawn. Shared map disables device location.
 class TripMapCanvas extends StatefulWidget {
@@ -143,43 +194,41 @@ class _TripMapCanvasState extends State<TripMapCanvas> {
           }
           final position = snapshot.hasPosition ? snapshot.live.position : null;
           if (!_framed) {
-            final all = [
+            final route = [
               ...points,
               for (final stop in snapshot.stops)
                 LatLng(
                   stop.location.latitude.toDouble(),
                   stop.location.longitude.toDouble(),
                 ),
-              if (position != null)
-                LatLng(
-                  position.location.latitude.toDouble(),
-                  position.location.longitude.toDouble(),
-                ),
             ];
-            if (all.isNotEmpty) {
-              _framed = true;
-              var south = all.first.latitude,
-                  north = south,
-                  west = all.first.longitude,
-                  east = west;
-              for (final p in all) {
-                if (p.latitude < south) south = p.latitude;
-                if (p.latitude > north) north = p.latitude;
-                if (p.longitude < west) west = p.longitude;
-                if (p.longitude > east) east = p.longitude;
-              }
+            // A delayed or malformed vehicle fix must never shrink an entire
+            // commuter route to a dot. Use the fix only when no route shape is
+            // available at all.
+            final framePoints = route.isNotEmpty
+                ? route
+                : [
+                    if (position != null)
+                      LatLng(
+                        position.location.latitude.toDouble(),
+                        position.location.longitude.toDouble(),
+                      ),
+                  ];
+            if (framePoints.isNotEmpty) {
+              // onStyleLoaded can run before the iOS platform view has its
+              // final dimensions. Wait for Flutter's frame, then use a
+              // deterministic camera rather than native bounds fitting.
+              await WidgetsBinding.instance.endOfFrame;
+              if (!mounted || !current()) return;
+              final viewport = context.size;
+              if (viewport == null || viewport.isEmpty) return;
               await controller.animateCamera(
-                CameraUpdate.newLatLngBounds(
-                  LatLngBounds(
-                    southwest: LatLng(south - .001, west - .001),
-                    northeast: LatLng(north + .001, east + .001),
-                  ),
-                  left: 28,
-                  right: 28,
-                  top: 28,
-                  bottom: 28,
+                CameraUpdate.newCameraPosition(
+                  tripRouteCamera(framePoints, viewport),
                 ),
               );
+              if (!current()) return;
+              _framed = true;
             }
           }
           if (current() && _failed) setState(() => _failed = false);

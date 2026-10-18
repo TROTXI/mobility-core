@@ -43,7 +43,6 @@ Method | HTTP request | Description
 [**listCommuteEvents**](OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
 [**listCommuteSlots**](OpsApi.md#listcommuteslots) | **GET** /v1/ops/commute-slots | list Commute Slots
 [**listFares**](OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
-[**listFlags**](OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [**listMinimumVersions**](OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
 [**listOpsAccountErasures**](OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [**listOpsAuditEvents**](OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
@@ -80,7 +79,6 @@ Method | HTTP request | Description
 [**resolvePaymentReview**](OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
 [**retireCommuteSlot**](OpsApi.md#retirecommuteslot) | **POST** /v1/ops/commute-slots/{id}/retire | retire Commute Slot
 [**runPersonalPauseResumes**](OpsApi.md#runpersonalpauseresumes) | **POST** /v1/ops/maintenance/personal-pause-resumes | run Personal Pause Resumes
-[**setFlag**](OpsApi.md#setflag) | **PUT** /v1/ops/flags/{key} | set Flag
 [**setMinimumVersion**](OpsApi.md#setminimumversion) | **PUT** /v1/ops/min-versions/{app}/{platform} | set Minimum Version
 [**updateDriver**](OpsApi.md#updatedriver) | **PATCH** /v1/ops/drivers/{id} | update Driver
 [**updateOperatorAccess**](OpsApi.md#updateoperatoraccess) | **POST** /v1/ops/team/members/{id}/access | update Operator Access
@@ -1741,55 +1739,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**FarePage**](FarePage.md)
-
-### Authorization
-
-[bearerAuth](../README.md#bearerAuth)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **listFlags**
-> FlagPage listFlags(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
-
-list Flags
-
-### Example
-```dart
-import 'package:trotxi_api_client/api.dart';
-
-final api = TrotxiApiClient().getOpsApi();
-final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
-final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
-final int limit = 56; // int | Page size. No silent truncation.
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
-
-try {
-    final response = api.listFlags(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform);
-    print(response);
-} on DioException catch (e) {
-    print('Exception when calling OpsApi->listFlags: $e\n');
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
- **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
- **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
-
-### Return type
-
-[**FlagPage**](FlagPage.md)
 
 ### Authorization
 
@@ -3635,59 +3584,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**MaintenanceResultResponse**](MaintenanceResultResponse.md)
-
-### Authorization
-
-[bearerAuth](../README.md#bearerAuth)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **setFlag**
-> FlagResponse setFlag(key, ifMatch, idempotencyKey, xTrotxiClient, xTrotxiBuild, flagEdit, xTrotxiPlatform)
-
-set Flag
-
-### Example
-```dart
-import 'package:trotxi_api_client/api.dart';
-
-final api = TrotxiApiClient().getOpsApi();
-final String key = key_example; // String |
-final String ifMatch = ifMatch_example; // String | Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
-final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
-final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
-final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final FlagEdit flagEdit = ; // FlagEdit |
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
-
-try {
-    final response = api.setFlag(key, ifMatch, idempotencyKey, xTrotxiClient, xTrotxiBuild, flagEdit, xTrotxiPlatform);
-    print(response);
-} on DioException catch (e) {
-    print('Exception when calling OpsApi->setFlag: $e\n');
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **key** | **String**|  |
- **ifMatch** | **String**| Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization. |
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
- **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **flagEdit** | [**FlagEdit**](FlagEdit.md)|  |
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
-
-### Return type
-
-[**FlagResponse**](FlagResponse.md)
 
 ### Authorization
 

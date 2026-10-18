@@ -1,6 +1,6 @@
 # Feature documentation
 
-Index updated: 2026-10-08. Each guide records its own source-audit date.
+Index updated: 2026-10-17. Each guide records its own source-audit date.
 These documents describe the implementation on main.
 They replace the retired ADR collection. Product intent is maintained separately
 in [strategy](https://github.com/TROTXI/strategy).
@@ -9,24 +9,25 @@ Read a feature's flow diagram, ownership and recovery rules, then follow its
 code/test links. [Worked API calls](../api/worked-examples.md) connect route
 setup, verification, offers, payment, reservations and driver operation.
 
-| Area                                         | Guide                                         |
-| -------------------------------------------- | --------------------------------------------- |
-| Social, phone, driver and Ops access         | [Authentication](authentication.md)           |
-| Subscription requests and priced offers      | [Payments and wallet](payments-and-wallet.md) |
-| Period-scoped rides and renewal discounts    | [Entitlements](entitlements.md)               |
-| Daily confirmation and capacity              | [Reservations](reservations.md)               |
-| QR, code, photo and no-show settlement       | [Boarding](boarding.md)                       |
-| Routes, versions, schedules, fleet and trips | [Mobility](mobility.md)                       |
-| Driver lifecycle, GPS and requests           | [Driver operations](driver-operations.md)     |
-| Reviewed commute transfers                   | [Commute changes](commute-change-requests.md) |
-| GPS, ETA and retention                       | [Live positions](live-positions.md)           |
-| Shared map rendering                         | [Basemap](basemap.md)                         |
-| Profiles, avatars and erasure                | [Account lifecycle](profile-avatars.md)       |
-| Bootstrap, flags and supported builds        | [Configuration](feature-flags.md)             |
-| Admission and caches                         | [Rate limiting](rate-limiting.md)             |
-| Inbox and preferences                        | [Notifications](../api/notifications.md)      |
-| Ops workflows                                | [Ops guide](ops-console.md)                   |
-| Logs, metrics and traces                     | [Observability](../design/observability.md)   |
+| Area                                         | Guide                                             |
+| -------------------------------------------- | ------------------------------------------------- |
+| Social, phone, driver and Ops access         | [Authentication](authentication.md)               |
+| Subscription requests and priced offers      | [Payments and wallet](payments-and-wallet.md)     |
+| Period-scoped rides and renewal discounts    | [Entitlements](entitlements.md)                   |
+| Daily confirmation and capacity              | [Reservations](reservations.md)                   |
+| QR, code, photo and no-show settlement       | [Boarding](boarding.md)                           |
+| Routes, versions, schedules, fleet and trips | [Mobility](mobility.md)                           |
+| Driver lifecycle, GPS and requests           | [Driver operations](driver-operations.md)         |
+| Reviewed commute transfers                   | [Commute changes](commute-change-requests.md)     |
+| GPS, ETA and retention                       | [Live positions](live-positions.md)               |
+| Shared map rendering                         | [Basemap](basemap.md)                             |
+| Profiles, avatars and erasure                | [Account lifecycle](profile-avatars.md)           |
+| Bootstrap and supported builds               | [Configuration](configuration.md)                 |
+| Admission and caches                         | [Rate limiting](rate-limiting.md)                 |
+| Inbox and preferences                        | [Notifications](../api/notifications.md)          |
+| Ops workflows                                | [Ops guide](ops-console.md)                       |
+| Logs, metrics and traces                     | [Observability](../design/observability.md)       |
+| Scheduled work and recovery                  | [Background jobs](../operations/job-scheduler.md) |
 
 ## Integration conventions
 

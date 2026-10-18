@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:trotxi_diagnostics/diagnostics.dart';
+import 'package:trotxi_diagnostics/firebase_diagnostics.dart';
+import 'package:trotxi_diagnostics/timing_interceptor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/full_name_page.dart';
@@ -14,14 +16,14 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/notifications_inbox_p
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_client/public_information.dart';
+import 'package:trotxi_client/optional_service.dart';
+import 'package:trotxi_client/mobile_build_config.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
-import 'package:trotxi_commuter/core/api/api_debug_interceptor.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/notifications/commuter_notifications.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
-import 'package:trotxi_commuter/firebase_performance.dart';
 
 // Build inputs, never defaults: run with
 // `--dart-define-from-file=config/staging.json` (or a production file).
@@ -37,23 +39,44 @@ final trotxiClientProvider = Provider<CommuterApi>((ref) {
 
 Future<void> main() async {
   var launched = false;
+  MobileDiagnostics? diagnostics;
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      MobileBuildConfig.fromEnvironment.validate(
+        release: kReleaseMode,
+        app: 'trotxi_commuter',
+      );
       TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      final firebaseReady = await initializeOptionalService(() async {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      });
+      if (firebaseReady) {
+        await initializeOptionalService(() async {
+          diagnostics = startFirebaseDiagnostics(
+            release: kReleaseMode,
+            scope:
+                '${const String.fromEnvironment('APP_ENVIRONMENT')}:${DefaultFirebaseOptions.currentPlatform.projectId}',
+          );
+        });
+      }
 
       // Catch Flutter framework errors (widget build errors, layout errors, etc.)
       FlutterError.onError = (errorDetails) {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+        if (kDebugMode) FlutterError.presentError(errorDetails);
+        diagnostics?.report(
+          errorDetails.exception,
+          errorDetails.stack ?? StackTrace.empty,
+          ErrorSource.framework,
+        );
       };
 
       // Catch errors outside Flutter's error handling (async errors, isolate errors)
       PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        diagnostics?.report(error, stack, ErrorSource.platform, fatal: true);
         return true;
       };
 
@@ -75,8 +98,12 @@ Future<void> main() async {
         tokenStore: tokens,
         metadata: metadata,
       );
-      transport.dio.interceptors.add(PerformanceInterceptor());
-      transport.dio.interceptors.add(ApiDebugInterceptor());
+      final reporting = diagnostics;
+      if (reporting != null) {
+        transport.dio.interceptors.add(
+          DiagnosticTimingInterceptor(reporting, apiOrigin: _apiBaseUrl),
+        );
+      }
       final client = CommuterApi(
         client: transport,
         store: tokens,
@@ -86,10 +113,7 @@ Future<void> main() async {
       launched = true;
     },
     (error, stack) {
-      // Catches anything thrown outside the zone above (belt-and-suspenders)
-      if (Firebase.apps.isNotEmpty) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      }
+      diagnostics?.report(error, stack, ErrorSource.zone, fatal: true);
       if (!launched) {
         runApp(
           const MaterialApp(
@@ -99,7 +123,7 @@ Future<void> main() async {
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
-                      'This build needs its API URL, session realm and public site address. Contact support.',
+                      'This build has missing or unapproved environment settings. Contact support.',
                       textAlign: TextAlign.center,
                     ),
                   ),

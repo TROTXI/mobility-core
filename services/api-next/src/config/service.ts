@@ -7,13 +7,7 @@ import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
 
-export const configOperations = [
-  'listFlags',
-  'setFlag',
-  'listMinimumVersions',
-  'setMinimumVersion',
-  'changeRole',
-] as const;
+export const configOperations = ['listMinimumVersions', 'setMinimumVersion', 'changeRole'] as const;
 export type ConfigOperation = (typeof configOperations)[number];
 /** Unauthenticated, and answered without reading anything private. */
 export const publicConfigOperations = [
@@ -66,32 +60,10 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = ['commuter', 'driver', 'admin'];
 const apps = ['commuter', 'driver'];
 const platforms = ['ios', 'android'];
-const flagKey = /^[a-z][a-z0-9_.-]{0,127}$/;
-const flagToken = (r: Row) => `"flag:${r.key}:${r.version}"`;
 const versionToken = (r: Row) => `"minversion:${r.app}:${r.platform}:${r.version}"`;
 const userToken = (r: Row) => `"user:${r.id}:${r.version}"`;
 
-/**
- * Which builds are still admitted, what clients are told at start-up, and who
- * changed a role.
- */
-/**
- * Whether one person falls inside a flag's rollout.
- *
- * Deterministic, so the answer is the same on every launch: a feature must not
- * appear and vanish between sessions. The key is hashed with the person, so
- * each flag draws its own sample and the same people are not first into every
- * rollout. Ten thousand buckets, because the column holds two decimals and a
- * 12.5% rollout should mean 1,250 of them, not a rounded 12 or 13.
- */
-export function inRollout(userId: string, key: string, percentage: number): boolean {
-  if (!(percentage > 0)) return false;
-  if (percentage >= 100) return true;
-  const bucket =
-    createHash('sha256').update(`${key}\u0000${userId}`).digest().readUInt32BE(0) % 10000;
-  return bucket < Math.round(percentage * 100);
-}
-
+/** Which builds are still admitted, what clients learn at start-up, and who changed a role. */
 export class ConfigService {
   private readonly floors = new Map<string, { build: number; until: number }>();
   private readonly floorReads = new Map<string, Promise<number>>();
@@ -181,22 +153,11 @@ export class ConfigService {
     return row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
   }
 
-  /**
-   * Everything a client needs before it has signed in.
-   *
-   * Flags are decided here, per caller. They used to go out as definitions for
-   * the client to bucket, and no client ever did, so a flag at 25% was on for
-   * everyone or no one while the ops screen said 25%. `enabled` now answers
-   * "is this on for you", and `rolloutPercentage` stays as information.
-   *
-   * Someone not yet signed in has nothing stable to bucket by, so they get a
-   * flag only when it is fully rolled out. Partial rollouts apply from sign-in.
-   */
-  async bootstrap(userId: string | null = null): Promise<Outcome> {
-    const { versions, flags } = await this.tx(async (c) => ({
-      versions: (await c.query('SELECT * FROM app.minimum_versions ORDER BY app,platform')).rows,
-      flags: (await c.query('SELECT * FROM app.feature_flags ORDER BY key')).rows,
-    }));
+  /** Everything a client needs before it has signed in. */
+  async bootstrap(): Promise<Outcome> {
+    const versions = await this.tx(
+      async (c) => (await c.query('SELECT * FROM app.minimum_versions ORDER BY app,platform')).rows,
+    );
     const configured = new Map(versions.map((v) => [`${v.app}:${v.platform}`, v]));
     const applications = [];
     for (const app of apps)
@@ -224,16 +185,6 @@ export class ConfigService {
           hours: null,
         },
         mapTiles: { ...this.options.mapTiles },
-        flags: flags.map((f) => {
-          const rolloutPercentage = Number(f.rollout_percentage);
-          return {
-            key: f.key,
-            enabled:
-              f.enabled &&
-              (userId ? inRollout(userId, f.key, rolloutPercentage) : rolloutPercentage >= 100),
-            rolloutPercentage,
-          };
-        }),
       } as unknown as Body,
       headers: {},
     } as Outcome;
@@ -265,16 +216,6 @@ export class ConfigService {
     }
   }
 
-  private flagView(r: Row): Body {
-    return {
-      key: r.key,
-      enabled: r.enabled,
-      rolloutPercentage: Number(r.rollout_percentage),
-      description: r.description,
-      version: r.version,
-      editToken: flagToken(r),
-    };
-  }
   private versionView(r: Row): Body {
     return {
       app: r.app,
@@ -302,13 +243,12 @@ export class ConfigService {
         (query.limit !== undefined && !/^[1-9]\d*$/.test(query.limit))
       )
         fail(400, 'invalid_query', 'Invalid page size.');
-      const flags = operation === 'listFlags';
       const context = canonical(['config', operation, 'created_at,id']);
       const cursor = query.cursor ? this.cursors.decode(query.cursor, context, this.now()) : null;
       const rows = (
         await c.query(
           `SELECT *,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
-          FROM ${flags ? 'app.feature_flags' : 'app.minimum_versions'}
+          FROM app.minimum_versions
           WHERE ($1::timestamptz IS NULL OR (created_at,id)>($1::timestamptz,$2::uuid))
           ORDER BY created_at,id LIMIT $3`,
           [cursor?.time ?? null, cursor?.id ?? null, limit + 1],
@@ -319,7 +259,7 @@ export class ConfigService {
       return {
         status: 200,
         body: {
-          data: page.map((r) => (flags ? this.flagView(r) : this.versionView(r))),
+          data: page.map((r) => this.versionView(r)),
           page: {
             nextCursor:
               rows.length > limit && last
@@ -353,8 +293,6 @@ export class ConfigService {
         fail(428, 'precondition_required', 'Supply the resource edit token in If-Match.');
       // Every identifier is checked here, before it reaches a query: a key
       // carrying a null byte is a bad request, not a database error.
-      if (operation === 'setFlag' && !flagKey.test(String(params.key ?? '')))
-        fail(404, 'not_found', 'Resource not found.');
       if (
         operation === 'setMinimumVersion' &&
         (!apps.includes(String(params.app)) || !platforms.includes(String(params.platform)))
@@ -363,11 +301,7 @@ export class ConfigService {
       if (operation === 'changeRole' && !uuid.test(String(params.id ?? '')))
         fail(404, 'not_found', 'Resource not found.');
       const target =
-        operation === 'setFlag'
-          ? String(params.key)
-          : operation === 'setMinimumVersion'
-            ? `${params.app}:${params.platform}`
-            : String(params.id);
+        operation === 'setMinimumVersion' ? `${params.app}:${params.platform}` : String(params.id);
       const keyHash = digest(`${actor.userId}:${operation}:${target}:${key}`);
       const inputHash = digest(canonical(input));
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`config:${keyHash}`]);
@@ -395,11 +329,9 @@ export class ConfigService {
         } as Outcome;
       }
       const change =
-        operation === 'setFlag'
-          ? await this.writeFlag(c, target, input, ifMatch)
-          : operation === 'setMinimumVersion'
-            ? await this.writeVersion(c, params, input, ifMatch)
-            : await this.writeRole(c, target, input, ifMatch);
+        operation === 'setMinimumVersion'
+          ? await this.writeVersion(c, params, input, ifMatch)
+          : await this.writeRole(c, target, input, ifMatch);
       const outcome = await this.render(c, operation, target);
       const receipt = (
         await c.query(
@@ -435,14 +367,6 @@ export class ConfigService {
     operation: ConfigOperation,
     target: string,
   ): Promise<Outcome> {
-    if (operation === 'setFlag') {
-      const row = (await c.query('SELECT * FROM app.feature_flags WHERE key=$1', [target])).rows[0];
-      return {
-        status: 200,
-        body: { data: this.flagView(row) },
-        headers: { ETag: flagToken(row) },
-      } as Outcome;
-    }
     if (operation === 'setMinimumVersion') {
       const [app, platform] = target.split(':');
       const row = (
@@ -487,47 +411,6 @@ export class ConfigService {
   private precondition(supplied: string, current: string) {
     if (supplied !== current)
       fail(412, 'precondition_failed', 'The resource changed. Refresh it and try again.');
-  }
-
-  private async writeFlag(c: PoolClient, key: string, input: Body, ifMatch: string) {
-    if (!/^[a-z][a-z0-9_.-]{0,199}$/.test(key)) fail(404, 'not_found', 'Resource not found.');
-    const percentage = input.rolloutPercentage;
-    if (typeof input.enabled !== 'boolean' || typeof input.description !== 'string')
-      fail(400, 'invalid_request', 'Supply the complete flag state.');
-    if (
-      typeof percentage !== 'number' ||
-      !Number.isFinite(percentage) ||
-      percentage < 0 ||
-      percentage > 100
-    )
-      fail(400, 'invalid_request', 'Supply a rollout percentage between 0 and 100.');
-    // A row that does not exist yet cannot be locked by reading it, so every
-    // concurrent caller would be told it is creating the flag and the last
-    // write would quietly win. The lock is on the flag, not on the key of the
-    // command, because it is the flag two callers are contending for.
-    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`flag:${key}`]);
-    const existing = (
-      await c.query('SELECT * FROM app.feature_flags WHERE key=$1 FOR UPDATE', [key])
-    ).rows[0];
-    // A flag that does not exist yet is created by setting it, so `*` is the
-    // honest precondition for "I am not replacing a value I have read".
-    if (existing) this.precondition(ifMatch, flagToken(existing));
-    else if (ifMatch !== '*') fail(412, 'precondition_failed', 'This flag does not exist yet.');
-    const row = (
-      await c.query(
-        `INSERT INTO app.feature_flags(key,enabled,rollout_percentage,description)
-        VALUES ($1,$2,$3,$4)
-        ON CONFLICT (key) DO UPDATE SET enabled=EXCLUDED.enabled,
-          rollout_percentage=EXCLUDED.rollout_percentage,description=EXCLUDED.description
-        RETURNING *`,
-        [key, input.enabled, percentage, input.description],
-      )
-    ).rows[0];
-    return {
-      reason: requireReason(input),
-      before: existing ? this.flagView(existing) : {},
-      after: this.flagView(row),
-    };
   }
 
   private async writeVersion(

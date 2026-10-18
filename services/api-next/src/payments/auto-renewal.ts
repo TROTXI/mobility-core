@@ -22,6 +22,7 @@ import type {
 import type { Pricing } from './pricing.js';
 import { buildOfferTerms, type OfferTerms } from '../membership/offer-terms.js';
 import { cursorCodec } from '../transport/cursor.js';
+import { isAuthorizationFailure, type AuthorizeWork } from '../auth/ops-permissions.js';
 
 export const autoRenewalOperations = [
   'getAutoRenewal',
@@ -72,7 +73,7 @@ export interface RenewalEmail {
 export interface AutoRenewalOptions {
   pool: Pool;
   environment: 'test' | 'live';
-  authorizeSession: (c: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: import('../auth/ops-permissions.js').SessionAuthorizer;
   financial: FinancialFoundation;
   pricing: Pricing;
   /** Seal and open the saved card's secret part, bound to its rider. */
@@ -86,7 +87,7 @@ export interface AutoRenewalOptions {
     authorizationCode: string;
   }) => Promise<void>;
   /** Verify the attempt with Paystack and process the evidence. */
-  settle: (reference: string) => Promise<void>;
+  settle: (reference: string, authorize: AuthorizeWork) => Promise<void>;
   email?: RenewalEmail;
   /** Signs Ops list cursors to the caller and filter. */
   cursorSecret: Buffer;
@@ -182,12 +183,18 @@ export class AutoRenewals {
     ).rows[0];
     if (user?.role !== 'commuter') fail(403, 'forbidden', 'Auto-renewal is for commuter accounts.');
   }
-  private async operator(c: PoolClient, actor: Actor) {
-    await this.options.authorizeSession(c, actor);
+  private async operator(c: PoolClient, actor: Actor, operation?: string) {
+    await this.options.authorizeSession(c, actor, { operation });
     const user = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL', [actor.userId])
     ).rows[0];
     if (user?.role !== 'admin') fail(403, 'forbidden', 'Operations access required.');
+  }
+  private work<T>(authorize: AuthorizeWork, work: (c: PoolClient) => Promise<T>) {
+    return this.tx(async (c) => {
+      await authorize(c);
+      return work(c);
+    });
   }
   private async card(c: PoolClient, userId: string): Promise<Card | undefined> {
     return (
@@ -565,9 +572,9 @@ export class AutoRenewals {
       failures: [] as { resourceId: string; reason: string }[],
     };
     const now = this.now();
+    const authorize: AuthorizeWork = (c) => this.operator(c, actor, 'runAutoRenewals');
     const sent: string[] = [];
-    const due = await this.tx(async (c) => {
-      await this.operator(c, actor);
+    const due = await this.work(authorize, async (c) => {
       // A renewal fulfilled since the last run is paid, never lapsed.
       await c.query(
         `UPDATE app.auto_renewals r SET state='paid',next_attempt_at=NULL,updated_at=clock_timestamp()
@@ -614,14 +621,15 @@ export class AutoRenewals {
     for (const r of due) {
       result.considered++;
       try {
-        const outcome = await this.renew(r, now);
+        const outcome = await this.renew(r, now, authorize);
         if (outcome === 'paid') result.succeeded++;
         else if (outcome === 'blocked') result.blocked++;
         else {
           result.failed++;
           result.failures.push({ resourceId: r.id, reason: outcome });
         }
-      } catch {
+      } catch (error) {
+        if (isAuthorizationFailure(error)) throw error;
         result.failed++;
         result.failures.push({ resourceId: r.id, reason: 'unexpected_error' });
       }
@@ -633,10 +641,11 @@ export class AutoRenewals {
   private async renew(
     r: Renewal,
     now: Date,
+    authorize: AuthorizeWork,
   ): Promise<'paid' | 'blocked' | 'card_declined' | 'charge_unconfirmed' | 'stopped'> {
     // A charge already made: its evidence decides, never a second charge.
-    if (r.state === 'charging' && r.renewal_purchase_id) return this.followUp(r, now);
-    const prepared = await this.tx(async (c) => {
+    if (r.state === 'charging' && r.renewal_purchase_id) return this.followUp(r, now, authorize);
+    const prepared = await this.work(authorize, async (c) => {
       await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [r.user_id]);
       const current = (
         await c.query<Renewal>('SELECT * FROM app.auto_renewals WHERE id=$1 FOR UPDATE', [r.id])
@@ -704,18 +713,19 @@ export class AutoRenewals {
         `auto-renewal:${r.period_id}:${prepared.attempt}`,
         now,
         undefined,
-        { terms: prepared.renewal.terms, renews: prepared.renewal.sourcePurchaseId },
+        { terms: prepared.renewal.terms, renews: prepared.renewal.sourcePurchaseId, authorize },
       );
     } catch (error) {
+      if (isAuthorizationFailure(error)) throw error;
       if (!(error instanceof TransportError)) throw error;
       // The rider renewed another way: nothing left to do.
       if (['renewal_already_paid', 'coverage_active'].includes(error.code)) {
-        await this.tx((c) => this.mark(c, r.id, 'cancelled', 'coverage_conflict'));
+        await this.work(authorize, (c) => this.mark(c, r.id, 'cancelled', 'coverage_conflict'));
         return 'blocked';
       }
       // A checkout in progress, or a block on the account: try again tomorrow,
       // and tell the rider so they can pay another way.
-      const notice = await this.tx(async (c) => {
+      const notice = await this.work(authorize, async (c) => {
         await this.mark(c, r.id, 'failed', 'renewal_blocked', new Date(now.getTime() + RETRY));
         return this.notify(c, { ...r, attempts: prepared.attempt }, 'renewal_failed', 'blocked');
       });
@@ -725,7 +735,7 @@ export class AutoRenewals {
     const reference = purchase.attempt?.reference as string;
     // Last check before money moves: still opted in, same card, account open,
     // and a purchase that is actually waiting for this payment.
-    const go = await this.tx(async (c) => {
+    const go = await this.work(authorize, async (c) => {
       await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [r.user_id]);
       await c.query(
         'UPDATE app.auto_renewals SET renewal_purchase_id=$2,updated_at=clock_timestamp() WHERE id=$1',
@@ -762,8 +772,15 @@ export class AutoRenewals {
     });
     if (!go)
       return purchase.state === 'fulfilled'
-        ? this.followUp({ ...r, state: 'charging', renewal_purchase_id: purchase.id }, now)
+        ? this.followUp(
+            { ...r, state: 'charging', renewal_purchase_id: purchase.id },
+            now,
+            authorize,
+          )
         : 'blocked';
+    // Do not reuse the scan/checkout authorization for a provider request.
+    // A request already sent cannot be recalled; its evidence stays durable.
+    await this.tx(authorize);
     try {
       await this.options.charge({
         reference,
@@ -771,18 +788,24 @@ export class AutoRenewals {
         email: prepared.secret.email,
         authorizationCode: prepared.secret.code,
       });
-    } catch {
+    } catch (error) {
+      if (isAuthorizationFailure(error)) throw error;
       // The request may or may not have reached Paystack; evidence decides.
     }
-    return this.followUp({ ...r, state: 'charging', renewal_purchase_id: purchase.id }, now);
+    return this.followUp(
+      { ...r, state: 'charging', renewal_purchase_id: purchase.id },
+      now,
+      authorize,
+    );
   }
 
   /** Read the charge's outcome back through verified evidence. */
   private async followUp(
     r: Renewal,
     now: Date,
+    authorize: AuthorizeWork,
   ): Promise<'paid' | 'blocked' | 'card_declined' | 'charge_unconfirmed'> {
-    const outcome = await this.readOutcome(r, now);
+    const outcome = await this.readOutcome(r, now, authorize);
     if (typeof outcome === 'object') {
       if (outcome.notice) await this.options.email?.sendQueued?.(outcome.notice).catch(() => {});
       return outcome.reason;
@@ -792,6 +815,7 @@ export class AutoRenewals {
   private async readOutcome(
     r: Renewal,
     now: Date,
+    authorize: AuthorizeWork,
   ): Promise<
     | 'paid'
     | 'charge_unconfirmed'
@@ -806,9 +830,13 @@ export class AutoRenewals {
       )
     ).rows[0];
     if (!attempt) return 'charge_unconfirmed';
-    if (['pending', 'unknown'].includes(attempt.state))
-      await this.options.settle(attempt.reference).catch(() => undefined);
-    return this.tx(async (c) => {
+    if (['pending', 'unknown'].includes(attempt.state)) {
+      await this.tx(authorize);
+      await this.options.settle(attempt.reference, authorize).catch((error: unknown) => {
+        if (isAuthorizationFailure(error)) throw error;
+      });
+    }
+    return this.work(authorize, async (c) => {
       const current = (
         await c.query<Renewal>('SELECT * FROM app.auto_renewals WHERE id=$1 FOR UPDATE', [r.id])
       ).rows[0]!;
