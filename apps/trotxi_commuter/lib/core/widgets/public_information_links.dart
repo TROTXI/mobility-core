@@ -46,14 +46,14 @@ class PublicInformationLinks extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = TextButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      minimumSize: const Size(0, 44),
+      minimumSize: const Size(48, 48),
       textStyle: AppTypography.caption,
       foregroundColor: context.appColors.textSecondary,
     );
     Widget link(String text, Uri uri) => TextButton(
       style: style,
       onPressed: () => _show(context, uri),
-      child: Text(text),
+      child: Text(text, semanticsLabel: '$text, opens in browser'),
     );
     return Wrap(
       alignment: WrapAlignment.center,

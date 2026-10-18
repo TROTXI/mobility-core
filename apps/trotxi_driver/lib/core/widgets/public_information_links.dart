@@ -11,10 +11,12 @@ class PublicInformationLinks extends StatelessWidget {
     super.key,
     this.open = _openExternally,
     this.showDeletion = true,
+    this.showPrivacyChoices = false,
   });
 
   final Future<bool> Function(Uri) open;
   final bool showDeletion;
+  final bool showPrivacyChoices;
 
   Future<void> _show(BuildContext context, Uri uri) async {
     try {
@@ -39,18 +41,25 @@ class PublicInformationLinks extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    children: [
-      TextButton(
-        onPressed: () => _show(context, TrotxiPublicInformation.privacy),
-        child: const Text('Privacy notice'),
-      ),
-      if (showDeletion)
-        TextButton(
-          onPressed: () => _show(context, TrotxiPublicInformation.deletion),
-          child: const Text('Request account deletion'),
-        ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    Widget link(String label, Uri uri) => TextButton(
+      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      onPressed: () => _show(context, uri),
+      child: Text(label, semanticsLabel: '$label, opens in browser'),
+    );
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        // The published agreement covers commuters, not driver employment.
+        link('Commuter terms', TrotxiPublicInformation.terms),
+        link('Privacy notice', TrotxiPublicInformation.privacy),
+        if (showPrivacyChoices)
+          link('Privacy choices', TrotxiPublicInformation.privacyChoices),
+        if (showDeletion)
+          link('Request account deletion', TrotxiPublicInformation.deletion),
+      ],
+    );
+  }
 }

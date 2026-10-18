@@ -67,7 +67,7 @@ class DriverInformationPage extends StatelessWidget {
           title: 'Support & privacy requests',
         ),
         const SizedBox(height: AppSpacing.space16),
-        const PublicInformationLinks(),
+        const PublicInformationLinks(showPrivacyChoices: true),
       ],
     );
   }

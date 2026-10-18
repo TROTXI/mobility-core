@@ -145,6 +145,13 @@ class HelpSupportPage extends StatelessWidget {
               ),
               _linkTile(
                 context,
+                icon: Icons.tune_outlined,
+                title: 'Privacy choices',
+                onTap: () =>
+                    _open(context, TrotxiPublicInformation.privacyChoices),
+              ),
+              _linkTile(
+                context,
                 icon: Icons.person_remove_outlined,
                 title: 'Request account deletion',
                 onTap: () => _open(context, TrotxiPublicInformation.deletion),
@@ -202,6 +209,7 @@ class HelpSupportPage extends StatelessWidget {
           leading: Icon(icon, color: colors.actionSecondary),
           title: Text(
             title,
+            semanticsLabel: external ? '$title, opens outside the app' : title,
             style: AppTypography.label.copyWith(color: colors.textPrimary),
           ),
           subtitle: subtitle == null
