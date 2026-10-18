@@ -50,11 +50,17 @@ test('all worker capabilities have a schedule, with UTC dates and existing servi
     at('2026-12-31T01:29:59Z').some((g) => g.name === 'nightly'),
     false,
   );
-  assert.equal(at('2026-12-31T23:29:59Z').filter((g) => g.name === 'no-shows').length, 1);
-  assert.equal(groups.filter((g) => g.name === 'no-shows').length, 2);
+  assert.equal(at('2026-12-31T23:29:59Z').filter((g) => g.name === 'no-shows').length, 0);
+  assert.equal(groups.filter((g) => g.name === 'no-shows').length, 1);
   const midnight = at('2027-01-01T00:00:00Z');
   assert.equal(midnight.find((g) => g.name === 'defaults')!.jobs[0]!.travelDate, '2027-01-01');
-  assert.equal(midnight.find((g) => g.name === 'no-shows')!.jobs[0]!.travelDate, '2026-12-31');
+  const catchUp = midnight.find((g) => g.name === 'no-shows-catch-up')!;
+  assert.equal(catchUp.jobs[0]!.travelDate, '2026-12-31');
+  assert.notEqual(
+    catchUp.key,
+    groups.find((g) => g.name === 'no-shows')!.key,
+    'successful 23:30 settlement must not suppress the full-day catch-up',
+  );
   const dates = midnight
     .find((g) => g.name === 'timetable')!
     .jobs.filter((j) => j.job === 'trip-generation')

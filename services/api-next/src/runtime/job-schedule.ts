@@ -47,8 +47,10 @@ export function scheduledGroups(now: Date): ScheduledGroup[] {
       })),
       { job: 'personal-pause-resumes' },
     ]),
-    // Retry yesterday after a restart or an interrupted late-night settlement.
-    daily('no-shows', date(time - dayMs), both('no-shows', date(time - dayMs))),
+    // Recheck the complete day even when the 23:30 run succeeded: a departure
+    // after that cutoff was not eligible in the earlier run. Use a separate
+    // slot so its success cannot suppress this next-day catch-up.
+    daily('no-shows-catch-up', date(time - dayMs), both('no-shows', date(time - dayMs))),
     daily('defaults', today, both('reservation-defaults', today)),
     ...(time >= midnight + 90 * minute
       ? [
