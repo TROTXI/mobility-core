@@ -15,7 +15,7 @@ concurrency: seed-staging
 
 jobs:
   payments:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.STAGING_JOB_SCHEDULER != 'api'
     environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -32,16 +32,16 @@ jobs:
       - name: Run the money-recovery jobs
         working-directory: services/api-next
         env:
-          REPLACEMENT_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
           STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
-          REPLACEMENT_ACCESS_SECRET: ${{ secrets.STAGING_ACCESS_SECRET }}
-          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+          ACCESS_SECRET: ${{ secrets.STAGING_ACCESS_SECRET }}
+          MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
         run: node --import tsx scripts/maintain-staging-payments.ts
 
   emails:
     # Independent jobs: payments cannot prevent retrying due emails, and no
     # process receives both the access-signing and email-encryption keys.
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.STAGING_JOB_SCHEDULER != 'api'
     environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -58,9 +58,9 @@ jobs:
       - name: Retry due staging emails
         working-directory: services/api-next
         env:
-          REPLACEMENT_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
           STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
-          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+          MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
           EMAIL_ENCRYPTION_KEY: ${{ secrets.STAGING_EMAIL_ENCRYPTION_KEY }}
           RESEND_API_KEY: ${{ secrets.STAGING_RESEND_API_KEY }}
         run: node --import tsx scripts/retry-staging-emails.ts

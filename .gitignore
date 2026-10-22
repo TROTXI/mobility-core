@@ -33,6 +33,10 @@ infra/docker/volumes/
 *.out
 
 # Flutter / Dart
+release-artifacts/
+__pycache__/
+*.p12
+*.mobileprovision
 apps/**/.dart_tool/
 apps/**/build/
 apps/**/android/.kotlin/

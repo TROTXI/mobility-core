@@ -32,7 +32,7 @@ jobs:
           - part: 1 of 3
             slug: part-1
             files: >-
-              tests/assembly.pg.test.ts tests/gps.pg.test.ts tests/config.pg.test.ts
+              tests/assembly.pg.test.ts tests/scheduler.pg.test.ts tests/gps.pg.test.ts tests/config.pg.test.ts
               tests/pricing.pg.test.ts tests/overview.pg.test.ts tests/riders.pg.test.ts
               tests/operations.pg.test.ts tests/payment-foundation.pg.test.ts
               tests/refund-initiation.pg.test.ts tests/trip-generation.pg.test.ts
@@ -76,7 +76,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Database suites
         env:
-          REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/api
+          EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/api
         run: |
           mkdir -p .harness-artifacts/api
           cd services/api-next

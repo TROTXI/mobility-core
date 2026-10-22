@@ -49,5 +49,5 @@ test('installer refuses to fall back to the old DATABASE_URL', () => {
     encoding: 'utf8',
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /REPLACEMENT_DATABASE_URL is required/);
+  assert.match(result.stderr, /MIGRATION_DATABASE_URL is required/);
 });

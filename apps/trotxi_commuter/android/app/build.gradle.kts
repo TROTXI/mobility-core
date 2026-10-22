@@ -1,5 +1,7 @@
 import java.util.Base64
 import java.util.Properties
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.OutputDirectory
 
 plugins {
     id("com.android.application")
@@ -41,8 +43,20 @@ val mobileBuildMode = if (
     gradle.startParameter.taskNames.any { it.contains("Debug", ignoreCase = true) } &&
     gradle.startParameter.taskNames.none { it.contains("Release", ignoreCase = true) || it.contains("Profile", ignoreCase = true) }
 ) "debug" else "release"
-val validateMobileEnvironment = tasks.register<Exec>("validateMobileEnvironment") {
+abstract class ValidateMobileEnvironmentTask : Exec() {
+    @get:OutputDirectory
+    abstract val receiptDirectory: DirectoryProperty
+}
+
+val validateMobileEnvironment = tasks.register<ValidateMobileEnvironmentTask>("validateMobileEnvironment") {
+    receiptDirectory.set(layout.buildDirectory.dir("generated/mobile/assets"))
+    // This is an authorization/configuration gate, not just a file generator.
+    // Never skip it because a previous build already produced a receipt.
+    outputs.upToDateWhen { false }
     environment("DART_DEFINES", mobileDefines)
+    environment("MOBILE_BUILD_RECEIPT", receiptDirectory.file("trotxi_build.json").get().asFile)
+    environment("MOBILE_BUILD_NUMBER", flutter.versionCode)
+    environment("MOBILE_BUILD_NAME", flutter.versionName)
     commandLine(
         "${localProperties.getProperty("flutter.sdk")}/bin/cache/dart-sdk/bin/dart",
         project.file("../../../../tool/validate_mobile_build.dart"),
@@ -64,7 +78,7 @@ tasks.matching { it.name == "preBuild" || it.name.startsWith("compileFlutterBuil
 
 android {
     namespace = "com.trotxi.trotxi_commuter"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = maxOf(36, flutter.compileSdkVersion)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -78,19 +92,22 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = maxOf(36, flutter.targetSdkVersion)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
 }
+
+// AGP 9 rejects Providers in the old SourceSet API. Register the producing
+// task through the variant API so asset merging also depends on validation.
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(
+        validateMobileEnvironment, ValidateMobileEnvironmentTask::receiptDirectory
+    )
+}
+
+apply(from = "../../../../tool/android-release.gradle")
 
 kotlin {
     compilerOptions {

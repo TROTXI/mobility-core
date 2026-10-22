@@ -5,6 +5,7 @@ import { SignJWT } from 'jose';
 import pg from 'pg';
 import { z } from 'zod';
 import { stagingDatabase } from '../src/runtime/staging-database.js';
+import { backendEnvironment } from '../src/runtime/environment.js';
 import { MaintenanceAudit } from '../src/runtime/maintenance-audit.js';
 import { assertRuntimeRole } from '../src/runtime/compose.js';
 import {
@@ -28,11 +29,9 @@ const batch = z.object({
 });
 
 export function paymentMaintenanceConfiguration(env: NodeJS.ProcessEnv) {
-  const database = stagingDatabase(
-    env.REPLACEMENT_RUNTIME_DATABASE_URL,
-    env.STAGING_DATABASE_CA_CERT,
-  );
-  const key = Buffer.from(env.REPLACEMENT_ACCESS_SECRET ?? '', 'base64');
+  env = backendEnvironment(env);
+  const database = stagingDatabase(env.RUNTIME_DATABASE_URL, env.STAGING_DATABASE_CA_CERT);
+  const key = Buffer.from(env.ACCESS_SECRET ?? '', 'base64');
   if (key.length !== 32) throw new Error('The derived staging access key must be 32 bytes');
   return { ...database, key, userId: maintenanceUserId(env) };
 }

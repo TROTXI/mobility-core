@@ -5,6 +5,7 @@ import { TransactionalEmail } from '../src/notifications/email.js';
 import { ResendSender } from '../src/notifications/resend.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
 import { stagingDatabase } from '../src/runtime/staging-database.js';
+import { backendEnvironment } from '../src/runtime/environment.js';
 import { assertRuntimeRole } from '../src/runtime/compose.js';
 import { MaintenanceAudit } from '../src/runtime/maintenance-audit.js';
 import {
@@ -18,14 +19,12 @@ import {
  * Only the outbox key and sender credential reach this step, never the master key.
  */
 export function retryConfiguration(env: NodeJS.ProcessEnv) {
+  env = backendEnvironment(env);
   const apiKey = env.RESEND_API_KEY;
   // No sender configured is the API's own "email not configured": nothing was
   // sent immediately either, so there is nothing to retry. Skip, do not fail.
   if (!apiKey) return { skip: 'RESEND_API_KEY is not set; email retries skipped.' };
-  const database = stagingDatabase(
-    env.REPLACEMENT_RUNTIME_DATABASE_URL,
-    env.STAGING_DATABASE_CA_CERT,
-  );
+  const database = stagingDatabase(env.RUNTIME_DATABASE_URL, env.STAGING_DATABASE_CA_CERT);
   if (!apiKey.startsWith('re_') || /\s/.test(apiKey))
     throw new Error('RESEND_API_KEY is malformed');
   const encryptionKey = Buffer.from(env.EMAIL_ENCRYPTION_KEY ?? '', 'base64');

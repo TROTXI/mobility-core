@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { hkdfSync, randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { readConfiguration } from '../src/runtime/config.js';
 import { assertRuntimeRole } from '../src/runtime/compose.js';
@@ -23,7 +23,7 @@ const settings = () => ({
   RENDER_SERVICE_ID: STAGING_SERVICE_ID,
   RENDER_SERVICE_NAME: 'trotxi-api-staging',
   RENDER_GIT_COMMIT: 'a'.repeat(40),
-  REPLACEMENT_RUNTIME_DATABASE_URL:
+  RUNTIME_DATABASE_URL:
     'postgres://trotxi_runtime_api:fixture@dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com/trotxi',
   JWT_SECRET: 'fixture-root-secret-32-bytes-long-only-for-tests',
   PAYSTACK_SECRET_KEY: ['sk', 'test', randomUUID().replaceAll('-', '')].join('_'),
@@ -51,36 +51,36 @@ test('the retired seed is absent and payment maintenance keeps a standalone entr
 
 test('payment maintenance only accepts the staging target and a derived access key', () => {
   const env = {
-    REPLACEMENT_RUNTIME_DATABASE_URL:
+    RUNTIME_DATABASE_URL:
       'postgres://trotxi_runtime_worker:fixture@dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com/trotxi',
-    REPLACEMENT_ACCESS_SECRET: Buffer.alloc(32, 2).toString('base64'),
-    REPLACEMENT_MAINTENANCE_USER_ID: randomUUID(),
+    ACCESS_SECRET: Buffer.alloc(32, 2).toString('base64'),
+    MAINTENANCE_USER_ID: randomUUID(),
   };
   const config = paymentMaintenanceConfiguration(env);
   assert.equal(new URL(config.connectionString).search, '');
   assert.equal(config.ssl.rejectUnauthorized, true);
   assert.deepEqual(config.key, Buffer.alloc(32, 2));
   for (const database of [
-    env.REPLACEMENT_RUNTIME_DATABASE_URL.replace('/trotxi', '/production'),
-    env.REPLACEMENT_RUNTIME_DATABASE_URL.replace('trotxi_runtime_worker:fixture', 'trotxi:fixture'),
-    env.REPLACEMENT_RUNTIME_DATABASE_URL.replace(
+    env.RUNTIME_DATABASE_URL.replace('/trotxi', '/production'),
+    env.RUNTIME_DATABASE_URL.replace('trotxi_runtime_worker:fixture', 'trotxi:fixture'),
+    env.RUNTIME_DATABASE_URL.replace(
       'dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com',
       'other.example',
     ),
-    env.REPLACEMENT_RUNTIME_DATABASE_URL + '?host=other.example',
-    env.REPLACEMENT_RUNTIME_DATABASE_URL + '?sslmode=no-verify',
-    env.REPLACEMENT_RUNTIME_DATABASE_URL + '?sslrootcert=/tmp/hostile.crt',
+    env.RUNTIME_DATABASE_URL + '?host=other.example',
+    env.RUNTIME_DATABASE_URL + '?sslmode=no-verify',
+    env.RUNTIME_DATABASE_URL + '?sslrootcert=/tmp/hostile.crt',
   ])
     assert.throws(() =>
-      paymentMaintenanceConfiguration({ ...env, REPLACEMENT_RUNTIME_DATABASE_URL: database }),
+      paymentMaintenanceConfiguration({ ...env, RUNTIME_DATABASE_URL: database }),
     );
-  assert.throws(() => paymentMaintenanceConfiguration({ ...env, REPLACEMENT_ACCESS_SECRET: '' }));
+  assert.throws(() => paymentMaintenanceConfiguration({ ...env, ACCESS_SECRET: '' }));
   const run = spawnSync(
     process.execPath,
     ['--import', 'tsx', 'scripts/maintain-staging-payments.ts'],
     {
       cwd: fileURLToPath(new URL('../', import.meta.url)),
-      env: { PATH: process.env.PATH, REPLACEMENT_DATABASE_URL: 'private-malformed-url' },
+      env: { PATH: process.env.PATH, MIGRATION_DATABASE_URL: 'private-malformed-url' },
       encoding: 'utf8',
       timeout: 10_000,
     },
@@ -159,7 +159,7 @@ test('staging uses a restricted database and preserves existing provider keys', 
   const config = readConfiguration(env);
   assert.deepEqual(env, before);
   assert.equal(config.existingStaging, true);
-  assert.equal(config.databaseUrl, env.REPLACEMENT_RUNTIME_DATABASE_URL);
+  assert.equal(config.databaseUrl, env.RUNTIME_DATABASE_URL);
   assert.equal(config.databaseSsl?.rejectUnauthorized, true);
   assert.equal(config.paystack.secretKey, env.PAYSTACK_SECRET_KEY);
   assert.equal(config.avatars.secretAccessKey, env.R2_SECRET_ACCESS_KEY);
@@ -174,6 +174,51 @@ test('staging uses a restricted database and preserves existing provider keys', 
   assert.notDeepEqual(
     readConfiguration({ ...env, JWT_SECRET: env.JWT_SECRET + 'changed' }).keys,
     config.keys,
+  );
+});
+
+test('environment renaming preserves staging keys, legacy DB config and safety checks', () => {
+  const env = settings();
+  const { RUNTIME_DATABASE_URL, ...rest } = env;
+  const legacy = { ...rest, REPLACEMENT_RUNTIME_DATABASE_URL: RUNTIME_DATABASE_URL };
+  const current = readConfiguration(env);
+  assert.deepEqual(readConfiguration(legacy), current);
+  assert.deepEqual(
+    current.keys.accessSecret,
+    Buffer.from(
+      hkdfSync('sha256', env.JWT_SECRET, 'trotxi:replacement:staging:v1', 'ACCESS_SECRET', 32),
+    ),
+  );
+  assert.throws(() =>
+    readConfiguration({ ...legacy, REPLACEMENT_DEPLOYMENT_ENVIRONMENT: 'production' }),
+  );
+  assert.throws(() => readConfiguration({ ...legacy, REPLACEMENT_DATABASE_URL: 'owner-fixture' }));
+  assert.throws(() =>
+    readConfiguration({
+      ...legacy,
+      REPLACEMENT_ACCESS_SECRET: Buffer.alloc(32, 1).toString('base64'),
+    }),
+  );
+  assert.equal(
+    readConfiguration({ ...env, R2_BUCKET_NAME: env.R2_BUCKET }).avatars.bucket,
+    env.R2_BUCKET,
+  );
+  assert.throws(() => readConfiguration({ ...env, R2_BUCKET_NAME: 'another-bucket' }));
+  const worker = {
+    RUNTIME_DATABASE_URL: env.RUNTIME_DATABASE_URL.replace(
+      'trotxi_runtime_api:',
+      'trotxi_runtime_worker:',
+    ),
+    ACCESS_SECRET: current.keys.accessSecret.toString('base64'),
+    MAINTENANCE_USER_ID: randomUUID(),
+  };
+  assert.deepEqual(
+    paymentMaintenanceConfiguration(
+      Object.fromEntries(
+        Object.entries(worker).map(([name, value]) => [`REPLACEMENT_${name}`, value]),
+      ),
+    ),
+    paymentMaintenanceConfiguration(worker),
   );
 });
 
@@ -193,22 +238,18 @@ test('staging config rejects live keys, foreign targets, weak roots and mixed ke
   for (const change of [
     { RENDER_SERVICE_NAME: 'production' },
     { RENDER_SERVICE_ID: 'another-service' },
-    { REPLACEMENT_DEPLOYMENT_ENVIRONMENT: 'production' },
+    { DEPLOYMENT_ENVIRONMENT: 'production' },
     { PAYSTACK_SECRET_KEY: ['sk', 'live', randomUUID().replaceAll('-', '')].join('_') },
     { JWT_SECRET: 'short' },
     { DATABASE_URL: 'private-invalid-value' },
     { DATABASE_URL: 'postgres://trotxi:fixture@other-host/trotxi' },
     {
-      REPLACEMENT_RUNTIME_DATABASE_URL:
-        settings().REPLACEMENT_RUNTIME_DATABASE_URL + '?host=other-host',
+      RUNTIME_DATABASE_URL: settings().RUNTIME_DATABASE_URL + '?host=other-host',
     },
     {
-      REPLACEMENT_RUNTIME_DATABASE_URL: settings().REPLACEMENT_RUNTIME_DATABASE_URL.replace(
-        '/trotxi',
-        '/other',
-      ),
+      RUNTIME_DATABASE_URL: settings().RUNTIME_DATABASE_URL.replace('/trotxi', '/other'),
     },
-    { REPLACEMENT_ACCESS_SECRET: Buffer.alloc(32, 1).toString('base64') },
+    { ACCESS_SECRET: Buffer.alloc(32, 1).toString('base64') },
   ])
     assert.throws(() => readConfiguration({ ...settings(), ...change }));
 });
@@ -229,7 +270,7 @@ test('the staging owner no longer bypasses runtime privilege checks', async () =
 });
 
 test('TLS options cannot disable verification or override the pinned server', () => {
-  const url = settings().REPLACEMENT_RUNTIME_DATABASE_URL;
+  const url = settings().RUNTIME_DATABASE_URL;
   const ca = '-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----';
   const verified = stagingDatabase(url + '?sslmode=verify-full', ca);
   assert.deepEqual(verified.ssl, { rejectUnauthorized: true, ca });
@@ -249,7 +290,7 @@ test('TLS options cannot disable verification or override the pinned server', ()
     STAGING_DATABASE_URL: url.replace('trotxi_runtime_api:', 'trotxi:'),
     STAGING_RUNTIME_DATABASE_URL: url,
     STAGING_MAINTENANCE_DATABASE_URL: url.replace('trotxi_runtime_api:', 'trotxi_runtime_worker:'),
-    REPLACEMENT_MAINTENANCE_USER_ID: randomUUID(),
+    MAINTENANCE_USER_ID: randomUUID(),
   };
   assert.deepEqual(stagingInstallerConfiguration(installer).roles, [
     'trotxi_runtime_api',

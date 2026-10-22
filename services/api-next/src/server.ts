@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { assertMigrationsCurrent, readMigrations } from './db/migrate.js';
 import { observeBusiness, observeProcess } from './observability/metrics.js';
 import { stopTelemetry } from './observability/telemetry.js';
+import { MaintenanceScheduler, validateScheduler } from './runtime/scheduler.js';
 
 /**
  * The deployable entry point.
@@ -31,10 +32,22 @@ if (config.existingStaging) {
   }
 }
 const backend = await composeBackend(config);
+const scheduler = config.schedulerEnabled
+  ? new MaintenanceScheduler(backend, (event) => process.stdout.write(`${JSON.stringify(event)}\n`))
+  : undefined;
+if (scheduler) {
+  try {
+    await validateScheduler(backend);
+  } catch (error) {
+    await backend.close();
+    throw error;
+  }
+}
 // A no-op unless telemetry started: with no provider the gauges never ask.
 observeBusiness(backend.pool, config.staleFixAfterSeconds);
 observeProcess();
 await backend.app.listen({ host: config.listen.host, port: config.listen.port });
+scheduler?.start();
 process.stdout.write(
   `${JSON.stringify({
     service: config.build.service,
@@ -45,6 +58,7 @@ process.stdout.write(
     // What a rider can actually sign in with on this deployment, so the log
     // says it rather than leaving it to be discovered from a missing button.
     providers: config.providers,
+    scheduler: scheduler ? 'enabled' : 'disabled',
   })}\n`,
 );
 
@@ -57,6 +71,7 @@ async function stop(signal: string) {
   const deadline = setTimeout(() => process.exit(1), 15000);
   deadline.unref();
   try {
+    await scheduler?.stop();
     await backend.close();
     // Inside the deadline above, so a slow collector cannot hold the exit.
     await stopTelemetry();

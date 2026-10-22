@@ -63,7 +63,7 @@ start/outcome records are durable. Repeating a run is safe: already-redacted
 rows are never selected again. The job is prepared but **not scheduled** in
 `render.yaml`; do not claim automated enforcement until an approved scheduler
 is enabled and the first result is checked. The worker requires a configured
-`REPLACEMENT_MAINTENANCE_USER_ID` and the usual database connection; the active
+`MAINTENANCE_USER_ID` and the usual database connection; the active
 staging web-service block does not declare that operator ID. During staging,
 run it manually only once that existing maintenance identity is configured,
 and review the outcome without logging report text or coordinates.

@@ -83,7 +83,7 @@ after(async () => {
     assert.deepEqual(await sourceHashes(), source, 'candidate sources changed during the run');
   } finally {
     await admin.end();
-    const output = process.env.REPLACEMENT_EVIDENCE_DIR;
+    const output = process.env.EVIDENCE_DIR;
     if (output) {
       await mkdir(output, { recursive: true });
       await writeFile(

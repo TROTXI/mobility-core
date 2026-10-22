@@ -51,10 +51,10 @@ after(async () => {
       await admin
         .query(`DROP ROLE "${role}"`)
         .catch((error) => stranded.push(`${role}: ${(error as Error).message}`));
-    if (process.env.REPLACEMENT_EVIDENCE_DIR) {
-      await mkdir(process.env.REPLACEMENT_EVIDENCE_DIR, { recursive: true });
+    if (process.env.EVIDENCE_DIR) {
+      await mkdir(process.env.EVIDENCE_DIR, { recursive: true });
       await writeFile(
-        resolve(process.env.REPLACEMENT_EVIDENCE_DIR, `financial-metadata-${run}.json`),
+        resolve(process.env.EVIDENCE_DIR, `financial-metadata-${run}.json`),
         JSON.stringify(
           {
             kind: 'financial-foundation-not-complete-payment-comparison',

@@ -53,7 +53,7 @@ jobs:
           STAGING_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_RUNTIME_DATABASE_URL }}
           STAGING_MAINTENANCE_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
           STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
-          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+          MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
         run: node --import tsx scripts/migrate-staging.ts
       - name: Require applied Ops CSP
         run: bash .github/scripts/check-ops-csp.sh
