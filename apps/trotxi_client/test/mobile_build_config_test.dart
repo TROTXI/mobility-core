@@ -263,7 +263,13 @@ void main() {
           contains('validate_mobile_build.dart'));
       expect(
           File('$path/ios/Runner.xcodeproj/project.pbxproj').readAsStringSync(),
-          contains('validate_mobile_build.dart'));
+          contains('validate_ios_build.sh'));
     }
+    final iosBuild =
+        File('$root/tool/validate_ios_build.sh').readAsStringSync();
+    expect(iosBuild, contains('set -eu'));
+    expect(iosBuild, contains('validate_mobile_build.dart'));
+    expect(iosBuild.indexOf('validate_mobile_build.dart'),
+        lessThan(iosBuild.indexOf('xcode_backend.sh')));
   });
 }
