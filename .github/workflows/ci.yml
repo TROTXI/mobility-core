@@ -76,7 +76,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Database suites
         env:
-          REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/api
+          EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/api
         run: |
           mkdir -p .harness-artifacts/api
           cd services/api-next

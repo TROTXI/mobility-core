@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { backendEnvironment } from '../src/runtime/environment.js';
 
 export type FailureCategory =
   | 'configuration'
@@ -32,7 +33,8 @@ export function failureLine(error: unknown): string {
 }
 
 export function maintenanceUserId(env: NodeJS.ProcessEnv): string {
-  const id = env.REPLACEMENT_MAINTENANCE_USER_ID ?? '';
+  env = backendEnvironment(env);
+  const id = env.MAINTENANCE_USER_ID ?? '';
   if (!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))
     throw new MaintenanceFailure('configuration');
   return id;

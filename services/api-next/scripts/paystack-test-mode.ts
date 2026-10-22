@@ -7,7 +7,7 @@
  * back as the one we sent, and
  * whether the environment we think we are in is the one the key belongs to.
  *
- *   REPLACEMENT_PAYSTACK_SECRET_KEY=sk_test_... \
+ *   PAYSTACK_SECRET_KEY=sk_test_... \
  *     node --import tsx scripts/paystack-test-mode.ts
  *
  * It refuses a live key. It takes no money: it opens a checkout nobody pays,
@@ -16,9 +16,10 @@
  */
 import { createHmac, randomBytes } from 'node:crypto';
 import { PaystackEvidence, parseProviderFact } from '../src/payments/provider.js';
+import { backendEnvironment } from '../src/runtime/environment.js';
 
-const secret = process.env.REPLACEMENT_PAYSTACK_SECRET_KEY;
-if (!secret) throw new Error('REPLACEMENT_PAYSTACK_SECRET_KEY is required');
+const secret = backendEnvironment(process.env).PAYSTACK_SECRET_KEY;
+if (!secret) throw new Error('PAYSTACK_SECRET_KEY is required');
 if (!/^sk_test_[A-Za-z0-9]+$/.test(secret))
   throw new Error('Refusing to run against anything but a test key');
 

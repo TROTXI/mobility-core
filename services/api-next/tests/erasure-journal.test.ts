@@ -86,6 +86,10 @@ test('journal configuration is opt-in but partial or shared-bucket configuration
   };
   assert.equal(readErasureJournalConfiguration(config)?.bucket, 'separate');
   assert.throws(
+    () => readErasureJournalConfiguration({ ...config, R2_BUCKET_NAME: 'separate' }),
+    /separate private bucket/,
+  );
+  assert.throws(
     () => readErasureJournalConfiguration({ ...config, REPLACEMENT_R2_BUCKET_NAME: 'separate' }),
     /separate private bucket/,
   );

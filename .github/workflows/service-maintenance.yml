@@ -46,10 +46,10 @@ jobs:
         env:
           SCHEDULE: ${{ github.event.schedule }}
           GROUP: ${{ inputs.group }}
-          REPLACEMENT_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
           STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
-          REPLACEMENT_ACCESS_SECRET: ${{ secrets.STAGING_ACCESS_SECRET }}
-          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+          ACCESS_SECRET: ${{ secrets.STAGING_ACCESS_SECRET }}
+          MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
         run: |
           case "${GROUP:-$SCHEDULE}" in
             nightly|'30 1 * * *') group=nightly ;;

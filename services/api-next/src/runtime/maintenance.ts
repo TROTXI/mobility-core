@@ -76,7 +76,7 @@ const BATCH: Record<string, string> = {
  */
 async function operatorSession(backend: Backend, minutes = 15) {
   if (!backend.maintenanceUserId)
-    throw new Error('REPLACEMENT_MAINTENANCE_USER_ID is required to run maintenance');
+    throw new Error('MAINTENANCE_USER_ID is required to run maintenance');
   const user = (
     await backend.pool.query('SELECT role,deleted_at FROM app.users WHERE id=$1', [
       backend.maintenanceUserId,

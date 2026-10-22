@@ -69,15 +69,15 @@ Record the deployed revision and job outcome separately for each test.
 
 Use the approved maintenance runtime and its restricted database login, not
 the API service's database credentials. Supply the configured non-human
-maintenance account as `REPLACEMENT_MAINTENANCE_USER_ID`, never a human admin.
+maintenance account as `MAINTENANCE_USER_ID`, never a human admin.
 See [staging security](../operations/staging-security.md).
 
 ```sh
-REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js trip-generation 2026-09-21
-REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js personal-pause-resumes
-REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js push
-REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js emails
-REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js erasures
+MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js trip-generation 2026-09-21
+MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js personal-pause-resumes
+MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js push
+MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js emails
+MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js erasures
 ```
 
 Replace the illustrative travel date before running. Trip generation defaults

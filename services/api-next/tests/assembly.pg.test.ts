@@ -186,54 +186,54 @@ test('ASM-23 retention drains multiple bounded transactions and reports overdue 
 });
 function configurationFor(f: Fixture, over: Record<string, string> = {}) {
   return readConfiguration({
-    REPLACEMENT_RUNTIME_DATABASE_URL: f.runtimeUrl,
-    REPLACEMENT_POOL_SIZE: '6',
+    RUNTIME_DATABASE_URL: f.runtimeUrl,
+    POOL_SIZE: '6',
     PORT: '10000',
-    REPLACEMENT_SERVICE_NAME: 'trotxi-api-next',
-    REPLACEMENT_SERVICE_VERSION: '0.1.0',
-    REPLACEMENT_GIT_COMMIT: 'assembly-test',
-    REPLACEMENT_ACCESS_ISSUER: 'https://api.trotxi.test',
-    REPLACEMENT_ACCESS_AUDIENCE: 'trotxi-clients',
-    REPLACEMENT_ACCESS_TTL_SECONDS: '900',
-    REPLACEMENT_REFRESH_TTL_DAYS: '30',
-    REPLACEMENT_SHIFT_TTL_HOURS: '12',
-    REPLACEMENT_ACCESS_SECRET: key(1),
-    REPLACEMENT_CURSOR_SECRET: key(2),
-    REPLACEMENT_PIN_SECRET: key(3),
-    REPLACEMENT_CREDENTIAL_REPLAY_KEY: key(4),
-    REPLACEMENT_PROVIDER_ENCRYPTION_KEY: key(5),
-    REPLACEMENT_BOARDING_PROOF_KEY: key(6),
-    REPLACEMENT_DEVICE_KEY: key(7),
-    REPLACEMENT_PAYSTACK_EVIDENCE_KEY: key(8),
-    REPLACEMENT_OPS_ORIGIN: 'https://ops.trotxi.test',
-    REPLACEMENT_GOOGLE_CLIENT_ID: 'example.apps.googleusercontent.com',
-    REPLACEMENT_AUTH_PROVIDERS: 'google,apple',
-    REPLACEMENT_APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter',
-    REPLACEMENT_APPLE_TEAM_ID: 'TEAMID1234',
-    REPLACEMENT_APPLE_KEY_ID: 'KEYID12345',
-    REPLACEMENT_APPLE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nMHc=\n-----END PRIVATE KEY-----',
-    REPLACEMENT_PAYSTACK_SECRET_KEY: PAYSTACK_KEY,
-    REPLACEMENT_R2_ACCOUNT_ID: 'ff00ff00ff00ff00ff00ff00ff00ff00',
-    REPLACEMENT_R2_ACCESS_KEY_ID: 'AKIAEXAMPLE',
-    REPLACEMENT_R2_SECRET_ACCESS_KEY: 'secret-access-key',
-    REPLACEMENT_R2_BUCKET_NAME: 'trotxi-avatars',
-    REPLACEMENT_AVATAR_URL_TTL_SECONDS: '300',
-    REPLACEMENT_AVATAR_MAX_BYTES: '2097152',
-    REPLACEMENT_MAP_TILES_URL: 'https://tiles.trotxi.test/ghana.pmtiles',
-    REPLACEMENT_MAP_STYLE_URL: 'https://tiles.trotxi.test/style.light.json',
-    REPLACEMENT_MAP_STYLE_DARK_URL: 'https://tiles.trotxi.test/style.dark.json',
-    REPLACEMENT_MAP_ATTRIBUTION: 'Trotxi basemap',
-    REPLACEMENT_DOCS_URL: 'https://docs.trotxi.test',
-    REPLACEMENT_MINIMUM_BUILD_OPS: '1',
-    REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS: '1',
-    REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID: '1',
-    REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS: '1',
-    REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID: '1',
-    REPLACEMENT_REQUESTS_PER_MINUTE: '5000',
-    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '5000',
-    REPLACEMENT_AUTH_REQUESTS_PER_MINUTE: '5000',
-    REPLACEMENT_TRUST_PROXY: 'none',
-    REPLACEMENT_MAINTENANCE_USER_ID: f.adminId,
+    SERVICE_NAME: 'trotxi-api-next',
+    SERVICE_VERSION: '0.1.0',
+    GIT_COMMIT: 'assembly-test',
+    ACCESS_ISSUER: 'https://api.trotxi.test',
+    ACCESS_AUDIENCE: 'trotxi-clients',
+    ACCESS_TTL_SECONDS: '900',
+    REFRESH_TTL_DAYS: '30',
+    SHIFT_TTL_HOURS: '12',
+    ACCESS_SECRET: key(1),
+    CURSOR_SECRET: key(2),
+    PIN_SECRET: key(3),
+    CREDENTIAL_REPLAY_KEY: key(4),
+    PROVIDER_ENCRYPTION_KEY: key(5),
+    BOARDING_PROOF_KEY: key(6),
+    DEVICE_KEY: key(7),
+    PAYSTACK_EVIDENCE_KEY: key(8),
+    OPS_ORIGIN: 'https://ops.trotxi.test',
+    GOOGLE_CLIENT_ID: 'example.apps.googleusercontent.com',
+    AUTH_PROVIDERS: 'google,apple',
+    APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter',
+    APPLE_TEAM_ID: 'TEAMID1234',
+    APPLE_KEY_ID: 'KEYID12345',
+    APPLE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nMHc=\n-----END PRIVATE KEY-----',
+    PAYSTACK_SECRET_KEY: PAYSTACK_KEY,
+    R2_ACCOUNT_ID: 'ff00ff00ff00ff00ff00ff00ff00ff00',
+    R2_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+    R2_SECRET_ACCESS_KEY: 'secret-access-key',
+    R2_BUCKET_NAME: 'trotxi-avatars',
+    AVATAR_URL_TTL_SECONDS: '300',
+    AVATAR_MAX_BYTES: '2097152',
+    MAP_TILES_URL: 'https://tiles.trotxi.test/ghana.pmtiles',
+    MAP_STYLE_URL: 'https://tiles.trotxi.test/style.light.json',
+    MAP_STYLE_DARK_URL: 'https://tiles.trotxi.test/style.dark.json',
+    MAP_ATTRIBUTION: 'Trotxi basemap',
+    DOCS_URL: 'https://docs.trotxi.test',
+    MINIMUM_BUILD_OPS: '1',
+    MINIMUM_BUILD_DRIVER_IOS: '1',
+    MINIMUM_BUILD_DRIVER_ANDROID: '1',
+    MINIMUM_BUILD_COMMUTER_IOS: '1',
+    MINIMUM_BUILD_COMMUTER_ANDROID: '1',
+    REQUESTS_PER_MINUTE: '5000',
+    REQUESTS_PER_IP_PER_MINUTE: '5000',
+    AUTH_REQUESTS_PER_MINUTE: '5000',
+    TRUST_PROXY: 'none',
+    MAINTENANCE_USER_ID: f.adminId,
     ...over,
   });
 }
@@ -865,7 +865,7 @@ test('ASM-18 raising the operations build floor must not switch the sweeps off',
   // it were held to the console's floor, raising that floor to push an upgrade
   // would silently stop retention, erasure and period close, and the only
   // symptom would be a red cron nobody is watching.
-  const { call, backend } = await assembled(t, { REPLACEMENT_MINIMUM_BUILD_OPS: '9999' });
+  const { call, backend } = await assembled(t, { MINIMUM_BUILD_OPS: '9999' });
   const refused = await call('GET', '/v1/ops/routes', { client: 'ops' });
   assert.equal(refused.statusCode, 426, refused.body);
   assert.equal(refused.json().error.code, 'client_upgrade_required');
@@ -905,8 +905,8 @@ test('ASM-19 an untrusted peer cannot state the address it is limited by', async
   // not named its proxy must ignore the header, or a direct caller dodges its
   // own budget by inventing a new address for every request.
   const { backend } = await assembled(t, {
-    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '3',
-    REPLACEMENT_TRUST_PROXY: 'none',
+    REQUESTS_PER_IP_PER_MINUTE: '3',
+    TRUST_PROXY: 'none',
   });
   const codes = await forwardedBurst(backend, '203.0.113.7');
   assert.equal(
@@ -921,8 +921,8 @@ test('ASM-19b a named proxy is believed, so riders behind it keep their own budg
   // then dropped: behind a proxy this deployment has named, each client is
   // limited on its own address rather than all of them sharing the balancer's.
   const { backend } = await assembled(t, {
-    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '3',
-    REPLACEMENT_TRUST_PROXY: '127.0.0.1',
+    REQUESTS_PER_IP_PER_MINUTE: '3',
+    TRUST_PROXY: '127.0.0.1',
   });
   const codes = await forwardedBurst(backend, '127.0.0.1');
   assert.deepEqual(
@@ -1079,7 +1079,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
   // reviewed operation is routed, which ASM-10 checks. Without one, the
   // difference has to be visible in the surface rather than in a 503 a rider
   // meets after choosing the button.
-  const { backend, call } = await assembled(t, { REPLACEMENT_AUTH_PROVIDERS: 'google' });
+  const { backend, call } = await assembled(t, { AUTH_PROVIDERS: 'google' });
   assert.equal(backend.app.hasRoute({ method: 'POST', url: '/v1/auth/google' }), true);
   assert.equal(backend.app.hasRoute({ method: 'POST', url: '/v1/auth/apple' }), false);
   const gone = await backend.app.inject({
@@ -1119,7 +1119,7 @@ test('ASM-22 two instances share one budget, and a closed window is the worker t
   // memory is a different budget in the next process, so scaling to two
   // instances quietly doubles what every rider is allowed.
   const f = await setup(t);
-  const configuration = configurationFor(f, { REPLACEMENT_REQUESTS_PER_MINUTE: '4' });
+  const configuration = configurationFor(f, { REQUESTS_PER_MINUTE: '4' });
   const first = await composeBackend(configuration);
   t.after(() => first.close());
   const second = await composeBackend(configuration);
@@ -1205,7 +1205,7 @@ test('ASM-22 two instances share one budget, and a closed window is the worker t
 
 test('ASM-24 composed replicas share hashed IP admission before authentication', async (t) => {
   const f = await setup(t);
-  const configuration = configurationFor(f, { REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '1' });
+  const configuration = configurationFor(f, { REQUESTS_PER_IP_PER_MINUTE: '1' });
   const first = await composeBackend(configuration),
     second = await composeBackend(configuration);
   t.after(() => first.close());

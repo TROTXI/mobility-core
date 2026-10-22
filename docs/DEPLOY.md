@@ -26,7 +26,23 @@ A direct Render deploy does not substitute for the installer.
 
 ## Credentials and configuration
 
-The API must use `REPLACEMENT_RUNTIME_DATABASE_URL`, not the database owner.
+Backend settings now use plain names, for example `RUNTIME_DATABASE_URL`,
+`ACCESS_SECRET`, `PAYSTACK_SECRET_KEY`, `DEPLOYMENT_ENVIRONMENT` and
+`SCHEDULER_ENABLED`. The installer alone uses `MIGRATION_DATABASE_URL` and
+`RUNTIME_ROLE`; ordinary `DATABASE_URL` remains deliberately ignored by it.
+
+For a rolling configuration migration, the backend temporarily accepts the old
+`REPLACEMENT_` aliases. Conflicting old/new values refuse startup without printing
+their values. Add each new name with the **same existing value**, deploy the new
+code, then remove the old alias. Keep both names if rollback to the previous code
+is still required. Do not rotate keys or enable jobs/payments during the rename.
+The pinned staging service retains its existing key derivation and accepts its
+existing `R2_BUCKET` setting; new deployments use `R2_BUCKET_NAME`.
+
+GitHub's stored `STAGING_*` secret/variable names are unchanged. Only the names
+passed to processes change. No live staging settings are changed by this commit.
+
+The API must use `RUNTIME_DATABASE_URL`, not the database owner.
 API startup verifies restricted permissions and the migration inventory rather
 than installing migrations. Maintenance uses a separate restricted connection
 and a non-human identity. External database connections verify TLS.
@@ -123,7 +139,7 @@ pnpm exec tsx scripts/bootstrap-superadmin.ts \
   '<EXACT_ACCOUNT_UUID>' '<EXACT_DATABASE_NAME>' 'confirm:<EXACT_ACCOUNT_UUID>'
 ```
 
-Supply the approved installer connection through `REPLACEMENT_DATABASE_URL`
+Supply the approved installer connection through `MIGRATION_DATABASE_URL`
 using the protected secret mechanism. Do not put credentials in the command,
 logs or repository. The command ignores ordinary `DATABASE_URL`, checks the
 database name, refuses if bootstrap already happened or a superadmin exists,
