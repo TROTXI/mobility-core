@@ -359,6 +359,9 @@ services:
         source: /terms
         destination: /terms.html
       - type: rewrite
+        source: /driver-terms
+        destination: /driver-terms.html
+      - type: rewrite
         source: /privacy
         destination: /privacy.html
       - type: rewrite

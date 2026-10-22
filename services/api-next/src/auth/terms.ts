@@ -29,7 +29,7 @@ export async function recordCommuterTermsAcceptance(
     );
   await client.query(
     `INSERT INTO app.terms_acceptances(user_id,audience,terms_version,channel)
-     VALUES($1,'commuter',$2,$3) ON CONFLICT (user_id,audience,terms_version) DO NOTHING`,
+     VALUES($1,'commuter',$2,$3) ON CONFLICT DO NOTHING`,
     [userId, currentCommuterTermsVersion, channel],
   );
 }
@@ -75,7 +75,7 @@ export async function acceptCurrentTerms(
     fail(409, 'terms_version_outdated', 'The terms have been updated. Read the latest version.');
   await client.query(
     `INSERT INTO app.terms_acceptances(user_id,audience,terms_version,channel)
-     VALUES($1,$2,$3,$4) ON CONFLICT (user_id,audience,terms_version) DO NOTHING`,
+     VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
     [user.id, audience, currentTermsVersions[audience], `${audience}_app`],
   );
   return termsStatus(client, user);

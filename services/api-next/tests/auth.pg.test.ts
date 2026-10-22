@@ -3128,6 +3128,23 @@ test('TERMS-01: drivers accept their own terms and everyone re-accepts a newly p
   );
   assert.equal(renewed.acceptedVersion, currentCommuterTermsVersion);
   assert.equal(renewed.acceptanceRequired, false);
+  // The previous release, still serving while this migration runs, inserts
+  // without an audience and conflicts on (user_id,terms_version).
+  for (let n = 0; n < 2; n++)
+    await f.owner.query(
+      `INSERT INTO app.terms_acceptances(user_id,terms_version,channel)
+       VALUES ($1,'2026-03-01','commuter_email_signup') ON CONFLICT (user_id,terms_version) DO NOTHING`,
+      [rider.account.id],
+    );
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT audience FROM app.terms_acceptances WHERE user_id=$1 AND terms_version='2026-03-01'",
+        [rider.account.id],
+      )
+    ).rows[0].audience,
+    'commuter',
+  );
   // A driver acceptance can never be recorded under the rider audience.
   await assert.rejects(
     f.owner.query(
