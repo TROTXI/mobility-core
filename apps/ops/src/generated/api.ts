@@ -669,6 +669,24 @@ export interface paths {
     patch: operations['updateAccount'];
     trace?: never;
   };
+  '/v1/me/terms': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Terms Status */
+    get: operations['getTermsStatus'];
+    put?: never;
+    /** accept Terms */
+    post: operations['acceptTerms'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/verification': {
     parameters: {
       query?: never;
@@ -5158,6 +5176,24 @@ export interface components {
       travelDays: number[];
       creditPerUnusedRide: components['schemas']['Money'];
     };
+    TermsAcceptance: {
+      /** @enum {boolean} */
+      acceptedTerms: true;
+      /** Format: date */
+      termsVersion: string;
+    };
+    TermsStatus: {
+      /** @enum {string} */
+      audience: 'commuter' | 'driver';
+      /** Format: date */
+      currentVersion: string;
+      /** Format: date */
+      acceptedVersion: string | null;
+      acceptanceRequired: boolean;
+    };
+    TermsStatusResponse: {
+      data: components['schemas']['TermsStatus'];
+    };
     Tokens: {
       accessToken: string;
       refreshToken: string;
@@ -7312,6 +7348,101 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AccountResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getTermsStatus: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TermsStatusResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  acceptTerms: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TermsAcceptance'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TermsStatusResponse'];
         };
       };
       400: components['responses']['Error400'];

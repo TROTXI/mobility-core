@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('public legal and account-information pages', () => {
-  for (const name of ['terms', 'privacy', 'delete-account']) {
+  for (const name of ['terms', 'driver-terms', 'privacy', 'delete-account']) {
     it(`${name} works without signing in or running JavaScript`, () => {
       const html = readFileSync(`public/${name}.html`, 'utf8');
       const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -32,6 +32,7 @@ describe('public legal and account-information pages', () => {
       for (const link of doc.querySelectorAll('a[href^="./"]')) {
         const href = link.getAttribute('href');
         for (const path of [
+          '/driver-terms',
           '/privacy',
           '/delete-account',
           '/terms',
@@ -41,7 +42,9 @@ describe('public legal and account-information pages', () => {
         ]) {
           const target = new URL(href, `https://example.com${path}`);
           expect(target.origin).toBe('https://example.com');
-          expect(['/terms', '/privacy', '/delete-account']).toContain(target.pathname);
+          expect(['/terms', '/driver-terms', '/privacy', '/delete-account']).toContain(
+            target.pathname,
+          );
         }
       }
     });
@@ -49,12 +52,13 @@ describe('public legal and account-information pages', () => {
   it('routes clean URLs to static pages before the Ops fallback and shares them with both apps', () => {
     const blueprint = readFileSync('../../render.yaml', 'utf8');
     expect(blueprint).toMatch(
-      /routes:\s+- type: rewrite\s+source: \/terms\s+destination: \/terms\.html\s+- type: rewrite\s+source: \/privacy\s+destination: \/privacy\.html\s+- type: rewrite\s+source: \/delete-account\s+destination: \/delete-account\.html\s+- type: rewrite\s+source: \/\*\s+destination: \/index\.html/,
+      /routes:\s+- type: rewrite\s+source: \/terms\s+destination: \/terms\.html\s+- type: rewrite\s+source: \/driver-terms\s+destination: \/driver-terms\.html\s+- type: rewrite\s+source: \/privacy\s+destination: \/privacy\.html\s+- type: rewrite\s+source: \/delete-account\s+destination: \/delete-account\.html\s+- type: rewrite\s+source: \/\*\s+destination: \/index\.html/,
     );
     // The apps build these clean paths on PUBLIC_SITE_URL; staging points
     // that at this site, and production supplies its own.
     const sharedLinks = readFileSync('../trotxi_client/lib/public_information.dart', 'utf8');
     expect(sharedLinks).toContain("_page('terms')");
+    expect(sharedLinks).toContain("_page('driver-terms')");
     expect(sharedLinks).toContain("_page('privacy')");
     expect(sharedLinks).toContain("_page('delete-account')");
     expect(sharedLinks).not.toContain('.html');
@@ -76,6 +80,13 @@ describe('public legal and account-information pages', () => {
     expect(html).toContain('separate from these Terms');
     expect(html).toContain('weekly, biweekly or monthly');
     expect(html).not.toMatch(/annual plan/i);
+  });
+  it('publishes the Driver Terms version the server asks drivers to accept', () => {
+    const html = readFileSync('public/driver-terms.html', 'utf8');
+    const apiTerms = readFileSync('../../services/api-next/src/auth/terms.ts', 'utf8');
+    const version = apiTerms.match(/currentDriverTermsVersion = '([0-9-]+)'/)?.[1];
+    expect(version).toBeTruthy();
+    expect(html).toContain(`Version ${version}`);
   });
   it('does not promise automatic deletion or universal retention', () => {
     const html = readFileSync('public/delete-account.html', 'utf8');

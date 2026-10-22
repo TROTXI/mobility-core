@@ -16,6 +16,8 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/notifications_inbox_p
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_client/public_information.dart';
+import 'package:trotxi_client/terms.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:trotxi_client/optional_service.dart';
 import 'package:trotxi_client/mobile_build_config.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
@@ -280,6 +282,29 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
     }
   }
 
+  /// Riders accept the current Rider Terms at sign-up and again after every
+  /// new version. Keyed to the signed-in account so a new rider is checked.
+  Widget _riderTermsGate(Widget home) {
+    final terms = TermsClient(
+      client: widget.client.client,
+      metadata: widget.client.metadata,
+    );
+    return TermsGate(
+      key: ValueKey(widget.client.currentAccount?.id),
+      load: terms.status,
+      accept: terms.accept,
+      termsName: 'Rider Terms',
+      onReadTerms: (_) => launchUrl(
+        TrotxiPublicInformation.terms,
+        mode: LaunchMode.externalApplication,
+      ),
+      onSignOut: () async {
+        await widget.client.signOut();
+      },
+      child: home,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // AppThemeControllerScope makes the controller reachable from anywhere
@@ -343,7 +368,7 @@ class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
                                 client: widget.client,
                                 requiredForSignup: true,
                               )
-                            : HomePage(client: widget.client),
+                            : _riderTermsGate(HomePage(client: widget.client)),
                       CommuterStage.failed => Scaffold(
                         body: SafeArea(
                           child: Center(

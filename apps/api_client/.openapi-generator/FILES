@@ -333,6 +333,9 @@ doc/StopOccurrence.md
 doc/StopPage.md
 doc/StopResponse.md
 doc/SubscriptionOfferLeg.md
+doc/TermsAcceptance.md
+doc/TermsStatus.md
+doc/TermsStatusResponse.md
 doc/Tokens.md
 doc/TokensResponse.md
 doc/TraceHold.md
@@ -705,6 +708,9 @@ lib/src/model/stop_occurrence.dart
 lib/src/model/stop_page.dart
 lib/src/model/stop_response.dart
 lib/src/model/subscription_offer_leg.dart
+lib/src/model/terms_acceptance.dart
+lib/src/model/terms_status.dart
+lib/src/model/terms_status_response.dart
 lib/src/model/tokens.dart
 lib/src/model/tokens_response.dart
 lib/src/model/trace_hold.dart

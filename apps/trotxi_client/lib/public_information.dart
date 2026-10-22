@@ -10,6 +10,7 @@ class TrotxiPublicInformation {
   static const currentTermsVersion = '2026-10-14';
 
   static Uri get terms => _page('terms');
+  static Uri get driverTerms => _page('driver-terms');
   static Uri get privacy => _page('privacy');
   static Uri get privacyChoices => privacy.replace(fragment: 'choices');
   static Uri get deletion => _page('delete-account');
