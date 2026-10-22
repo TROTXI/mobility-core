@@ -14,7 +14,7 @@ import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cancelCredentialSms } from '../notifications/driver-sms.js';
 import type { ErasureJournal } from './erasure-journal.js';
 import { requireRecentPasskey, requireSuperadmin, teamLock } from '../auth/ops-team.js';
-import { sanitizeAvatar } from './avatar-image.js';
+import { reserveAvatarSanitization } from './avatar-image.js';
 
 /** The person's own photo. Either app they hold, because it is theirs. */
 export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
@@ -411,6 +411,7 @@ export class AccountService {
     const lock = await this.options.pool.connect();
     const lockKey = `avatar:${id(actor.userId)}:${digest(key)}`;
     let task: Row | undefined;
+    let sanitization: ReturnType<typeof reserveAvatarSanitization> | undefined;
     let putFinished = false;
     try {
       await lock.query("SET lock_timeout='3s'");
@@ -435,8 +436,12 @@ export class AccountService {
             existing.available_at <= this.now()
           )
             fail(409, 'idempotency_expired', 'Retry this upload with a new key.');
+          sanitization = reserveAvatarSanitization();
           return existing;
         }
+        // Capacity failures must not commit an intent that expires the retry key.
+        // Reserve only after auth/replay checks; decode outside the transaction.
+        sanitization = reserveAvatarSanitization();
         const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/png' ? 'png' : 'webp';
         const objectKey = `avatars/${actor.userId}/${randomUUID()}.${extension}`;
         return (
@@ -451,7 +456,7 @@ export class AccountService {
       task = prepared;
       // Authorization and replay checks precede native decoding. Keep the
       // original fingerprint for idempotency, but only store sanitized pixels.
-      const clean = await sanitizeAvatar(bytes, type, this.maxAvatarBytes);
+      const clean = await sanitization!.run(bytes, type, this.maxAvatarBytes);
       const stored = await this.options.avatars.put({
         userId: actor.userId,
         objectKey: prepared.reference,
@@ -494,6 +499,7 @@ export class AccountService {
         );
       throw error;
     } finally {
+      sanitization?.release();
       // A connection whose unlock fails must not return a session lock to the pool.
       let broken = false;
       try {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { setup, files } from './helpers/financial-fixture.js';
 import { migrate, grantRuntime } from '../src/db/migrate.js';
 import { AccountService } from '../src/account/service.js';
@@ -8,6 +8,7 @@ import { accessTokens } from '../src/auth/credentials.js';
 import { createTransportApp } from '../src/http/app.js';
 import { purgeExpiredCommandPayloads } from '../src/runtime/receipt-retention.js';
 import { avatarPng as png } from './helpers/avatar-fixture.js';
+import { reserveAvatarSanitization } from '../src/account/avatar-image.js';
 
 function gate() {
   let release!: () => void;
@@ -460,6 +461,66 @@ test('ACR-06 deletion replay accepts only a valid original JWT/session and exact
   assert.equal((await call(expired)).statusCode, 401);
   assert.equal((await call(token + 'invalid')).statusCode, 401);
 });
+
+for (const resumed of [false, true]) {
+  test(`avatar busy response preserves same-key retry for ${resumed ? 'resumed' : 'new'} uploads`, async (t) => {
+    const f = await setup(t);
+    const key = randomUUID();
+    const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
+    if (resumed)
+      await f.owner.query(
+        `INSERT INTO app.erasure_tasks(user_id,kind,reference,state,command_key_hash,input_hash,available_at)
+        VALUES ($1,'avatar_object',$2,'uploading',$3,$4,clock_timestamp()+interval '5 minutes')`,
+        [
+          f.actor.userId,
+          `avatars/${f.actor.userId}/reserved.png`,
+          hash(key),
+          hash(`image/png:${hash(png)}`),
+        ],
+      );
+    const tasks = async () =>
+      (await f.owner.query('SELECT * FROM app.erasure_tasks WHERE user_id=$1', [f.actor.userId]))
+        .rows;
+    const before = await tasks();
+    let puts = 0;
+    const service = new AccountService({
+      pool: f.runtime,
+      authorizeSession: f.dependencies.authorizeSession,
+      deviceKey: randomBytes(32),
+      avatars: {
+        put: async ({ objectKey }) => {
+          puts++;
+          // Cleanup is committed before any external write, including a retry.
+          const intent = (await tasks()).find((row) => row.reference === objectKey);
+          assert.equal(intent?.state, 'uploading');
+          if (resumed) assert.equal(intent.id, before[0].id);
+          return { objectKey };
+        },
+        signedUrl: async (k) => `https://private.example/${k}`,
+      },
+    });
+    const upload = () => service.handle(f.actor, 'uploadAvatar', png, 'image/png', key);
+    const reservations = [reserveAvatarSanitization(), reserveAvatarSanitization()];
+    try {
+      await assert.rejects(
+        upload(),
+        (e: any) => e.status === 503 && e.code === 'avatar_processing_busy',
+      );
+      assert.equal(puts, 0);
+      assert.deepEqual(await tasks(), before, 'busy must neither create nor expire the intent');
+    } finally {
+      reservations.forEach((slot) => slot.release());
+    }
+    assert.equal((await upload()).status, 200);
+    const occupied = [reserveAvatarSanitization(), reserveAvatarSanitization()];
+    try {
+      assert.equal((await upload()).status, 200, 'successful replay needs no decoder capacity');
+    } finally {
+      occupied.forEach((slot) => slot.release());
+    }
+    assert.equal(puts, 1);
+  });
+}
 
 test('ACR-07 concurrent same-key uploads write one object and key expiry never reexecutes', async (t) => {
   const f = await setup(t);

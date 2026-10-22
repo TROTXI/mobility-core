@@ -1,12 +1,45 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import sharp from 'sharp';
-import { sanitizeAvatar, MAX_AVATAR_PIXELS, MAX_AVATAR_EDGE } from '../src/account/avatar-image.js';
+import {
+  sanitizeAvatar,
+  reserveAvatarSanitization,
+  MAX_AVATAR_PIXELS,
+  MAX_AVATAR_EDGE,
+} from '../src/account/avatar-image.js';
 import { TransportError } from '../src/transport/errors.js';
 import { avatarPng } from './helpers/avatar-fixture.js';
 
 const maxBytes = 2 * 1024 * 1024;
 const refused = (error: unknown) => error instanceof TransportError && error.status === 415;
+
+test('avatar reservations release unused capacity once and retain running capacity', async () => {
+  const first = reserveAvatarSanitization();
+  const second = reserveAvatarSanitization();
+  const busy = (e: unknown) => e instanceof TransportError && e.code === 'avatar_processing_busy';
+  try {
+    assert.throws(reserveAvatarSanitization, busy);
+    first.release();
+    first.release();
+    await assert.rejects(first.run(avatarPng, 'image/png', maxBytes), /already_used/);
+    const third = reserveAvatarSanitization();
+    try {
+      assert.throws(reserveAvatarSanitization, busy);
+      const running = third.run(avatarPng, 'image/png', maxBytes);
+      third.release();
+      assert.throws(reserveAvatarSanitization, busy, 'cannot release an active decoder early');
+      await assert.rejects(third.run(avatarPng, 'image/png', maxBytes), /already_used/);
+      await running;
+      await assert.rejects(third.run(avatarPng, 'image/png', maxBytes), /already_used/);
+      await sanitizeAvatar(avatarPng, 'image/png', maxBytes);
+    } finally {
+      third.release();
+    }
+  } finally {
+    first.release();
+    second.release();
+  }
+});
 
 for (const format of ['jpeg', 'png', 'webp'] as const) {
   test(`avatar ${format}: strips private EXIF/XMP and trailing bytes`, async () => {

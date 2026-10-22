@@ -9,11 +9,38 @@ export const AVATAR_OUTPUT_EDGE = 1024;
 const MAX_CONCURRENT_IMAGES = 2;
 let active = 0;
 
-/** Decode pixels and write a new image, never copy uploaded metadata or bytes. */
-export async function sanitizeAvatar(bytes: Buffer, contentType: string, maxBytes: number) {
+/** Reserve bounded native work before committing an upload intent. */
+export function reserveAvatarSanitization() {
   if (active >= MAX_CONCURRENT_IMAGES)
     fail(503, 'avatar_processing_busy', 'Please try uploading your photo again shortly.');
   active++;
+  let state: 'reserved' | 'running' | 'released' = 'reserved';
+  const release = () => {
+    if (state !== 'reserved') return;
+    state = 'released';
+    active--;
+  };
+  return {
+    release,
+    async run(bytes: Buffer, contentType: string, maxBytes: number) {
+      if (state !== 'reserved') throw new Error('avatar_reservation_already_used');
+      state = 'running';
+      try {
+        return await decodeAvatar(bytes, contentType, maxBytes);
+      } finally {
+        state = 'reserved';
+        release();
+      }
+    },
+  };
+}
+
+export async function sanitizeAvatar(bytes: Buffer, contentType: string, maxBytes: number) {
+  return reserveAvatarSanitization().run(bytes, contentType, maxBytes);
+}
+
+/** Decode pixels and write a new image, never copy uploaded metadata or bytes. */
+async function decodeAvatar(bytes: Buffer, contentType: string, maxBytes: number) {
   let image: Sharp | undefined;
   try {
     image = sharp(bytes, {
@@ -65,6 +92,5 @@ export async function sanitizeAvatar(bytes: Buffer, contentType: string, maxByte
     fail(415, 'unsupported_media_type', 'Supply a complete, valid JPEG, PNG or WebP image.');
   } finally {
     image?.destroy();
-    active--;
   }
 }
