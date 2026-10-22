@@ -10,7 +10,7 @@ below are recorded. Production is still blocked by the reviewed policy in
 
 `Mobile artifacts` builds both apps on relevant PRs and main changes:
 
-- Flutter 3.44.1, Java 17, Android compile/target API at least 36.
+- Flutter 3.44.1, Java 21 (required by MapLibre), Android compile/target API at least 36.
 - Unsigned staging Android AABs. No debug-key substitution.
 - Unsigned device `.xcarchive` bundles on `macos-26`, with Xcode >= 26 checked.
 - Artifact checks for package/bundle IDs, names, version/build, Android target

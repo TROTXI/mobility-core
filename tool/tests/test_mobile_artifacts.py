@@ -177,6 +177,15 @@ class ReservationTests(unittest.TestCase):
 
 
 class PackagingTests(unittest.TestCase):
+    def test_android_workflows_use_maplibre_required_java_version(self):
+        root = Path(__file__).resolve().parents[2]
+        for name in ("mobile-artifacts.yml", "mobile-store-release.yml"):
+            with self.subTest(workflow=name):
+                workflow = (root / ".github/workflows" / name).read_text()
+                self.assertIn("uses: actions/setup-java@", workflow)
+                self.assertEqual(workflow.count("java-version:"), 1)
+                self.assertIn("java-version: '21'", workflow)
+
     def test_build_processes_do_not_receive_input_blobs_or_ios_passwords(self):
         source = {"MOBILE_CONFIG_JSON": "fixture", "ANDROID_FIREBASE_JSON": "fixture",
                   "ANDROID_UPLOAD_KEY_BASE64": "fixture", "IOS_CERTIFICATE_BASE64": "fixture",
