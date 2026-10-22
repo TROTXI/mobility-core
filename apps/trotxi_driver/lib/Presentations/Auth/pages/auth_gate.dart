@@ -6,10 +6,13 @@ import 'package:trotxi_driver/Presentations/Auth/pages/pin_setup_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/sign_in_page.dart';
 import 'package:trotxi_driver/Presentations/Onboarding/pages/first_launch_page.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
+import 'package:trotxi_client/public_information.dart';
+import 'package:trotxi_client/terms.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/data/device_readiness.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_driver/data/first_launch_store.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Renders whichever screen the session is currently on.
 ///
@@ -197,7 +200,19 @@ class _AuthGateState extends State<AuthGate> {
         onContinue: session.completeReadiness,
         service: widget.readinessService,
       ),
-      SessionStage.ready => widget.home(context),
+      // Drivers accept the Driver Terms before their first trip and again
+      // after every new version; the check runs once per sign-in or restart.
+      SessionStage.ready => TermsGate(
+        load: auth.termsStatus,
+        accept: auth.acceptTerms,
+        termsName: 'Driver Terms',
+        onReadTerms: (_) => launchUrl(
+          TrotxiPublicInformation.driverTerms,
+          mode: LaunchMode.externalApplication,
+        ),
+        onSignOut: session.signOut,
+        child: widget.home(context),
+      ),
     };
   }
 }

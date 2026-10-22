@@ -193,6 +193,8 @@ const selected = new Set([
   'removeAutoRenewalCard',
   'runAutoRenewals',
   'listOpsAutoRenewals',
+  'getTermsStatus',
+  'acceptTerms',
 ]);
 const count = selected.size;
 const paths = {};

@@ -17,7 +17,7 @@ import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 import { phoneIdentity, phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
 import { fullName } from './full-name.js';
 import { checkPassword, hashPassword } from './password.js';
-import { recordCommuterTermsAcceptance } from './terms.js';
+import { acceptCurrentTerms, recordCommuterTermsAcceptance, termsStatus } from './terms.js';
 import { sharedAdmission } from '../runtime/admission.js';
 import {
   EmailAuth,
@@ -56,6 +56,8 @@ export const authOperations = [
   'refreshSession',
   'logoutSession',
   'getAccount',
+  'getTermsStatus',
+  'acceptTerms',
   'listSessions',
   'revokeSession',
   'getPasskeyStatus',
@@ -1179,6 +1181,12 @@ export class AuthService {
         allowPhoneRegistration: name === 'getAccount',
       });
       if (name === 'getAccount') return result(this.account(await this.user(client, actor.userId)));
+      if (name === 'getTermsStatus')
+        return result(await termsStatus(client, await this.user(client, actor.userId)));
+      if (name === 'acceptTerms')
+        return result(
+          await acceptCurrentTerms(client, await this.user(client, actor.userId), body),
+        );
       if (name === 'listSessions') {
         const limit = query.limit === undefined ? 50 : Number(query.limit);
         if (

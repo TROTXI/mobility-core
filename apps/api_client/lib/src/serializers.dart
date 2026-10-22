@@ -336,6 +336,9 @@ import 'package:trotxi_api_client/src/model/stop_occurrence.dart';
 import 'package:trotxi_api_client/src/model/stop_page.dart';
 import 'package:trotxi_api_client/src/model/stop_response.dart';
 import 'package:trotxi_api_client/src/model/subscription_offer_leg.dart';
+import 'package:trotxi_api_client/src/model/terms_acceptance.dart';
+import 'package:trotxi_api_client/src/model/terms_status.dart';
+import 'package:trotxi_api_client/src/model/terms_status_response.dart';
 import 'package:trotxi_api_client/src/model/tokens.dart';
 import 'package:trotxi_api_client/src/model/tokens_response.dart';
 import 'package:trotxi_api_client/src/model/trace_hold.dart';
@@ -693,6 +696,9 @@ part 'serializers.g.dart';
   StopPage,
   StopResponse,
   SubscriptionOfferLeg,
+  TermsAcceptance,
+  TermsStatus,
+  TermsStatusResponse,
   Tokens,
   TokensResponse,
   TraceHold,

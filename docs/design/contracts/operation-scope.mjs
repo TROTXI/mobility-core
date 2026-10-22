@@ -452,6 +452,18 @@ export const operationScope = [
     'A driver session outlives the sign-in response that carries the driver record',
     'No predecessor. DriverTokens.driver is returned once at sign-in and nothing re-reads it, so an app signed in for weeks cannot show a licence or a suspended credential without signing out.',
   ],
+  [
+    'getTermsStatus',
+    'post-cutover',
+    'Drivers accept the Driver Terms in the app, and every user accepts each newly published version',
+    'No predecessor. Acceptance was recorded only at rider sign-up, so drivers never accepted and nobody could be asked to accept an updated version.',
+  ],
+  [
+    'acceptTerms',
+    'post-cutover',
+    'Drivers accept the Driver Terms in the app, and every user accepts each newly published version',
+    'No predecessor. Sign-up records the rider terms once; nothing records a driver acceptance or a later version.',
+  ],
 ].map(([operationId, delivery, requirement, existingEndpointAssessment]) => ({
   operationId,
   delivery,

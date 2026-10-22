@@ -28,6 +28,7 @@ import { ErasureJournal } from '../src/account/erasure-journal.js';
 import { ErasureRecovery } from '../src/account/erasure-recovery.js';
 import { MemoryErasureStore } from './helpers/erasure-store.js';
 import { TransportError } from '../src/transport/errors.js';
+import { currentCommuterTermsVersion, currentDriverTermsVersion } from '../src/auth/terms.js';
 import type { PasskeyRelyingParty } from '../src/auth/passkeys.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
 
@@ -3040,5 +3041,99 @@ test('EMAIL-08 retention removes abandoned signup PII without deleting a linked-
       )
     ).rows[0].n,
     0,
+  );
+});
+test('TERMS-01: drivers accept their own terms and everyone re-accepts a newly published version', async (t) => {
+  const f = await setup(t),
+    { userId } = await f.seedDriver();
+  const rider = await f.sign('terms-rider');
+  // Sign-up recorded the rider version, so nothing is asked of a new rider.
+  assert.deepEqual(data(await f.request('GET', '/v1/me/terms', undefined, rider.accessToken)), {
+    audience: 'commuter',
+    currentVersion: currentCommuterTermsVersion,
+    acceptedVersion: currentCommuterTermsVersion,
+    acceptanceRequired: false,
+  });
+
+  const driverHeaders = { 'x-trotxi-client': 'driver' };
+  const driver = data(
+    await f.request('POST', '/v1/auth/driver', { code: 'B7K9', pin: '938755', ownDevice: true }),
+  );
+  const status = () =>
+    f.request('GET', '/v1/me/terms', undefined, driver.accessToken, driverHeaders);
+  assert.deepEqual(data(await status()), {
+    audience: 'driver',
+    currentVersion: currentDriverTermsVersion,
+    acceptedVersion: null,
+    acceptanceRequired: true,
+  });
+  const accept = (body: unknown) =>
+    f.request('POST', '/v1/me/terms', body, driver.accessToken, driverHeaders);
+  // An app still showing an older text is sent to fetch the current one.
+  const stale = await accept({ acceptedTerms: true, termsVersion: '2026-01-01' });
+  assert.equal(stale.statusCode, 409, stale.body);
+  assert.equal(stale.json().error.code, 'terms_version_outdated');
+  assert.equal(
+    (await accept({ acceptedTerms: false, termsVersion: currentDriverTermsVersion })).statusCode,
+    400,
+  );
+  // The rider version is not the driver's to accept.
+  assert.equal(
+    (await accept({ acceptedTerms: true, termsVersion: currentCommuterTermsVersion })).statusCode,
+    409,
+  );
+  for (let n = 0; n < 2; n++)
+    assert.equal(
+      data(await accept({ acceptedTerms: true, termsVersion: currentDriverTermsVersion }))
+        .acceptanceRequired,
+      false,
+    );
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT audience,terms_version,channel FROM app.terms_acceptances WHERE user_id=$1',
+        [userId],
+      )
+    ).rows,
+    [{ audience: 'driver', terms_version: currentDriverTermsVersion, channel: 'driver_app' }],
+  );
+
+  // Publishing a new version: an acceptance of an older one no longer counts.
+  await f.owner.query(
+    "INSERT INTO app.terms_acceptances(user_id,audience,terms_version,channel) VALUES ($1,'commuter','2026-01-01','commuter_app')",
+    [rider.account.id],
+  );
+  const fixture = await f.owner.connect();
+  try {
+    await fixture.query('BEGIN');
+    await fixture.query('SET LOCAL session_replication_role=replica');
+    await fixture.query(
+      "DELETE FROM app.terms_acceptances WHERE user_id=$1 AND terms_version<>'2026-01-01'",
+      [rider.account.id],
+    );
+    await fixture.query('COMMIT');
+  } finally {
+    fixture.release();
+  }
+  const outdated = data(await f.request('GET', '/v1/me/terms', undefined, rider.accessToken));
+  assert.equal(outdated.acceptedVersion, '2026-01-01');
+  assert.equal(outdated.acceptanceRequired, true);
+  const renewed = data(
+    await f.request(
+      'POST',
+      '/v1/me/terms',
+      { acceptedTerms: true, termsVersion: currentCommuterTermsVersion },
+      rider.accessToken,
+    ),
+  );
+  assert.equal(renewed.acceptedVersion, currentCommuterTermsVersion);
+  assert.equal(renewed.acceptanceRequired, false);
+  // A driver acceptance can never be recorded under the rider audience.
+  await assert.rejects(
+    f.owner.query(
+      "INSERT INTO app.terms_acceptances(user_id,audience,terms_version,channel) VALUES ($1,'commuter','2026-02-01','driver_app')",
+      [userId],
+    ),
+    /terms_acceptances_channel_audience/,
   );
 });

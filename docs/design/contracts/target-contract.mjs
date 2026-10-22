@@ -224,6 +224,19 @@ named(
   }),
 );
 named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled: z.boolean() }));
+// Riders and drivers each have their own terms. The app shows the current
+// version whenever this user has not accepted it, at first use and after
+// every newly published version.
+named(
+  'TermsStatus',
+  obj({
+    audience: z.enum(['commuter', 'driver']),
+    currentVersion: date,
+    acceptedVersion: date.nullable(),
+    acceptanceRequired: z.boolean(),
+  }),
+);
+named('TermsAcceptance', obj({ acceptedTerms: z.literal(true), termsVersion: date }));
 named(
   'GoogleSignIn',
   obj({
@@ -1940,6 +1953,12 @@ post('/v1/auth/driver/pin', 'changeDriverPin', 'PinChange', null, {
   sensitive: true,
 });
 get('/v1/me', 'getAccount', 'Account', { access: 'self' });
+get('/v1/me/terms', 'getTermsStatus', 'TermsStatus', { access: 'self' });
+post('/v1/me/terms', 'acceptTerms', 'TermsAcceptance', 'TermsStatus', {
+  access: 'self',
+  status: 200,
+  retry: 'idempotent_state',
+});
 get('/v1/me/verification', 'getVerification', 'VerificationStatus', { access: 'rider_own' });
 post(
   '/v1/me/phone-verification/start',

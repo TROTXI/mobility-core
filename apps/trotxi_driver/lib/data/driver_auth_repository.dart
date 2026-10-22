@@ -1,5 +1,7 @@
 import 'package:trotxi_client/driver_session_client.dart';
 import 'package:trotxi_client/scoped_token_store.dart';
+import 'package:trotxi_client/terms.dart';
+import 'package:trotxi_client/trotxi_client.dart' show Date;
 import 'package:trotxi_driver/core/api/driver_api.dart';
 
 /// The signed-in driver, as the app needs it after sign-in.
@@ -40,8 +42,14 @@ class DriverAuthRepository {
          client: client.client,
          store: tokenStore,
          metadata: client.metadata,
-       );
+       ),
+       _terms = TermsClient(client: client.client, metadata: client.metadata);
   final DriverSessionClient _session;
+  final TermsClient _terms;
+
+  /// Whether this driver has accepted the Driver Terms in force.
+  Future<TermsCheck> termsStatus() => _terms.status();
+  Future<TermsCheck> acceptTerms(Date version) => _terms.accept(version);
   Future<bool> hasStoredSession() => _session.hasStoredSession();
   Future<DriverSession?> currentDriver() async {
     final identity = await _session.restore();
