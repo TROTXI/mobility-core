@@ -1,0 +1,78 @@
+name: Mobile artifacts
+
+on:
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'tool/**'
+      - '.github/workflows/mobile-*.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'tool/**'
+      - '.github/workflows/mobile-*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-artifacts-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  guards:
+    name: Release guard tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tool/tests -p 'test_mobile_*.py' -v
+
+  package:
+    name: Unsigned ${{ matrix.app }} (${{ matrix.platform }})
+    needs: guards
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [commuter, driver]
+        include:
+          - platform: android
+            runner: ubuntu-latest
+          - platform: ios
+            runner: macos-26
+        platform: [android, ios]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          # maplibre_gl compiles its Android sources with Java 21.
+          java-version: '21'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: false
+      - name: Android artifact inspector
+        if: matrix.platform == 'android'
+        run: bash tool/get_bundletool.sh
+      - name: Package and inspect (no signing secrets or provider uploads)
+        env:
+          APP: ${{ matrix.app }}
+          PLATFORM: ${{ matrix.platform }}
+        run: python3 tool/mobile_package.py "$PLATFORM" --app "$APP" --mode validation --number 1 --version 0.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: unsigned-${{ matrix.app }}-${{ matrix.platform }}-${{ github.sha }}
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 7

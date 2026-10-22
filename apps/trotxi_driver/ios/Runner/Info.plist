@@ -21,7 +21,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Continue sharing the bus location during an active trip when the screen is locked. Trotxi stops collection when the trip ends or you sign out.</string>
 	<key>UIBackgroundModes</key>
-	<array><string>location</string></array>
+	<array><string>location</string><string>remote-notification</string></array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

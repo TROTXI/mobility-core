@@ -1,0 +1,120 @@
+name: Mobile store release
+
+# No push, schedule, pull_request_target or workflow_run entry point.
+# Produces artifacts only. Does not submit to either store or deploy anything.
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'New build number, greater than both stores and every reserved build (1..9999)'
+        type: string
+        required: true
+      version:
+        description: 'Marketing version, e.g. 1.0.0'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# Serialize the entire release, not just reservation. Never cancel signing work.
+concurrency:
+  group: mobile-store-release
+  cancel-in-progress: false
+
+jobs:
+  reserve:
+    if: github.ref == 'refs/heads/main' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: mobile-release
+    permissions:
+      contents: write
+    outputs:
+      number: ${{ steps.reserve.outputs.number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Reserve a never-reused build number
+        id: reserve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          VERSION_NAME: ${{ inputs.version }}
+          MOBILE_STORE_BUILD_FLOOR: ${{ vars.MOBILE_STORE_BUILD_FLOOR }}
+        run: python3 tool/reserve_mobile_build.py
+
+  package:
+    needs: reserve
+    if: github.ref == 'refs/heads/main' && github.run_attempt == 1
+    name: Store ${{ matrix.app }} (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    # Must have required reviewers, prevent self-review and allow ONLY main.
+    # Configuration is an owner action, not created by merging this workflow.
+    environment: mobile-production-${{ matrix.app }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [commuter, driver]
+        platform: [android, ios]
+        include:
+          - platform: android
+            runner: ubuntu-latest
+          - platform: ios
+            runner: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          # Keep the store toolchain aligned with unsigned artifact validation.
+          java-version: '21'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: false
+      - name: Android artifact inspector
+        if: matrix.platform == 'android'
+        run: bash tool/get_bundletool.sh
+      - name: Package and inspect approved Android artifact
+        if: matrix.platform == 'android'
+        env:
+          APP: ${{ matrix.app }}
+          PLATFORM: ${{ matrix.platform }}
+          BUILD_NUMBER: ${{ needs.reserve.outputs.number }}
+          VERSION_NAME: ${{ inputs.version }}
+          MOBILE_CONFIG_JSON: ${{ secrets.MOBILE_CONFIG_JSON }}
+          ANDROID_FIREBASE_JSON: ${{ secrets.ANDROID_FIREBASE_JSON }}
+          ANDROID_UPLOAD_KEY_BASE64: ${{ secrets.ANDROID_UPLOAD_KEY_BASE64 }}
+          TROTXI_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          TROTXI_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          TROTXI_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          TROTXI_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+        run: python3 tool/mobile_package.py "$PLATFORM" --app "$APP" --mode store --number "$BUILD_NUMBER" --version "$VERSION_NAME"
+      - name: Package and inspect approved iOS artifact
+        if: matrix.platform == 'ios'
+        env:
+          APP: ${{ matrix.app }}
+          PLATFORM: ${{ matrix.platform }}
+          BUILD_NUMBER: ${{ needs.reserve.outputs.number }}
+          VERSION_NAME: ${{ inputs.version }}
+          MOBILE_CONFIG_JSON: ${{ secrets.MOBILE_CONFIG_JSON }}
+          ANDROID_FIREBASE_JSON: ${{ secrets.ANDROID_FIREBASE_JSON }}
+          TROTXI_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          IOS_CERT_SHA256: ${{ vars.IOS_CERT_SHA256 }}
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+        run: python3 tool/mobile_package.py "$PLATFORM" --app "$APP" --mode store --number "$BUILD_NUMBER" --version "$VERSION_NAME"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: store-${{ matrix.app }}-${{ matrix.platform }}-${{ needs.reserve.outputs.number }}
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 14

@@ -90,6 +90,25 @@ void main(List<String> args) {
         'Firebase iOS bundle does not match this application.',
       );
     }
+    // Packaged from the same definitions validated immediately before native
+    // compilation. No Firebase keys, tokens or signing material in this receipt.
+    final receiptPath = Platform.environment['MOBILE_BUILD_RECEIPT'];
+    if (receiptPath != null && receiptPath.isNotEmpty) {
+      final receipt = File(receiptPath);
+      receipt.parent.createSync(recursive: true);
+      receipt.writeAsStringSync(
+        jsonEncode({
+          'app': app,
+          'environment': config.environment,
+          'apiOrigin': config.apiBaseUrl,
+          'publicSiteOrigin': values['PUBLIC_SITE_URL'],
+          'realm': config.realm,
+          'firebaseProject': config.firebaseProject,
+          'buildNumber': Platform.environment['MOBILE_BUILD_NUMBER'],
+          'version': Platform.environment['MOBILE_BUILD_NAME'],
+        }),
+      );
+    }
     stdout.writeln('Mobile configuration validated: ${config.environment}.');
   } catch (_) {
     // Do not print the input or exception: provider files can contain keys.

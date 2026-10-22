@@ -62,10 +62,6 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>Trotxi uses your camera to take a profile photo.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Trotxi uses your photo library so you can choose a profile photo.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
