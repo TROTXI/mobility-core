@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
+import { backendEnvironment } from '../src/runtime/environment.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
 import { runJob } from '../src/runtime/maintenance.js';
@@ -69,14 +70,14 @@ const maintenanceUser = randomUUID();
 test('scheduler is off by default and validates explicit opt-in configuration', () => {
   const env = environment();
   assert.equal(readConfiguration(env).schedulerEnabled, false);
-  env.REPLACEMENT_SCHEDULER_ENABLED = 'yes';
-  refuses(env, 'REPLACEMENT_SCHEDULER_ENABLED');
-  env.REPLACEMENT_SCHEDULER_ENABLED = 'true';
+  env.SCHEDULER_ENABLED = 'yes';
+  refuses(env, 'SCHEDULER_ENABLED');
+  env.SCHEDULER_ENABLED = 'true';
   assert.equal(readConfiguration(env).schedulerEnabled, true);
-  env.REPLACEMENT_POOL_SIZE = '3';
+  env.POOL_SIZE = '3';
   refuses(env, 'pool size');
-  env.REPLACEMENT_POOL_SIZE = '8';
-  delete env.REPLACEMENT_MAINTENANCE_USER_ID;
+  env.POOL_SIZE = '8';
+  delete env.MAINTENANCE_USER_ID;
   refuses(env, 'maintenance user');
 });
 test('private environment reads reject symlinks, public files, directories and oversized content', async () => {
@@ -160,14 +161,14 @@ test('provider rehearsal refuses live keys and never passes database or unrelate
     DATABASE_URL: 'must-not-be-used',
     JWT_SECRET: 'must-not-be-used',
     RENDER_API_KEY: 'must-not-be-used',
-    REPLACEMENT_ALLOW_LIVE_PAYMENTS: 'yes',
+    ALLOW_LIVE_PAYMENTS: 'yes',
     R2_ACCOUNT_ID: 'account',
     R2_ACCESS_KEY_ID: 'access',
     R2_SECRET_ACCESS_KEY: 'secret',
     R2_BUCKET: 'bucket',
   };
   assert.deepEqual(rehearsalEnvironment(source, 'paystack'), {
-    REPLACEMENT_PAYSTACK_SECRET_KEY: secret,
+    PAYSTACK_SECRET_KEY: secret,
   });
   assert.deepEqual(rehearsalEnvironment(source, 'r2'), {
     R2_ACCOUNT_ID: 'account',
@@ -303,54 +304,54 @@ test('maintenance exit policy detects 200 partial failures and contract drift, n
 /** One complete, valid deployment. Every scenario starts from this. */
 function environment(): Record<string, string> {
   return {
-    REPLACEMENT_RUNTIME_DATABASE_URL: 'postgres://runtime:pw@db.internal:5432/trotxi',
-    REPLACEMENT_POOL_SIZE: '8',
+    RUNTIME_DATABASE_URL: 'postgres://runtime:pw@db.internal:5432/trotxi',
+    POOL_SIZE: '8',
     PORT: '10000',
-    REPLACEMENT_SERVICE_NAME: 'trotxi-api-next',
-    REPLACEMENT_SERVICE_VERSION: '0.1.0',
-    REPLACEMENT_GIT_COMMIT: 'e2b1c0ddeadbeef',
-    REPLACEMENT_ACCESS_ISSUER: 'https://api.trotxi.com',
-    REPLACEMENT_ACCESS_AUDIENCE: 'trotxi-clients',
-    REPLACEMENT_ACCESS_TTL_SECONDS: '900',
-    REPLACEMENT_REFRESH_TTL_DAYS: '30',
-    REPLACEMENT_SHIFT_TTL_HOURS: '12',
-    REPLACEMENT_ACCESS_SECRET: key(1),
-    REPLACEMENT_CURSOR_SECRET: key(2),
-    REPLACEMENT_PIN_SECRET: key(3),
-    REPLACEMENT_CREDENTIAL_REPLAY_KEY: key(4),
-    REPLACEMENT_PROVIDER_ENCRYPTION_KEY: key(5),
-    REPLACEMENT_BOARDING_PROOF_KEY: key(6),
-    REPLACEMENT_DEVICE_KEY: key(7),
-    REPLACEMENT_PAYSTACK_EVIDENCE_KEY: key(8),
-    REPLACEMENT_OPS_ORIGIN: 'https://ops.trotxi.test',
-    REPLACEMENT_GOOGLE_CLIENT_ID: '431341307838-example.apps.googleusercontent.com',
-    REPLACEMENT_AUTH_PROVIDERS: 'google,apple',
-    REPLACEMENT_APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter,com.trotxi.web',
-    REPLACEMENT_APPLE_TEAM_ID: 'TEAMID1234',
-    REPLACEMENT_APPLE_KEY_ID: 'KEYID12345',
-    REPLACEMENT_APPLE_PRIVATE_KEY: PEM,
-    REPLACEMENT_PAYSTACK_SECRET_KEY: providerKey('test'),
-    REPLACEMENT_R2_ACCOUNT_ID: 'ff00ff00ff00ff00ff00ff00ff00ff00',
-    REPLACEMENT_R2_ACCESS_KEY_ID: 'AKIAEXAMPLE',
-    REPLACEMENT_R2_SECRET_ACCESS_KEY: 'secret-access-key',
-    REPLACEMENT_R2_BUCKET_NAME: 'trotxi-avatars',
-    REPLACEMENT_AVATAR_URL_TTL_SECONDS: '300',
-    REPLACEMENT_AVATAR_MAX_BYTES: '2097152',
-    REPLACEMENT_MAP_TILES_URL: 'https://tiles.trotxi.com/ghana.pmtiles',
-    REPLACEMENT_MAP_STYLE_URL: 'https://tiles.trotxi.com/style.light.json',
-    REPLACEMENT_MAP_STYLE_DARK_URL: 'https://tiles.trotxi.com/style.dark.json',
-    REPLACEMENT_MAP_ATTRIBUTION: 'Trotxi basemap',
-    REPLACEMENT_DOCS_URL: 'https://docs.trotxi.com',
-    REPLACEMENT_MINIMUM_BUILD_OPS: '1',
-    REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS: '2',
-    REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID: '2',
-    REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS: '3',
-    REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID: '3',
-    REPLACEMENT_REQUESTS_PER_MINUTE: '120',
-    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '600',
-    REPLACEMENT_AUTH_REQUESTS_PER_MINUTE: '10',
-    REPLACEMENT_TRUST_PROXY: 'loopback, linklocal, uniquelocal',
-    REPLACEMENT_MAINTENANCE_USER_ID: maintenanceUser,
+    SERVICE_NAME: 'trotxi-api-next',
+    SERVICE_VERSION: '0.1.0',
+    GIT_COMMIT: 'e2b1c0ddeadbeef',
+    ACCESS_ISSUER: 'https://api.trotxi.com',
+    ACCESS_AUDIENCE: 'trotxi-clients',
+    ACCESS_TTL_SECONDS: '900',
+    REFRESH_TTL_DAYS: '30',
+    SHIFT_TTL_HOURS: '12',
+    ACCESS_SECRET: key(1),
+    CURSOR_SECRET: key(2),
+    PIN_SECRET: key(3),
+    CREDENTIAL_REPLAY_KEY: key(4),
+    PROVIDER_ENCRYPTION_KEY: key(5),
+    BOARDING_PROOF_KEY: key(6),
+    DEVICE_KEY: key(7),
+    PAYSTACK_EVIDENCE_KEY: key(8),
+    OPS_ORIGIN: 'https://ops.trotxi.test',
+    GOOGLE_CLIENT_ID: '431341307838-example.apps.googleusercontent.com',
+    AUTH_PROVIDERS: 'google,apple',
+    APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter,com.trotxi.web',
+    APPLE_TEAM_ID: 'TEAMID1234',
+    APPLE_KEY_ID: 'KEYID12345',
+    APPLE_PRIVATE_KEY: PEM,
+    PAYSTACK_SECRET_KEY: providerKey('test'),
+    R2_ACCOUNT_ID: 'ff00ff00ff00ff00ff00ff00ff00ff00',
+    R2_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+    R2_SECRET_ACCESS_KEY: 'secret-access-key',
+    R2_BUCKET_NAME: 'trotxi-avatars',
+    AVATAR_URL_TTL_SECONDS: '300',
+    AVATAR_MAX_BYTES: '2097152',
+    MAP_TILES_URL: 'https://tiles.trotxi.com/ghana.pmtiles',
+    MAP_STYLE_URL: 'https://tiles.trotxi.com/style.light.json',
+    MAP_STYLE_DARK_URL: 'https://tiles.trotxi.com/style.dark.json',
+    MAP_ATTRIBUTION: 'Trotxi basemap',
+    DOCS_URL: 'https://docs.trotxi.com',
+    MINIMUM_BUILD_OPS: '1',
+    MINIMUM_BUILD_DRIVER_IOS: '2',
+    MINIMUM_BUILD_DRIVER_ANDROID: '2',
+    MINIMUM_BUILD_COMMUTER_IOS: '3',
+    MINIMUM_BUILD_COMMUTER_ANDROID: '3',
+    REQUESTS_PER_MINUTE: '120',
+    REQUESTS_PER_IP_PER_MINUTE: '600',
+    AUTH_REQUESTS_PER_MINUTE: '10',
+    TRUST_PROXY: 'loopback, linklocal, uniquelocal',
+    MAINTENANCE_USER_ID: maintenanceUser,
   };
 }
 function refuses(env: Record<string, string | undefined>, fragment: string) {
@@ -363,6 +364,42 @@ function refuses(env: Record<string, string | undefined>, fragment: string) {
   );
 }
 
+test('plain environment names preserve legacy configuration and reject conflicting aliases', () => {
+  const current: Record<string, string> = {
+    ...environment(),
+    DEPLOYMENT_ENVIRONMENT: 'production',
+  };
+  const legacy = Object.fromEntries(
+    Object.entries(current).map(([name, value]) => [
+      name === 'PORT' ? name : `REPLACEMENT_${name}`,
+      value,
+    ]),
+  );
+  const before = { ...legacy };
+  assert.deepEqual(readConfiguration(legacy), readConfiguration(current));
+  assert.deepEqual(legacy, before);
+  assert.deepEqual(readConfiguration({ ...legacy, ...current }), readConfiguration(current));
+  for (const name of [
+    'RUNTIME_DATABASE_URL',
+    'ACCESS_SECRET',
+    'DEPLOYMENT_ENVIRONMENT',
+    'SCHEDULER_ENABLED',
+    'ALLOW_LIVE_PAYMENTS',
+  ]) {
+    refuses(
+      { ...current, [name]: 'one', [`REPLACEMENT_${name}`]: 'two' },
+      `Conflicting settings for ${name}`,
+    );
+  }
+  const owner = backendEnvironment({ REPLACEMENT_DATABASE_URL: 'owner-fixture' });
+  assert.equal(owner.MIGRATION_DATABASE_URL, 'owner-fixture');
+  assert.equal(owner.DATABASE_URL, undefined, 'owner alias never becomes a runtime fallback');
+  refuses(
+    { ...current, REPLACEMENT_DATABASE_URL: current.RUNTIME_DATABASE_URL },
+    'not the migration owner',
+  );
+});
+
 /**
  * What a deployment genuinely owns, and nothing else.
  *
@@ -373,21 +410,21 @@ function refuses(env: Record<string, string | undefined>, fragment: string) {
  * like a different problem.
  */
 const MUST_BE_STATED = [
-  'REPLACEMENT_RUNTIME_DATABASE_URL',
-  'REPLACEMENT_ACCESS_SECRET',
-  'REPLACEMENT_CURSOR_SECRET',
-  'REPLACEMENT_PIN_SECRET',
-  'REPLACEMENT_CREDENTIAL_REPLAY_KEY',
-  'REPLACEMENT_PROVIDER_ENCRYPTION_KEY',
-  'REPLACEMENT_BOARDING_PROOF_KEY',
-  'REPLACEMENT_DEVICE_KEY',
-  'REPLACEMENT_PAYSTACK_EVIDENCE_KEY',
-  'REPLACEMENT_PAYSTACK_SECRET_KEY',
-  'REPLACEMENT_OPS_ORIGIN',
-  'REPLACEMENT_R2_ACCOUNT_ID',
-  'REPLACEMENT_R2_ACCESS_KEY_ID',
-  'REPLACEMENT_R2_SECRET_ACCESS_KEY',
-  'REPLACEMENT_R2_BUCKET_NAME',
+  'RUNTIME_DATABASE_URL',
+  'ACCESS_SECRET',
+  'CURSOR_SECRET',
+  'PIN_SECRET',
+  'CREDENTIAL_REPLAY_KEY',
+  'PROVIDER_ENCRYPTION_KEY',
+  'BOARDING_PROOF_KEY',
+  'DEVICE_KEY',
+  'PAYSTACK_EVIDENCE_KEY',
+  'PAYSTACK_SECRET_KEY',
+  'OPS_ORIGIN',
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_BUCKET_NAME',
 ];
 
 test('ASM-01 a deployment states its secrets, and nothing it does not own', () => {
@@ -419,7 +456,7 @@ test('Render reports the deployed revision rather than a stale environment value
   const env = environment();
   env.RENDER_GIT_COMMIT = 'a'.repeat(40);
   assert.equal(readConfiguration(env).build.commit, env.RENDER_GIT_COMMIT);
-  delete env.REPLACEMENT_GIT_COMMIT;
+  delete env.GIT_COMMIT;
   assert.equal(readConfiguration(env).build.commit, env.RENDER_GIT_COMMIT);
   delete env.RENDER_GIT_COMMIT;
   // With neither, the build says it does not know rather than refusing to
@@ -429,13 +466,13 @@ test('Render reports the deployed revision rather than a stale environment value
 
 test('ASM-02 no two purposes may share one key', () => {
   const noOpsOrigin = environment();
-  delete noOpsOrigin.REPLACEMENT_OPS_ORIGIN;
-  refuses(noOpsOrigin, 'REPLACEMENT_OPS_ORIGIN');
+  delete noOpsOrigin.OPS_ORIGIN;
+  refuses(noOpsOrigin, 'OPS_ORIGIN');
   for (const [a, b] of [
-    ['REPLACEMENT_ACCESS_SECRET', 'REPLACEMENT_DEVICE_KEY'],
-    ['REPLACEMENT_CURSOR_SECRET', 'REPLACEMENT_BOARDING_PROOF_KEY'],
-    ['REPLACEMENT_PIN_SECRET', 'REPLACEMENT_CREDENTIAL_REPLAY_KEY'],
-    ['REPLACEMENT_PROVIDER_ENCRYPTION_KEY', 'REPLACEMENT_PAYSTACK_EVIDENCE_KEY'],
+    ['ACCESS_SECRET', 'DEVICE_KEY'],
+    ['CURSOR_SECRET', 'BOARDING_PROOF_KEY'],
+    ['PIN_SECRET', 'CREDENTIAL_REPLAY_KEY'],
+    ['PROVIDER_ENCRYPTION_KEY', 'PAYSTACK_EVIDENCE_KEY'],
   ]) {
     const env = environment();
     env[b!] = env[a!]!;
@@ -443,45 +480,40 @@ test('ASM-02 no two purposes may share one key', () => {
   }
   // Hex and base64 spellings of the same bytes are the same key.
   const env = environment();
-  env.REPLACEMENT_DEVICE_KEY = Buffer.alloc(32, 1).toString('hex');
+  env.DEVICE_KEY = Buffer.alloc(32, 1).toString('hex');
   refuses(env, 'must differ');
   const short = environment();
-  short.REPLACEMENT_DEVICE_KEY = Buffer.alloc(16, 9).toString('base64');
+  short.DEVICE_KEY = Buffer.alloc(16, 9).toString('base64');
   refuses(short, '32 bytes');
 });
 
 test('ASM-03 live money and a shared owner connection are refused', () => {
   const live = environment();
-  live.REPLACEMENT_PAYSTACK_SECRET_KEY = providerKey('live');
+  live.PAYSTACK_SECRET_KEY = providerKey('live');
   refuses(live, 'TEST key');
-  live.REPLACEMENT_ALLOW_LIVE_PAYMENTS = 'yes';
+  live.ALLOW_LIVE_PAYMENTS = 'yes';
   refuses(live, 'TEST key');
-  live.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'staging';
+  live.DEPLOYMENT_ENVIRONMENT = 'staging';
   refuses(live, 'TEST key');
-  live.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'production';
-  delete live.REPLACEMENT_ALLOW_LIVE_PAYMENTS;
-  refuses(live, 'REPLACEMENT_ALLOW_LIVE_PAYMENTS');
-  live.REPLACEMENT_ALLOW_LIVE_PAYMENTS = 'yes';
+  live.DEPLOYMENT_ENVIRONMENT = 'production';
+  delete live.ALLOW_LIVE_PAYMENTS;
+  refuses(live, 'ALLOW_LIVE_PAYMENTS');
+  live.ALLOW_LIVE_PAYMENTS = 'yes';
   assert.equal(readConfiguration(live).paystack.secretKey.startsWith('sk_live_'), true);
   const invalidEnvironment = environment();
-  invalidEnvironment.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'stagng';
-  refuses(invalidEnvironment, 'REPLACEMENT_DEPLOYMENT_ENVIRONMENT');
+  invalidEnvironment.DEPLOYMENT_ENVIRONMENT = 'stagng';
+  refuses(invalidEnvironment, 'DEPLOYMENT_ENVIRONMENT');
   const wrong = environment();
-  wrong.REPLACEMENT_PAYSTACK_SECRET_KEY = ['pk', 'test', '0123456789abcdef'].join('_');
+  wrong.PAYSTACK_SECRET_KEY = ['pk', 'test', '0123456789abcdef'].join('_');
   refuses(wrong, 'Paystack secret key');
   // The service must not run as the role that installs and owns the schema.
   const owner = environment();
-  owner.REPLACEMENT_DATABASE_URL = owner.REPLACEMENT_RUNTIME_DATABASE_URL!;
+  owner.MIGRATION_DATABASE_URL = owner.RUNTIME_DATABASE_URL!;
   refuses(owner, 'not the migration owner');
 });
 
 test('ASM-04 public URLs must be absolute https, and identity must be real', () => {
-  for (const name of [
-    'REPLACEMENT_MAP_TILES_URL',
-    'REPLACEMENT_MAP_STYLE_URL',
-    'REPLACEMENT_MAP_STYLE_DARK_URL',
-    'REPLACEMENT_DOCS_URL',
-  ]) {
+  for (const name of ['MAP_TILES_URL', 'MAP_STYLE_URL', 'MAP_STYLE_DARK_URL', 'DOCS_URL']) {
     const plain = environment();
     plain[name] = 'http://tiles.trotxi.com/ghana.pmtiles';
     refuses(plain, 'https');
@@ -490,13 +522,13 @@ test('ASM-04 public URLs must be absolute https, and identity must be real', () 
     refuses(relative, 'absolute URL');
   }
   const pem = environment();
-  pem.REPLACEMENT_APPLE_PRIVATE_KEY = 'not-a-key';
+  pem.APPLE_PRIVATE_KEY = 'not-a-key';
   refuses(pem, 'PKCS#8');
   const audience = environment();
-  audience.REPLACEMENT_APPLE_CLIENT_ID = ' , ';
-  refuses(audience, 'REPLACEMENT_APPLE_CLIENT_ID');
+  audience.APPLE_CLIENT_ID = ' , ';
+  refuses(audience, 'APPLE_CLIENT_ID');
   const operator = environment();
-  operator.REPLACEMENT_MAINTENANCE_USER_ID = 'ops';
+  operator.MAINTENANCE_USER_ID = 'ops';
   refuses(operator, 'must be a user id');
   // Support contacts are the one thing that may genuinely be unknown, and an
   // invented number is worse than none.
@@ -519,34 +551,24 @@ test('ASM-04b a provider is offered completely or not at all', () => {
   assert.deepEqual(offered.providers, ['google', 'apple']);
   assert.equal(offered.apple?.teamId, 'TEAMID1234');
   const googleOnly = environment();
-  googleOnly.REPLACEMENT_AUTH_PROVIDERS = 'google';
-  for (const name of [
-    'REPLACEMENT_APPLE_CLIENT_ID',
-    'REPLACEMENT_APPLE_TEAM_ID',
-    'REPLACEMENT_APPLE_KEY_ID',
-    'REPLACEMENT_APPLE_PRIVATE_KEY',
-  ])
+  googleOnly.AUTH_PROVIDERS = 'google';
+  for (const name of ['APPLE_CLIENT_ID', 'APPLE_TEAM_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY'])
     delete googleOnly[name];
   const without = readConfiguration(googleOnly);
   assert.deepEqual(without.providers, ['google']);
   assert.equal(without.apple, null);
   // Claiming a provider and not configuring it is still a refusal, by name.
-  for (const name of [
-    'REPLACEMENT_APPLE_CLIENT_ID',
-    'REPLACEMENT_APPLE_TEAM_ID',
-    'REPLACEMENT_APPLE_KEY_ID',
-    'REPLACEMENT_APPLE_PRIVATE_KEY',
-  ]) {
+  for (const name of ['APPLE_CLIENT_ID', 'APPLE_TEAM_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY']) {
     const claimed = environment();
     delete claimed[name];
     refuses(claimed, name);
   }
   // Riders need a door. Driver sign-in is a PIN and is not one.
   const none = environment();
-  none.REPLACEMENT_AUTH_PROVIDERS = 'apple';
+  none.AUTH_PROVIDERS = 'apple';
   refuses(none, 'must include google');
   const unknown = environment();
-  unknown.REPLACEMENT_AUTH_PROVIDERS = 'google,facebook';
+  unknown.AUTH_PROVIDERS = 'google,facebook';
   refuses(unknown, 'may list google and apple');
 });
 
@@ -557,17 +579,17 @@ test('ASM-05 the proxy boundary is stated, and a hop count is not a statement', 
   // deployment has to say it.
   assert.equal(readConfiguration(environment()).trustProxy, 'loopback, linklocal, uniquelocal');
   const none = environment();
-  none.REPLACEMENT_TRUST_PROXY = 'none';
+  none.TRUST_PROXY = 'none';
   assert.equal(readConfiguration(none).trustProxy, false);
   // Fastify ignores a numeric value and trusts nobody, so a hop count would
   // silently switch the whole thing off rather than configure it.
   for (const bad of ['1', '2']) {
     const env = environment();
-    env.REPLACEMENT_TRUST_PROXY = bad;
+    env.TRUST_PROXY = bad;
     refuses(env, 'not a hop count');
   }
   const junk = environment();
-  junk.REPLACEMENT_TRUST_PROXY = 'loopback; drop table users';
+  junk.TRUST_PROXY = 'loopback; drop table users';
   refuses(junk, 'address list');
 });
 
@@ -576,10 +598,10 @@ test('ASM-05b a validator must not rewrite the value it approves', () => {
   // encoding its braces would hand clients a URL that fetches nothing while
   // the deploy reported success.
   const env = environment();
-  env.REPLACEMENT_MAP_TILES_URL = 'https://tiles.trotxi.com/{z}/{x}/{y}.png';
+  env.MAP_TILES_URL = 'https://tiles.trotxi.com/{z}/{x}/{y}.png';
   assert.equal(readConfiguration(env).mapTiles.url, 'https://tiles.trotxi.com/{z}/{x}/{y}.png');
   const bare = environment();
-  bare.REPLACEMENT_DOCS_URL = 'https://docs.trotxi.com';
+  bare.DOCS_URL = 'https://docs.trotxi.com';
   assert.equal(readConfiguration(bare).docsUrl, 'https://docs.trotxi.com');
 });
 
@@ -587,9 +609,9 @@ test('API documentation policy follows deployment environment, not payment mode 
   const env = environment();
   env.NODE_ENV = 'production';
   assert.equal(readConfiguration(env).apiDocumentation, 'read-only');
-  env.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'production';
+  env.DEPLOYMENT_ENVIRONMENT = 'production';
   assert.equal(readConfiguration(env).apiDocumentation, 'disabled');
-  delete env.REPLACEMENT_DOCS_URL;
+  delete env.DOCS_URL;
   assert.equal(
     readConfiguration(env).docsUrl,
     'https://github.com/TROTXI/mobility-core/tree/main/docs/features',

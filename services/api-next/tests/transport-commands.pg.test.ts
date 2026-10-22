@@ -35,10 +35,10 @@ after(async () => {
   try {
     for (const name of owned) await admin.query(`DROP DATABASE "${name}"`);
     for (const role of roles) await admin.query(`DROP ROLE "${role}"`);
-    if (process.env.REPLACEMENT_EVIDENCE_DIR) {
-      await mkdir(process.env.REPLACEMENT_EVIDENCE_DIR, { recursive: true });
+    if (process.env.EVIDENCE_DIR) {
+      await mkdir(process.env.EVIDENCE_DIR, { recursive: true });
       await writeFile(
-        resolve(process.env.REPLACEMENT_EVIDENCE_DIR, 'command-metadata.json'),
+        resolve(process.env.EVIDENCE_DIR, 'command-metadata.json'),
         JSON.stringify(
           {
             kind: 'transport-command-http-postgres-not-payment-comparison',

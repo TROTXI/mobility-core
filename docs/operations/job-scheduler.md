@@ -91,15 +91,15 @@ services after 23:30 require a separate review of the no-show business cutoff.
 
 1. Review the timetable, provider configuration and service identity on an
    always-on staging API. Check the live hosting plan and approve any new cost.
-   Keep `REPLACEMENT_SCHEDULER_ENABLED=false` or unset while deploying the code.
+   Keep `SCHEDULER_ENABLED=false` or unset while deploying the code.
 2. Set the **repository-level** GitHub variable `STAGING_JOB_SCHEDULER=api`.
    Both legacy maintenance workflows will skip, including manual dispatches.
    Wait for any already-running maintenance workflows to finish. This guard
    does not stop a workflow that was already running.
 3. Confirm no separate Render/Cloudflare/other cron invokes the same jobs.
    Those external invocations do not participate in the new scheduler lock.
-4. Set `REPLACEMENT_SCHEDULER_ENABLED=true` and a dedicated
-   `REPLACEMENT_MAINTENANCE_USER_ID` on the API, then perform an approved deploy.
+4. Set `SCHEDULER_ENABLED=true` and a dedicated
+   `MAINTENANCE_USER_ID` on the API, then perform an approved deploy.
    Do not copy root secrets into a new cron environment. No extra secret is
    required by the scheduler.
 5. Verify startup says `scheduler: enabled`, group logs and maintenance audit

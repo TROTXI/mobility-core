@@ -4,6 +4,7 @@ import { stagingDatabase } from './staging-database.js';
 import type { ConnectionOptions } from 'node:tls';
 import type { BuildIdentity, MapTiles, SupportContacts } from '../config/service.js';
 import type { ErasureStoreConfig } from './erasure-journal-store.js';
+import { backendEnvironment } from './environment.js';
 
 /**
  * Deployment configuration for the replacement backend.
@@ -13,9 +14,8 @@ import type { ErasureStoreConfig } from './erasure-journal-store.js';
  * switch that quietly turns a reviewed operation into a 503: a deployment that
  * cannot do the whole job refuses to start and says which variable is missing.
  *
- * Every name is prefixed so that running beside the deployed service in one
- * Render account cannot make this one silently inherit that service's
- * database, signing key or provider credentials.
+ * Service environments own their database, signing keys and provider credentials.
+ * The migration-owner connection is never used as a runtime fallback.
  */
 export interface KeyMaterial {
   accessSecret: Buffer;
@@ -93,6 +93,8 @@ type Env = Record<string, string | undefined>;
 
 /** Separate bucket, key and credentials; never inherit the avatar capability. */
 export function readErasureJournalConfiguration(env: Env): ErasureStoreConfig | undefined {
+  // Recovery tools call this reader directly, without readConfiguration.
+  env = backendEnvironment(env);
   const names = ['ACCOUNT_ID', 'ACCESS_KEY_ID', 'SECRET_ACCESS_KEY', 'BUCKET', 'NAMESPACE', 'KEY'];
   if (!names.some((name) => env[`ERASURE_JOURNAL_${name}`] !== undefined)) return undefined;
   const config = {
@@ -105,7 +107,7 @@ export function readErasureJournalConfiguration(env: Env): ErasureStoreConfig | 
   };
   if (!uuid.test(config.namespace))
     throw new ConfigurationError('ERASURE_JOURNAL_NAMESPACE must be a UUID');
-  if (config.bucket === env.REPLACEMENT_R2_BUCKET_NAME)
+  if (config.bucket === env.R2_BUCKET_NAME)
     throw new ConfigurationError('Erasure journal requires a separate private bucket');
   return config;
 }
@@ -199,6 +201,11 @@ function webOrigin(env: Env, name: string): string {
 }
 
 export function readConfiguration(env: Env = process.env): RuntimeConfig {
+  try {
+    env = backendEnvironment(env);
+  } catch (error) {
+    throw new ConfigurationError((error as Error).message);
+  }
   const existingStaging = env.RENDER_SERVICE_ID === STAGING_SERVICE_ID;
   if (existingStaging) {
     try {
@@ -208,14 +215,14 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     }
   }
   const keys: KeyMaterial = {
-    accessSecret: key(env, 'REPLACEMENT_ACCESS_SECRET'),
-    cursorSecret: key(env, 'REPLACEMENT_CURSOR_SECRET'),
-    pinSecret: key(env, 'REPLACEMENT_PIN_SECRET'),
-    credentialReplay: key(env, 'REPLACEMENT_CREDENTIAL_REPLAY_KEY'),
-    providerEncryption: key(env, 'REPLACEMENT_PROVIDER_ENCRYPTION_KEY'),
-    boardingProof: key(env, 'REPLACEMENT_BOARDING_PROOF_KEY'),
-    device: key(env, 'REPLACEMENT_DEVICE_KEY'),
-    paystackEvidence: key(env, 'REPLACEMENT_PAYSTACK_EVIDENCE_KEY'),
+    accessSecret: key(env, 'ACCESS_SECRET'),
+    cursorSecret: key(env, 'CURSOR_SECRET'),
+    pinSecret: key(env, 'PIN_SECRET'),
+    credentialReplay: key(env, 'CREDENTIAL_REPLAY_KEY'),
+    providerEncryption: key(env, 'PROVIDER_ENCRYPTION_KEY'),
+    boardingProof: key(env, 'BOARDING_PROOF_KEY'),
+    device: key(env, 'DEVICE_KEY'),
+    paystackEvidence: key(env, 'PAYSTACK_EVIDENCE_KEY'),
   };
   // Every purpose gets its own key, checked once over the whole set rather
   // than pair by pair at each composition boundary, so a key added later
@@ -228,64 +235,62 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     if (first) throw new ConfigurationError(`${name} must differ from ${first}`);
     seen.set(digest, name);
   }
-  const paystack = required(env, 'REPLACEMENT_PAYSTACK_SECRET_KEY');
+  const paystack = required(env, 'PAYSTACK_SECRET_KEY');
   if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(paystack))
-    throw new ConfigurationError('REPLACEMENT_PAYSTACK_SECRET_KEY must be a Paystack secret key');
+    throw new ConfigurationError('PAYSTACK_SECRET_KEY must be a Paystack secret key');
   // Staging is the default and cannot opt into live money. The old single
   // flag could accidentally be copied along with a live credential. A future
   // production deployment must identify itself AND separately approve money.
-  const deployment = optional(env, 'REPLACEMENT_DEPLOYMENT_ENVIRONMENT') ?? 'staging';
+  const deployment = optional(env, 'DEPLOYMENT_ENVIRONMENT') ?? 'staging';
   if (!['staging', 'production'].includes(deployment))
-    throw new ConfigurationError(
-      'REPLACEMENT_DEPLOYMENT_ENVIRONMENT must be staging or production',
-    );
+    throw new ConfigurationError('DEPLOYMENT_ENVIRONMENT must be staging or production');
   if (deployment === 'staging' && paystack.startsWith('sk_live_'))
     throw new ConfigurationError(
       'Staging requires a Paystack TEST key; live payments are forbidden',
     );
-  if (paystack.startsWith('sk_live_') && optional(env, 'REPLACEMENT_ALLOW_LIVE_PAYMENTS') !== 'yes')
+  if (paystack.startsWith('sk_live_') && optional(env, 'ALLOW_LIVE_PAYMENTS') !== 'yes')
     throw new ConfigurationError(
-      'A live Paystack key needs REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on this service',
+      'A live Paystack key needs ALLOW_LIVE_PAYMENTS=yes on this service',
     );
-  const providers = withDefault(env, 'REPLACEMENT_AUTH_PROVIDERS', 'google')
+  const providers = withDefault(env, 'AUTH_PROVIDERS', 'google')
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean);
   if (providers.some((name) => !['google', 'apple'].includes(name)))
-    throw new ConfigurationError('REPLACEMENT_AUTH_PROVIDERS may list google and apple');
+    throw new ConfigurationError('AUTH_PROVIDERS may list google and apple');
   // Riders have to be able to get in. Driver sign-in is a PIN and is always
   // available; a deployment offering no social provider has no rider door.
   if (!providers.includes('google'))
-    throw new ConfigurationError('REPLACEMENT_AUTH_PROVIDERS must include google');
+    throw new ConfigurationError('AUTH_PROVIDERS must include google');
   let apple: RuntimeConfig['apple'] = null;
   if (providers.includes('apple')) {
-    const appleClients = required(env, 'REPLACEMENT_APPLE_CLIENT_ID')
+    const appleClients = required(env, 'APPLE_CLIENT_ID')
       .split(',')
       .map((id) => id.trim())
       .filter(Boolean);
     if (!appleClients.length)
-      throw new ConfigurationError('REPLACEMENT_APPLE_CLIENT_ID must list at least one audience');
-    const applePrivateKey = required(env, 'REPLACEMENT_APPLE_PRIVATE_KEY').replaceAll('\\n', '\n');
+      throw new ConfigurationError('APPLE_CLIENT_ID must list at least one audience');
+    const applePrivateKey = required(env, 'APPLE_PRIVATE_KEY').replaceAll('\\n', '\n');
     if (!applePrivateKey.includes('BEGIN PRIVATE KEY'))
-      throw new ConfigurationError('REPLACEMENT_APPLE_PRIVATE_KEY must be a PKCS#8 PEM .p8 key');
+      throw new ConfigurationError('APPLE_PRIVATE_KEY must be a PKCS#8 PEM .p8 key');
     apple = {
       clientIds: appleClients,
-      teamId: required(env, 'REPLACEMENT_APPLE_TEAM_ID'),
-      keyId: required(env, 'REPLACEMENT_APPLE_KEY_ID'),
+      teamId: required(env, 'APPLE_TEAM_ID'),
+      keyId: required(env, 'APPLE_KEY_ID'),
       privateKey: applePrivateKey,
     };
   }
   // Only the maintenance worker acts as this account. An API that refuses to
   // serve riders because a scheduled job has no operator is failing the wrong
   // thing; the worker refuses instead, where it matters.
-  const maintenanceUserId = (optional(env, 'REPLACEMENT_MAINTENANCE_USER_ID') ?? '').toLowerCase();
+  const maintenanceUserId = (optional(env, 'MAINTENANCE_USER_ID') ?? '').toLowerCase();
   if (maintenanceUserId && !uuid.test(maintenanceUserId))
-    throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
-  const schedulerSetting = optional(env, 'REPLACEMENT_SCHEDULER_ENABLED') ?? 'false';
+    throw new ConfigurationError('MAINTENANCE_USER_ID must be a user id');
+  const schedulerSetting = optional(env, 'SCHEDULER_ENABLED') ?? 'false';
   if (!['true', 'false'].includes(schedulerSetting))
-    throw new ConfigurationError('REPLACEMENT_SCHEDULER_ENABLED must be true or false');
+    throw new ConfigurationError('SCHEDULER_ENABLED must be true or false');
   const schedulerEnabled = schedulerSetting === 'true';
-  const poolSize = integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100);
+  const poolSize = integerOr(env, 'POOL_SIZE', 8, 1, 100);
   if (schedulerEnabled && (!maintenanceUserId || poolSize < 4))
     throw new ConfigurationError(
       'The scheduler requires a maintenance user and a pool size of at least 4',
@@ -296,18 +301,16 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
   // is a deployment fact nobody can guess, so it is stated rather than
   // defaulted. A hop count is not an answer: Fastify ignores a numeric value
   // and trusts nobody, which would silently switch the whole thing off.
-  const proxy = withDefault(env, 'REPLACEMENT_TRUST_PROXY', 'loopback, linklocal, uniquelocal');
+  const proxy = withDefault(env, 'TRUST_PROXY', 'loopback, linklocal, uniquelocal');
   if (/^\d+$/.test(proxy))
-    throw new ConfigurationError(
-      'REPLACEMENT_TRUST_PROXY must name the peers to trust, not a hop count',
-    );
+    throw new ConfigurationError('TRUST_PROXY must name the peers to trust, not a hop count');
   if (proxy !== 'none' && !/^[A-Za-z0-9.:/, _-]{1,200}$/.test(proxy))
-    throw new ConfigurationError('REPLACEMENT_TRUST_PROXY must be "none" or an address list');
+    throw new ConfigurationError('TRUST_PROXY must be "none" or an address list');
   const trustProxy = proxy === 'none' ? (false as const) : proxy;
-  const databaseUrl = required(env, 'REPLACEMENT_RUNTIME_DATABASE_URL');
-  if (databaseUrl === optional(env, 'REPLACEMENT_DATABASE_URL'))
+  const databaseUrl = required(env, 'RUNTIME_DATABASE_URL');
+  if (databaseUrl === optional(env, 'MIGRATION_DATABASE_URL'))
     throw new ConfigurationError(
-      'REPLACEMENT_RUNTIME_DATABASE_URL must be the narrow runtime role, not the migration owner',
+      'RUNTIME_DATABASE_URL must be the narrow runtime role, not the migration owner',
     );
   const erasureJournal = readErasureJournalConfiguration(env);
   if (erasureJournal && Object.values(keys).some((value) => value.equals(erasureJournal.key)))
@@ -343,100 +346,81 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     // the ops team actually sees rather than from a guess made before launch.
     // On wherever the platform runs it; tests and local runs stay quiet.
     logRequests: env.NODE_ENV === 'production',
-    staleFixAfterSeconds: integerOr(env, 'REPLACEMENT_STALE_FIX_AFTER_SECONDS', 300, 30, 3600),
+    staleFixAfterSeconds: integerOr(env, 'STALE_FIX_AFTER_SECONDS', 300, 30, 3600),
     listen: {
-      host: optional(env, 'REPLACEMENT_HOST') ?? '0.0.0.0',
+      host: optional(env, 'HOST') ?? '0.0.0.0',
       port: integerOr(env, 'PORT', 10000, 1, 65535),
     },
     build: {
-      service: withDefault(env, 'REPLACEMENT_SERVICE_NAME', 'trotxi-api'),
-      version: withDefault(env, 'REPLACEMENT_SERVICE_VERSION', '1.0.0'),
+      service: withDefault(env, 'SERVICE_NAME', 'trotxi-api'),
+      version: withDefault(env, 'SERVICE_VERSION', '1.0.0'),
       // Render supplies the exact deployed revision. Prefer it over a stale
       // manually configured value; non-Render runtimes must identify themselves.
-      commit:
-        optional(env, 'RENDER_GIT_COMMIT') ?? withDefault(env, 'REPLACEMENT_GIT_COMMIT', 'unknown'),
+      commit: optional(env, 'RENDER_GIT_COMMIT') ?? withDefault(env, 'GIT_COMMIT', 'unknown'),
     },
     access: {
-      issuer: withDefault(env, 'REPLACEMENT_ACCESS_ISSUER', 'trotxi-api'),
-      audience: withDefault(env, 'REPLACEMENT_ACCESS_AUDIENCE', 'trotxi-clients'),
-      ttlSeconds: integerOr(env, 'REPLACEMENT_ACCESS_TTL_SECONDS', 900, 60, 3600),
+      issuer: withDefault(env, 'ACCESS_ISSUER', 'trotxi-api'),
+      audience: withDefault(env, 'ACCESS_AUDIENCE', 'trotxi-clients'),
+      ttlSeconds: integerOr(env, 'ACCESS_TTL_SECONDS', 900, 60, 3600),
     },
-    refreshTtlDays: integerOr(env, 'REPLACEMENT_REFRESH_TTL_DAYS', 30, 1, 365),
-    shiftTtlHours: integerOr(env, 'REPLACEMENT_SHIFT_TTL_HOURS', 12, 1, 24),
+    refreshTtlDays: integerOr(env, 'REFRESH_TTL_DAYS', 30, 1, 365),
+    shiftTtlHours: integerOr(env, 'SHIFT_TTL_HOURS', 12, 1, 24),
     keys,
-    pinSecretText: required(env, 'REPLACEMENT_PIN_SECRET'),
+    pinSecretText: required(env, 'PIN_SECRET'),
     providers: providers as readonly ('google' | 'apple')[],
     google: {
       clientId: withDefault(
         env,
-        'REPLACEMENT_GOOGLE_CLIENT_ID',
+        'GOOGLE_CLIENT_ID',
         '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com',
       ),
     },
-    opsOrigin: webOrigin(env, 'REPLACEMENT_OPS_ORIGIN'),
+    opsOrigin: webOrigin(env, 'OPS_ORIGIN'),
     apple,
     paystack: { secretKey: paystack },
     avatars: {
-      accountId: required(env, 'REPLACEMENT_R2_ACCOUNT_ID'),
-      accessKeyId: required(env, 'REPLACEMENT_R2_ACCESS_KEY_ID'),
-      secretAccessKey: required(env, 'REPLACEMENT_R2_SECRET_ACCESS_KEY'),
-      bucket: required(env, 'REPLACEMENT_R2_BUCKET_NAME'),
-      urlTtlSeconds: integerOr(env, 'REPLACEMENT_AVATAR_URL_TTL_SECONDS', 300, 30, 3600),
-      maxBytes: integerOr(
-        env,
-        'REPLACEMENT_AVATAR_MAX_BYTES',
-        2 * 1024 * 1024,
-        1024,
-        8 * 1024 * 1024,
-      ),
+      accountId: required(env, 'R2_ACCOUNT_ID'),
+      accessKeyId: required(env, 'R2_ACCESS_KEY_ID'),
+      secretAccessKey: required(env, 'R2_SECRET_ACCESS_KEY'),
+      bucket: required(env, 'R2_BUCKET_NAME'),
+      urlTtlSeconds: integerOr(env, 'AVATAR_URL_TTL_SECONDS', 300, 30, 3600),
+      maxBytes: integerOr(env, 'AVATAR_MAX_BYTES', 2 * 1024 * 1024, 1024, 8 * 1024 * 1024),
     },
     mapTiles: {
-      url: urlOr(env, 'REPLACEMENT_MAP_TILES_URL', 'https://tiles.trotxi.com/ghana.pmtiles'),
-      styleUrl: urlOr(
-        env,
-        'REPLACEMENT_MAP_STYLE_URL',
-        'https://tiles.trotxi.com/style.light.json',
-      ),
-      darkStyleUrl: urlOr(
-        env,
-        'REPLACEMENT_MAP_STYLE_DARK_URL',
-        'https://tiles.trotxi.com/style.dark.json',
-      ),
-      attribution: withDefault(
-        env,
-        'REPLACEMENT_MAP_ATTRIBUTION',
-        '\u00a9 OpenStreetMap contributors',
-      ),
+      url: urlOr(env, 'MAP_TILES_URL', 'https://tiles.trotxi.com/ghana.pmtiles'),
+      styleUrl: urlOr(env, 'MAP_STYLE_URL', 'https://tiles.trotxi.com/style.light.json'),
+      darkStyleUrl: urlOr(env, 'MAP_STYLE_DARK_URL', 'https://tiles.trotxi.com/style.dark.json'),
+      attribution: withDefault(env, 'MAP_ATTRIBUTION', '\u00a9 OpenStreetMap contributors'),
     },
     // Unset is a real answer here: the app hides a control it has no number
     // for, and a placeholder that rings nowhere is worse than none.
     support: {
-      phone: optional(env, 'REPLACEMENT_OPERATIONS_PHONE'),
-      whatsapp: optional(env, 'REPLACEMENT_OPERATIONS_WHATSAPP'),
-      email: optional(env, 'REPLACEMENT_OPERATIONS_EMAIL'),
-      hours: optional(env, 'REPLACEMENT_OPERATIONS_HOURS'),
+      phone: optional(env, 'OPERATIONS_PHONE'),
+      whatsapp: optional(env, 'OPERATIONS_WHATSAPP'),
+      email: optional(env, 'OPERATIONS_EMAIL'),
+      hours: optional(env, 'OPERATIONS_HOURS'),
     },
     // Do not advertise the disabled production route through bootstrap.
-    docsUrl: optional(env, 'REPLACEMENT_DOCS_URL')
-      ? url(env, 'REPLACEMENT_DOCS_URL')
+    docsUrl: optional(env, 'DOCS_URL')
+      ? url(env, 'DOCS_URL')
       : deployment === 'production'
         ? 'https://github.com/TROTXI/mobility-core/tree/main/docs/features'
         : undefined,
     floors: {
-      ops: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1, 1_000_000),
+      ops: integerOr(env, 'MINIMUM_BUILD_OPS', 1, 1, 1_000_000),
       driver: {
-        ios: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS', 1, 1, 1_000_000),
-        android: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID', 1, 1, 1_000_000),
+        ios: integerOr(env, 'MINIMUM_BUILD_DRIVER_IOS', 1, 1, 1_000_000),
+        android: integerOr(env, 'MINIMUM_BUILD_DRIVER_ANDROID', 1, 1, 1_000_000),
       },
       commuter: {
-        ios: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS', 1, 1, 1_000_000),
-        android: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID', 1, 1, 1_000_000),
+        ios: integerOr(env, 'MINIMUM_BUILD_COMMUTER_IOS', 1, 1, 1_000_000),
+        android: integerOr(env, 'MINIMUM_BUILD_COMMUTER_ANDROID', 1, 1, 1_000_000),
       },
     },
     limits: {
-      perUser: integerOr(env, 'REPLACEMENT_REQUESTS_PER_MINUTE', 120, 1, 100_000),
-      perIp: integerOr(env, 'REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE', 600, 1, 100_000),
-      perAuth: integerOr(env, 'REPLACEMENT_AUTH_REQUESTS_PER_MINUTE', 10, 1, 10_000),
+      perUser: integerOr(env, 'REQUESTS_PER_MINUTE', 120, 1, 100_000),
+      perIp: integerOr(env, 'REQUESTS_PER_IP_PER_MINUTE', 600, 1, 100_000),
+      perAuth: integerOr(env, 'AUTH_REQUESTS_PER_MINUTE', 10, 1, 10_000),
     },
     trustProxy,
     maintenanceUserId,

@@ -77,8 +77,8 @@ merge alone does not apply GitHub environment policies or Render settings.
    to finish. Record the interruption so a delayed payment is not mistaken for
    successful processing. Do not enable an additional paid cron service.
 2. Keep the old API running while preparing configuration. Save the restricted
-   external URL as `REPLACEMENT_RUNTIME_DATABASE_URL` on the staging API, with
-   the optional CA. Remove `DATABASE_URL` and any `REPLACEMENT_DATABASE_URL` from
+   external URL as `RUNTIME_DATABASE_URL` on the staging API, with
+   the optional CA. Remove `DATABASE_URL` and any `MIGRATION_DATABASE_URL` from
    that service only when ready to deploy the new code. **Do not redeploy the old
    code with these new settings.** It still expects the owner URL.
 3. Run the protected installer for the reviewed commit. It validates the two
@@ -174,7 +174,7 @@ unchanged. No shared staging accounts were modified to implement this policy.
 
 ### Documentation access
 
-`REPLACEMENT_DEPLOYMENT_ENVIRONMENT=production` disables `/docs` and `/docs/json`
+`DEPLOYMENT_ENVIRONMENT=production` disables `/docs` and `/docs/json`
 (404), including production deployments using test payments. Staging exposes a
 read-only endpoint catalogue and JSON specification. `NODE_ENV` does not select
 this policy because staging also uses optimized production Node builds. Isolated
@@ -187,6 +187,6 @@ discovery is not prevented by hiding documentation; security must not rely on it
 
 Ops and Dart code generation use the checked-in contract under
 `docs/design/contracts/`, not a production documentation URL. Set
-`REPLACEMENT_DOCS_URL` to approved external documentation if exposing a link from
+`DOCS_URL` to approved external documentation if exposing a link from
 production configuration; production defaults to the repository documentation
 instead of advertising the disabled `/docs` route.

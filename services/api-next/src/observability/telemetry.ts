@@ -16,6 +16,7 @@
  * themselves from OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS.
  */
 import { register } from 'node:module';
+import { backendEnvironment } from '../runtime/environment.js';
 import { FastifyOtelInstrumentation } from '@fastify/otel';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
@@ -36,11 +37,12 @@ let sdk: NodeSDK | undefined;
 const probes = new Set(['/healthz', '/readyz']);
 
 export function startTelemetry(env: NodeJS.ProcessEnv = process.env): boolean {
+  env = backendEnvironment(env);
   if (sdk) return true;
   if (!env.OTEL_EXPORTER_OTLP_ENDPOINT && !env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) return false;
   register('@opentelemetry/instrumentation/hook.mjs', import.meta.url);
   // Unset on Render means staging, the same default configuration applies.
-  const environment = env.REPLACEMENT_DEPLOYMENT_ENVIRONMENT ?? (env.RENDER ? 'staging' : 'local');
+  const environment = env.DEPLOYMENT_ENVIRONMENT ?? (env.RENDER ? 'staging' : 'local');
   sdk = new NodeSDK({
     resource: resourceFromAttributes({
       // Grafana Cloud labels every series job="<namespace>/<name>" and keeps no
