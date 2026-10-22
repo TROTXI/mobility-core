@@ -10,6 +10,8 @@ import { FinancialFoundation } from '../src/payments/foundation.js';
 import { Pricing } from '../src/payments/pricing.js';
 import { createTransportApp } from '../src/http/app.js';
 import { PhoneOtp } from '../src/auth/phone-otp.js';
+import { avatarPng as PNG } from './helpers/avatar-fixture.js';
+import sharp from 'sharp';
 
 type Response = { statusCode: number; body: string; json(): any };
 test('driver app can register its own push device without opening other account routes to driver metadata', async (t) => {
@@ -67,14 +69,10 @@ function expectStatus(response: Response, code: number) {
   assert.equal(response.statusCode, code, response.body);
   return response.body ? response.json().data : null;
 }
-const PNG = Buffer.concat([
-  Buffer.from('89504e470d0a1a0a', 'hex'),
-  Buffer.from('the rest is not a real image, only its declared kind'),
-]);
 
 async function fixture(t: TestContext, options: { store?: boolean; reach?: boolean } = {}) {
   const f = await setup(t);
-  const stored: { objectKey: string; bytes: number }[] = [];
+  const stored: { objectKey: string; bytes: Buffer }[] = [];
   const removed: string[] = [];
   const revoked: string[] = [];
   const tokens: (string | null)[] = [];
@@ -88,7 +86,7 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
         ? undefined
         : {
             put: async ({ bytes, objectKey }) => {
-              stored.push({ objectKey, bytes: bytes.length });
+              stored.push({ objectKey, bytes });
               return { objectKey };
             },
             signedUrl: async (key, seconds) => `https://private.example/${key}?expires=${seconds}`,
@@ -274,6 +272,7 @@ test('ACC-03 an avatar is what it says it is, and its URL is short lived', async
 
   assert.equal((await f.upload(Buffer.from('not an image at all'), 'image/png')).statusCode, 415);
   assert.equal((await f.upload(PNG, 'application/pdf')).statusCode, 415);
+  assert.equal((await f.upload(Buffer.from('89504e470d0a1a0a00112233', 'hex'))).statusCode, 415);
   assert.equal(f.stored().length, 0, 'a refused upload stores nothing');
 
   const uploaded = expectStatus(await f.upload(PNG), 200);
@@ -288,6 +287,24 @@ test('ACC-03 an avatar is what it says it is, and its URL is short lived', async
       .rows[0].avatar_object_key,
     f.stored()[0]!.objectKey,
   );
+});
+
+test('ACC-AVATAR: only decoded metadata-free pixels reach the private store', async (t) => {
+  const f = await fixture(t);
+  const original = await sharp(PNG)
+    .withExif({ IFD0: { Artist: 'Private camera owner' } })
+    .png()
+    .toBuffer();
+  assert.ok((await sharp(original).metadata()).exif);
+  const key = randomUUID();
+  expectStatus(await f.upload(original, 'image/png', 'rider', key), 200);
+  const stored = f.stored()[0]!.bytes;
+  assert.notDeepEqual(stored, original);
+  assert.equal((await sharp(stored).metadata()).exif, undefined);
+  expectStatus(await f.upload(original, 'image/png', 'rider', key), 200);
+  assert.equal(f.stored().length, 1);
+  // Same pixels but changed original metadata must not bypass idempotency.
+  expectStatus(await f.upload(PNG, 'image/png', 'rider', key), 409);
 });
 
 test('ACC-04 an unwired avatar store refuses rather than pretending', async (t) => {

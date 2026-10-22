@@ -25,6 +25,32 @@ test('Gitleaks exceptions cover only reviewed Firebase fields and SDK inventory 
       FIREBASE_IOS_API_KEY: google,
     };
     const json = (value) => JSON.stringify(value, null, 2);
+    const nativeFiles = [];
+    for (const app of ['commuter', 'driver']) {
+      for (const directory of ['android/app', 'config/staging']) {
+        const path = `apps/trotxi_${app}/${directory}/google-services.json`;
+        nativeFiles.push(path);
+        write(path, json({ current_key: google, SERVER_API_KEY: google, PAYMENT_TOKEN: payment }));
+      }
+      const path = `apps/trotxi_${app}/lib/firebase_options.dart`;
+      nativeFiles.push(path);
+      write(
+        path,
+        `apiKey: '${google}',\nSERVER_API_KEY: '${google}',\nPAYMENT_TOKEN: '${payment}',\n`,
+      );
+    }
+    const approvedIos = 'apps/trotxi_client/lib/approved_firebase_options.dart';
+    nativeFiles.push(approvedIos);
+    write(
+      approvedIos,
+      `iosApiKey: '${google}',\nSERVER_API_KEY: '${google}',\nPAYMENT_TOKEN: '${payment}',\n`,
+    );
+    // Unreviewed app names and plist files are not exempted by filename.
+    write('apps/unreviewed/google-services.json', json({ current_key: google }));
+    write(
+      'apps/trotxi_commuter/ios/Runner/GoogleService-Info.plist',
+      `<plist><dict><key>SERVER_API_KEY</key><string>\n${google}\n</string></dict></plist>`,
+    );
     write('apps/trotxi_commuter/config/staging.json', json(fields));
     write('apps/trotxi_commuter/config/production.json', json(fields));
     write('apps/unreviewed/config/staging.json', json(fields));
@@ -89,6 +115,23 @@ test('Gitleaks exceptions cover only reviewed Firebase fields and SDK inventory 
     const findings = JSON.parse(scan.stdout);
     const found = (suffix, rule) =>
       findings.filter((f) => f.File.endsWith(suffix) && f.RuleID === rule);
+    for (const path of nativeFiles) {
+      assert.equal(found(path, 'gcp-api-key').length, 1, `${path}: server key still detected`);
+      assert.ok(
+        findings.some(
+          (f) =>
+            f.File.endsWith(path) &&
+            f.RuleID !== 'gcp-api-key' &&
+            f.StartLine === (path.endsWith('.json') ? 4 : 3),
+        ),
+        `${path}: unrelated payment secret still detected`,
+      );
+    }
+    assert.equal(found('apps/unreviewed/google-services.json', 'gcp-api-key').length, 1);
+    assert.equal(
+      found('apps/trotxi_commuter/ios/Runner/GoogleService-Info.plist', 'gcp-api-key').length,
+      1,
+    );
     assert.equal(found('apps/trotxi_commuter/config/staging.json', 'gcp-api-key').length, 0);
     assert.equal(found('apps/trotxi_driver/config/staging.json', 'gcp-api-key').length, 1);
     assert.ok(

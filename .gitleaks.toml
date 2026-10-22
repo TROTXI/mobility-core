@@ -7,7 +7,7 @@
 useDefault = true
 
 [allowlist]
-description = "Intentional non-secret placeholders (dev JWT fallback + test fixtures) + Firebase client config"
+description = "Intentional non-secret placeholders (dev JWT fallback + test fixtures)"
 regexes = [
   '''dev-only-insecure-secret-change-me-[0-9a-f]+''',
   '''test-secret-at-least-32-characters-long-[0-9]+''',
@@ -20,23 +20,25 @@ regexes = [
   # literal text "authenticator-data". Not key material. Exact value only.
   '''^YXV0aGVudGljYXRvci1kYXRh$''',
 ]
-# Firebase CLIENT config (google-services.json / firebase_options.dart /
-# GoogleService-Info.plist). The "API key" in these is a PUBLIC project
-# identifier that ships in the app — access is controlled by Firebase Security
-# Rules + App Check, not by key secrecy (Google docs). Same class as the
-# committed GOOGLE_CLIENT_ID and Paystack pk_ public key. Path-scoped so a real
-# GCP service-account key committed elsewhere is still caught. (See #88.)
-paths = [
-  '''.*google-services\.json$''',
-  '''.*firebase_options\.dart$''',
-  '''.*GoogleService-Info\.plist$''',
-]
+# No whole-file exceptions, including native Firebase configuration files.
 
 # The same public Firebase client keys now live in the reviewed staging build
 # definitions. Limit exceptions to the two detecting rules, these two paths
 # and the two public client fields. Other credentials in these files still scan.
 [[rules]]
 id = "gcp-api-key"
+[[rules.allowlists]]
+description = "Approved public iOS Firebase client identities"
+condition = "AND"
+paths = ['''^apps/trotxi_client/lib/approved_firebase_options\.dart$''']
+regexTarget = "line"
+regexes = ['''^\s*iosApiKey:\s*'AIza[0-9A-Za-z_-]{35}',?\s*$''']
+[[rules.allowlists]]
+description = "Public Firebase fields in reviewed native and historical app config"
+condition = "AND"
+paths = ['''^apps/trotxi_(commuter|driver)/(config/staging/google-services\.json|android/app/google-services\.json|lib/firebase_options\.dart)$''']
+regexTarget = "line"
+regexes = ['''^\s*("current_key":\s*"AIza[0-9A-Za-z_-]{35}"|apiKey:\s*'AIza[0-9A-Za-z_-]{35}'),?\s*$''']
 [[rules.allowlists]]
 description = "Staging Firebase public mobile client configuration"
 condition = "AND"
@@ -48,6 +50,18 @@ regexes = ['''^\s*"FIREBASE_(ANDROID|IOS)_API_KEY":\s*"AIza[0-9A-Za-z_-]{35}",?\
 # exact non-secret phrase at this path, not the whole document or rule.
 [[rules]]
 id = "generic-api-key"
+[[rules.allowlists]]
+description = "Approved public iOS Firebase client identities"
+condition = "AND"
+paths = ['''^apps/trotxi_client/lib/approved_firebase_options\.dart$''']
+regexTarget = "line"
+regexes = ['''^\s*iosApiKey:\s*'AIza[0-9A-Za-z_-]{35}',?\s*$''']
+[[rules.allowlists]]
+description = "Public Firebase fields in reviewed native and historical app config"
+condition = "AND"
+paths = ['''^apps/trotxi_(commuter|driver)/(config/staging/google-services\.json|android/app/google-services\.json|lib/firebase_options\.dart)$''']
+regexTarget = "line"
+regexes = ['''^\s*("current_key":\s*"AIza[0-9A-Za-z_-]{35}"|apiKey:\s*'AIza[0-9A-Za-z_-]{35}'),?\s*$''']
 [[rules.allowlists]]
 description = "Mobile SDK inventory prose, including its historical wording"
 condition = "AND"
