@@ -49,8 +49,7 @@ Run from either `apps/trotxi_commuter` or `apps/trotxi_driver`:
 flutter pub get
 dart ../../tool/validate_mobile_build.dart . release config/staging.json
 flutter run --dart-define-from-file=config/staging.json
-flutter build apk --release --dart-define-from-file=config/staging.json
-flutter build appbundle --release --dart-define-from-file=config/staging.json
+ORG_GRADLE_PROJECT_trotxiUnsignedValidation=true flutter build appbundle --release --dart-define-from-file=config/staging.json
 flutter build ios --simulator --debug --dart-define-from-file=config/staging.json
 flutter build ios --release --no-codesign --dart-define-from-file=config/staging.json
 ```
@@ -68,8 +67,12 @@ flutter build appbundle --release --dart-define-from-file=config/production.json
 flutter build ipa --release --dart-define-from-file=config/production.json
 ```
 
-Native signing remains issue #278. A successful staging APK or unsigned iOS
-build is not a store-ready, production-signed artifact.
+Native signing and store artifact workflows are described in
+[Mobile signing and release artifacts](mobile-store-release.md). Android release
+builds now require an approved upload key; explicit unsigned staging validation
+is the only exception. Use debug builds for local device installs. A successful
+unsigned staging build is not a store-ready, production-signed artifact. #278 and
+#280 still require protected environment setup and real store/device acceptance.
 
 ## Mobile telemetry policy
 

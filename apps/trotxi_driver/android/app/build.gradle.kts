@@ -1,18 +1,5 @@
-import java.io.FileInputStream
 import java.util.Base64
 import java.util.Properties
-
-// The upload key lives outside the repository. Without it a release build
-// still works and is signed with the debug key, which is what keeps
-// `flutter run --release` and CI usable on a machine that holds no secret.
-// Play refuses a debug-signed upload, so the real key is only needed by
-// whoever is actually publishing.
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-val signable = keystorePropertiesFile.exists()
-if (signable) {
-    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
-}
 
 plugins {
     id("com.android.application")
@@ -56,6 +43,9 @@ val mobileBuildMode = if (
 ) "debug" else "release"
 val validateMobileEnvironment = tasks.register<Exec>("validateMobileEnvironment") {
     environment("DART_DEFINES", mobileDefines)
+    environment("MOBILE_BUILD_RECEIPT", layout.buildDirectory.file("generated/mobile/assets/trotxi_build.json").get().asFile)
+    environment("MOBILE_BUILD_NUMBER", flutter.versionCode)
+    environment("MOBILE_BUILD_NAME", flutter.versionName)
     commandLine(
         "${localProperties.getProperty("flutter.sdk")}/bin/cache/dart-sdk/bin/dart",
         project.file("../../../../tool/validate_mobile_build.dart"),
@@ -77,7 +67,7 @@ tasks.matching { it.name == "preBuild" || it.name.startsWith("compileFlutterBuil
 
 android {
     namespace = "com.trotxi.trotxi_driver"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = maxOf(36, flutter.compileSdkVersion)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -92,29 +82,15 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = maxOf(36, flutter.targetSdkVersion)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-        if (signable) {
-            create("upload") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-            }
-        }
-    }
-
-    buildTypes {
-        release {
-            signingConfig =
-                signingConfigs.getByName(if (signable) "upload" else "debug")
-        }
-    }
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/mobile/assets"))
 }
+
+apply(from = "../../../../tool/android-release.gradle")
 
 kotlin {
     compilerOptions {

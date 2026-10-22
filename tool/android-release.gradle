@@ -1,0 +1,85 @@
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.cert.X509Certificate
+
+// Shared by both apps. Model sync/debug builds need no signing credentials.
+def unsignedValidation = providers.gradleProperty('trotxiUnsignedValidation').orNull == 'true'
+def signingValues = ['STORE_FILE', 'STORE_PASSWORD', 'KEY_ALIAS', 'KEY_PASSWORD', 'CERT_SHA256']
+    .collectEntries { name -> [(name): providers.environmentVariable("TROTXI_UPLOAD_${name}").orNull] }
+def completeSigning = signingValues.values().every { it != null && !it.isBlank() }
+
+android {
+    signingConfigs {
+        if (!unsignedValidation && completeSigning) {
+            upload {
+                storeFile = file(signingValues.STORE_FILE)
+                storePassword = signingValues.STORE_PASSWORD
+                keyAlias = signingValues.KEY_ALIAS
+                keyPassword = signingValues.KEY_PASSWORD
+            }
+        }
+    }
+    buildTypes {
+        release {
+            // Never silently substitute a debug certificate.
+            signingConfig = !unsignedValidation && completeSigning ? signingConfigs.upload : null
+            firebaseCrashlytics {
+                // Packaging must not contact Firebase. A separate approved step
+                // can explicitly invoke uploadCrashlyticsMappingFileRelease.
+                mappingFileUploadEnabled = providers.environmentVariable('TROTXI_UPLOAD_DIAGNOSTICS').orNull == 'true'
+            }
+        }
+    }
+}
+
+def releaseGate = tasks.register('validateReleaseSigning') {
+    doLast {
+        def definitions = [:]
+        (providers.gradleProperty('dart-defines').orNull ?: '').split(',').findAll { it }.each {
+            def pair = new String(Base64.decoder.decode(it), 'UTF-8').split('=', 2)
+            if (pair.length == 2) definitions[pair[0]] = pair[1]
+        }
+        if (unsignedValidation) {
+            if (definitions.APP_ENVIRONMENT != 'staging') {
+                throw new GradleException('Unsigned validation is restricted to staging, never production.')
+            }
+            return
+        }
+        if (!completeSigning) {
+            throw new GradleException('Release signing is required. See docs/mobile-store-release.md. For unsigned staging checks explicitly set -PtrotxiUnsignedValidation=true.')
+        }
+        try {
+            def store = KeyStore.getInstance(file(signingValues.STORE_FILE), signingValues.STORE_PASSWORD.toCharArray())
+            if (!store.isKeyEntry(signingValues.KEY_ALIAS) ||
+                store.getKey(signingValues.KEY_ALIAS, signingValues.KEY_PASSWORD.toCharArray()) == null) {
+                throw new IllegalArgumentException()
+            }
+            def cert = (X509Certificate) store.getCertificate(signingValues.KEY_ALIAS)
+            cert.checkValidity()
+            def fingerprint = MessageDigest.getInstance('SHA-256').digest(cert.encoded).encodeHex().toString()
+            def expected = signingValues.CERT_SHA256.replace(':', '').toLowerCase(Locale.ROOT)
+            if (!(expected ==~ /[0-9a-f]{64}/) || fingerprint != expected ||
+                cert.subjectX500Principal.name.toLowerCase(Locale.ROOT).contains('android debug')) {
+                throw new IllegalArgumentException()
+            }
+        } catch (Exception ignored) {
+            // Never echo paths/passwords or provider exceptions into CI logs.
+            throw new GradleException('Upload key is invalid, expired, debug, or does not match the approved SHA-256 fingerprint.')
+        }
+    }
+}
+tasks.matching {
+    it.name == 'preReleaseBuild' || it.name == 'compileFlutterBuildRelease' || it.name == 'validateSigningRelease' ||
+    it.name == 'packageRelease' || it.name == 'packageReleaseBundle' || it.name == 'signReleaseBundle'
+}.configureEach { dependsOn(releaseGate) }
+
+// Defense in depth against plugin versions that wire uploads into packaging.
+tasks.matching { it.name.startsWith('uploadCrashlytics') }.configureEach {
+    onlyIf {
+        def approved = providers.environmentVariable('TROTXI_UPLOAD_DIAGNOSTICS').orNull == 'true'
+        if (approved && unsignedValidation) {
+            throw new GradleException('Diagnostic symbol uploads are not permitted for unsigned validation builds.')
+        }
+        approved
+    }
+}

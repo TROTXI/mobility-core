@@ -43,6 +43,9 @@ val mobileBuildMode = if (
 ) "debug" else "release"
 val validateMobileEnvironment = tasks.register<Exec>("validateMobileEnvironment") {
     environment("DART_DEFINES", mobileDefines)
+    environment("MOBILE_BUILD_RECEIPT", layout.buildDirectory.file("generated/mobile/assets/trotxi_build.json").get().asFile)
+    environment("MOBILE_BUILD_NUMBER", flutter.versionCode)
+    environment("MOBILE_BUILD_NAME", flutter.versionName)
     commandLine(
         "${localProperties.getProperty("flutter.sdk")}/bin/cache/dart-sdk/bin/dart",
         project.file("../../../../tool/validate_mobile_build.dart"),
@@ -64,7 +67,7 @@ tasks.matching { it.name == "preBuild" || it.name.startsWith("compileFlutterBuil
 
 android {
     namespace = "com.trotxi.trotxi_commuter"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = maxOf(36, flutter.compileSdkVersion)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -78,19 +81,15 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = maxOf(36, flutter.targetSdkVersion)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/mobile/assets"))
 }
+
+apply(from = "../../../../tool/android-release.gradle")
 
 kotlin {
     compilerOptions {

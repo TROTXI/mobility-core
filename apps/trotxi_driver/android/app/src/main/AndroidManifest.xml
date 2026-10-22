@@ -25,7 +25,7 @@
          at install time. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
-        android:label="trotxi_driver"
+        android:label="Trotxi Driver"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher">
