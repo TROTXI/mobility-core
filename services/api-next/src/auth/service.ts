@@ -623,11 +623,12 @@ export class AuthService {
         )
       ).rows[0];
       if (!match) return;
-      // Logout remains an idempotent credential operation, even after erasure.
+      // A retained predecessor identifies the same session after rotation.
+      // Serialize with refresh so logout also revokes a successor issued first.
       await client.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [match.user_id]);
       await client.query(
         `UPDATE app.auth_sessions s SET revoked_at=COALESCE(s.revoked_at,clock_timestamp())
-        FROM app.refresh_credentials c WHERE c.session_id=s.id AND c.token_hash=$1 AND c.consumed_at IS NULL`,
+        FROM app.refresh_credentials c WHERE c.session_id=s.id AND c.token_hash=$1`,
         [hashToken(token)],
       );
     });
@@ -703,9 +704,13 @@ export class AuthService {
         });
       }
 
+      if (
+        stored.length &&
+        (name === 'startPasskeyRegistration' || name === 'finishPasskeyRegistration')
+      )
+        await requireRecentPasskey(client, actor, { existingCredential: true });
+
       if (name === 'startPasskeyRegistration') {
-        if (stored.length && !elevated)
-          fail(403, 'passkey_required', 'Use an existing passkey before adding another.');
         const options = await relyingParty.registrationOptions({
           userId: user.id,
           userName: user.email ?? user.id,
@@ -718,8 +723,6 @@ export class AuthService {
       }
 
       if (name === 'finishPasskeyRegistration') {
-        if (stored.length && !elevated)
-          fail(403, 'passkey_required', 'Use an existing passkey before adding another.');
         const challenge = await this.passkeyChallenge(client, actor, 'registration', now);
         let registered;
         try {
@@ -747,8 +750,10 @@ export class AuthService {
           ],
         );
         await this.consumePasskeyChallenge(client, actor, 'registration');
-        await finishInvitation(client, user.id);
-        await this.elevate(client, actor, now);
+        if (!stored.length) {
+          await finishInvitation(client, user.id);
+          await this.elevate(client, actor, now);
+        }
         await this.passkeyEvent(client, user.id, user.id, 'registered');
         return result();
       }
@@ -790,7 +795,7 @@ export class AuthService {
       );
       await this.consumePasskeyChallenge(client, actor, 'authentication');
       await finishInvitation(client, user.id);
-      await this.elevate(client, actor, now);
+      await this.elevate(client, actor, now, true);
       await this.passkeyEvent(client, user.id, user.id, 'verified');
       return result();
     });
@@ -884,10 +889,12 @@ export class AuthService {
     return result();
   }
 
-  private async elevate(client: PoolClient, actor: Actor, now: Date) {
+  private async elevate(client: PoolClient, actor: Actor, now: Date, authenticated = false) {
     await client.query(
-      'UPDATE app.auth_sessions SET admin_verified_at=$3 WHERE id=$1 AND user_id=$2',
-      [actor.sessionId, actor.userId, now],
+      `UPDATE app.auth_sessions SET admin_verified_at=$3,
+        admin_passkey_authenticated_at=CASE WHEN $4 THEN $3 ELSE admin_passkey_authenticated_at END
+        WHERE id=$1 AND user_id=$2`,
+      [actor.sessionId, actor.userId, now, authenticated],
     );
   }
 

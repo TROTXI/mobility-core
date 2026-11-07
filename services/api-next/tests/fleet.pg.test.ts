@@ -1116,7 +1116,7 @@ test('FLT-15 incident retention is category-aware, one-way and removes every rep
     assert.ok(!mine.some((incident: any) => incident.id === routine));
     const snapshots = (
       await c.owner.query(
-        'SELECT before_state,after_state FROM app.fleet_events WHERE incident_id=$1',
+        'SELECT before_state,after_state,reason FROM app.fleet_events WHERE incident_id=$1',
         [routine],
       )
     ).rows;
@@ -1126,6 +1126,14 @@ test('FLT-15 incident retention is category-aware, one-way and removes every rep
         JSON.stringify(event),
         /Passenger details|Handler private|tripId|driverId|location/,
       );
+    assert.ok(snapshots.every((event) => event.reason === null));
+    const audit = expectStatus(
+      await c.request('GET', `/v1/ops/audit-events?area=fleet&targetId=${routine}`),
+      200,
+    );
+    assert.ok(
+      audit.some((event: any) => event.action === 'decideIncident' && event.reason === null),
+    );
     assert.equal(
       (
         await c.owner.query(
@@ -1272,7 +1280,11 @@ test('FLT-18 migration removes legacy incident text and coordinates from permane
   db.pathname = `/${name}`;
   const pool = new pg.Pool({ connectionString: db.href, max: 2 });
   try {
-    await migrate(pool, migrations.slice(0, -1));
+    const retentionMigration = migrations.findIndex(({ name }) =>
+      name.startsWith('033_driver_incident_retention'),
+    );
+    assert.ok(retentionMigration > 0);
+    await migrate(pool, migrations.slice(0, retentionMigration));
     const driverUser = randomUUID();
     await pool.query("INSERT INTO app.users(id,role) VALUES ($1,'driver')", [driverUser]);
     const driver = (
@@ -1311,9 +1323,37 @@ test('FLT-18 migration removes legacy incident text and coordinates from permane
         }),
       ],
     );
+    const securityMigration = migrations.findIndex(({ name }) =>
+      name.startsWith('053_security_lifecycle'),
+    );
+    assert.ok(securityMigration > retentionMigration);
+    await migrate(pool, migrations.slice(0, securityMigration));
+    // Simulate a decision made after migration 046 started copying reasons.
+    const decision = randomUUID();
+    await pool.query(
+      `INSERT INTO app.transport_commands(id,actor_user_id,operation,target,key_hash,input_hash,
+        response_status,response_body,response_headers,replay_expires_at)
+      VALUES ($1,$2,'decideIncident',$3,repeat('c',64),repeat('d',64),200,
+        '{}'::jsonb,'{}'::jsonb,clock_timestamp()+interval '7 days')`,
+      [decision, driverUser, incident],
+    );
+    const insertDecision = `INSERT INTO app.fleet_events
+        (actor_user_id,command_id,incident_id,operation,before_state,after_state,reason)
+      VALUES ($1,$2,$3,'decideIncident','{}'::jsonb,'{}'::jsonb,'Private resolution')
+      RETURNING id,reason`;
+    const legacy = (await pool.query(insertDecision, [driverUser, decision, incident])).rows[0];
+    assert.equal(legacy.reason, 'Private resolution');
     await migrate(pool, migrations);
+    assert.deepEqual(
+      (await pool.query('SELECT id,reason FROM app.fleet_events WHERE id=$1', [legacy.id])).rows[0],
+      { id: legacy.id, reason: null },
+    );
+    await assert.rejects(
+      pool.query("UPDATE app.fleet_events SET reason='Restored' WHERE id=$1", [legacy.id]),
+      /append_only_history/,
+    );
     const state = (
-      await pool.query('SELECT after_state FROM app.fleet_events WHERE incident_id=$1', [incident])
+      await pool.query('SELECT after_state FROM app.fleet_events WHERE command_id=$1', [command])
     ).rows[0].after_state;
     assert.deepEqual(state, { id: incident, category: 'collision', status: 'open' });
     assert.equal(

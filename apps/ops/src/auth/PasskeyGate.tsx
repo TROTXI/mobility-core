@@ -1,9 +1,10 @@
 import { Button, Spinner } from '@fluentui/react-components';
-import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import { startRegistration } from '@simplewebauthn/browser';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { components } from '../generated/api';
 import { opsHeaders } from '../api/session';
 import { useAuth } from './AuthContext';
+import { verifyExistingPasskey } from './verifyExistingPasskey';
 
 type Status = components['schemas']['PasskeyStatus'];
 
@@ -50,16 +51,7 @@ export function PasskeyGate({ children }: { children: ReactNode }) {
         });
         if (finished.error) throw new Error(finished.error.error.message);
       } else {
-        const started = await session.client.POST('/v1/auth/passkeys/authentication/options', {
-          params: { header: opsHeaders },
-        });
-        if (started.error) throw new Error(started.error.error.message);
-        const credential = await startAuthentication({ optionsJSON: started.data.data as never });
-        const finished = await session.client.POST(
-          '/v1/auth/passkeys/authentication/verification',
-          { params: { header: opsHeaders }, body: credential as never },
-        );
-        if (finished.error) throw new Error(finished.error.error.message);
+        await verifyExistingPasskey(session);
       }
       await load();
     } catch (value) {

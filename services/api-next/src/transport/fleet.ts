@@ -225,7 +225,7 @@ export class Fleet {
     } else if (operation === 'decideIncident') {
       requireReason({ reason: body.resolution });
       // Still refuse a pasted secret, as on the driver's own report.
-      reason = incidentText(body.resolution, 'resolution');
+      const resolution = incidentText(body.resolution, 'resolution');
       id = fleetId(target);
       before = (await this.load(client, kind, [id]))[0]!;
       if (before.status === 'resolved')
@@ -234,7 +234,7 @@ export class Fleet {
         `UPDATE app.driver_incidents
         SET status=$2,resolution=$3,handled_by=$4,handled_at=clock_timestamp(),${BUMP}
         WHERE id=$1`,
-        [id, body.status, reason, actor.userId],
+        [id, body.status, resolution, actor.userId],
       );
     } else if (operation === 'createDriverRequest') {
       id = await this.createRequest(client, body, driverId!);
