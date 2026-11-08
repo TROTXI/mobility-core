@@ -1356,8 +1356,11 @@ test('AUTH-05 / ID-04: logout is device-local, idempotent, and immediately revok
   data(await f.request('POST', '/v1/auth/refresh', { refreshToken: a.refreshToken }), 401);
   data(await f.request('GET', '/v1/me', undefined, b.accessToken));
   const next = data(await f.request('POST', '/v1/auth/refresh', { refreshToken: b.refreshToken }));
-  data(await f.request('POST', '/v1/auth/logout', { refreshToken: b.refreshToken }), 204); // old consumed token no-op
-  data(await f.request('GET', '/v1/me', undefined, next.accessToken));
+  const otherDevice = await f.sign();
+  data(await f.request('POST', '/v1/auth/logout', { refreshToken: b.refreshToken }), 204);
+  data(await f.request('GET', '/v1/me', undefined, next.accessToken), 401);
+  data(await f.request('POST', '/v1/auth/refresh', { refreshToken: next.refreshToken }), 401);
+  data(await f.request('GET', '/v1/me', undefined, otherDevice.accessToken));
 });
 test('AUTH-06 / ID-05: sessions use self-bound opaque pagination, safe revocation and secret-free responses', async (t) => {
   const f = await setup(t),
@@ -2389,11 +2392,66 @@ test('PASSKEY-02 elevation is per session and a completed assertion cannot repla
   );
 });
 
-test('PASSKEY-03 a verified admin can add a second passkey; an unelevated session cannot', async (t) => {
+test('PASSKEY-03 additional enrollment requires a recent existing-key assertion at start and finish', async (t) => {
   const f = await setup(t);
   const admin = await operator(f, 'ops-passkey-3');
-  await register(f, admin.token);
-  await register(f, admin.token);
+  const credentialId = await register(f, admin.token);
+  const start = () => ops(f, 'POST', '/v1/auth/passkeys/registration/options', admin.token);
+  const finish = (challenge: string) =>
+    ops(
+      f,
+      'POST',
+      '/v1/auth/passkeys/registration/verification',
+      admin.token,
+      registrationResponse(challenge),
+    );
+  const verifyExisting = async () => {
+    const options = data(
+      await ops(f, 'POST', '/v1/auth/passkeys/authentication/options', admin.token),
+    );
+    data(
+      await ops(
+        f,
+        'POST',
+        '/v1/auth/passkeys/authentication/verification',
+        admin.token,
+        authenticationResponse(options.challenge, credentialId),
+      ),
+      204,
+    );
+  };
+  // First-key registration elevates Ops access, but is not an assertion.
+  assert.equal((await start()).json().error.code, 'passkey_required');
+  await verifyExisting();
+  const { challenge } = data(await start());
+  await f.owner.query(
+    `UPDATE app.auth_sessions SET admin_passkey_authenticated_at=clock_timestamp()-interval '6 minutes',
+      admin_verified_at=clock_timestamp()-interval '6 minutes' WHERE user_id=$1`,
+    [admin.id],
+  );
+  const stale = await start();
+  assert.equal(stale.statusCode, 403);
+  assert.equal(stale.json().error.code, 'passkey_required');
+  const staleFinish = await finish(challenge);
+  assert.equal(staleFinish.statusCode, 403);
+  assert.equal(staleFinish.json().error.code, 'passkey_required');
+  await verifyExisting();
+  const before = (
+    await f.owner.query(
+      'SELECT admin_verified_at,admin_passkey_authenticated_at FROM app.auth_sessions WHERE user_id=$1',
+      [admin.id],
+    )
+  ).rows[0];
+  data(await finish(challenge), 204);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT admin_verified_at,admin_passkey_authenticated_at FROM app.auth_sessions WHERE user_id=$1',
+        [admin.id],
+      )
+    ).rows[0],
+    before,
+  );
 
   const fresh = await f.sign('ops-passkey-3');
   const refused = await ops(f, 'POST', '/v1/auth/passkeys/registration/options', fresh.accessToken);
@@ -2644,6 +2702,7 @@ test('EMAIL-01 any email domain, full names, proof before password, no automatic
   );
   const stored = (await f.owner.query('SELECT * FROM app.email_auth_challenges')).rows[0];
   assert.equal(stored.token_hash, hashToken(token));
+  assert.equal(stored.signup_first_name, emailRegistration.firstName);
   assert.deepEqual(
     (
       await f.owner.query(
@@ -2655,6 +2714,11 @@ test('EMAIL-01 any email domain, full names, proof before password, no automatic
     [{ terms_version: '2026-10-14', channel: 'commuter_email_signup' }],
   );
   data(await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }), 204);
+  assert.equal(
+    (await f.owner.query('SELECT signup_first_name FROM app.email_auth_challenges')).rows[0]
+      .signup_first_name,
+    null,
+  );
   assert.equal(
     (await f.request('POST', '/v1/auth/email/complete', { token, password: emailPassword }))
       .statusCode,
@@ -2678,6 +2742,54 @@ test('EMAIL-01 any email domain, full names, proof before password, no automatic
   const cr = (await f.owner.query('SELECT * FROM app.email_credentials')).rows[0];
   assert.ok(cr.password_hash.startsWith('argon2id-v1$'));
   assert.ok(!cr.password_hash.includes(emailPassword));
+});
+test('email signup activates the names bound to the redeemed link', async (t) => {
+  const f = await setup(t);
+  data(
+    await f.request('POST', '/v1/auth/email/signup', {
+      ...emailRegistration,
+      firstName: 'Unverified',
+      lastName: 'Caller',
+    }),
+  );
+  const first = await emailToken(f);
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=created_at-interval '2 minutes'",
+  );
+  data(await f.request('POST', '/v1/auth/email/signup', emailRegistration));
+  const owner = await emailToken(f);
+  assert.notEqual(owner, first);
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=created_at-interval '2 minutes'",
+  );
+  data(
+    await f.request('POST', '/v1/auth/email/signup', {
+      ...emailRegistration,
+      firstName: 'Later',
+      lastName: 'Caller',
+    }),
+  );
+  assert.notEqual(await emailToken(f), owner);
+  assert.equal((await f.owner.query('SELECT first_name FROM app.users')).rows[0].first_name, null);
+  data(
+    await f.request('POST', '/v1/auth/email/complete', { token: owner, password: emailPassword }),
+    204,
+  );
+  const signed = data(
+    await f.request('POST', '/v1/auth/email/login', {
+      email: emailRegistration.email,
+      password: emailPassword,
+    }),
+  );
+  assert.equal(signed.account.displayName, 'Ama Akua Mensah');
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT count(*)::int AS n FROM app.email_auth_challenges WHERE signup_first_name IS NOT NULL',
+      )
+    ).rows[0].n,
+    0,
+  );
 });
 test('EMAIL-02 password reset is one-use, rejects old password, revokes every old session', async (t) => {
   const f = await setup(t),

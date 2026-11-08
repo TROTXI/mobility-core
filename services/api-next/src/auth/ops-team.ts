@@ -51,11 +51,16 @@ export async function requireSuperadmin(c: PoolClient, actor: Actor) {
  * the passkey; the operator repeats the change afterwards.
  */
 export const RECENT_PASSKEY_MINUTES = 5;
-export async function requireRecentPasskey(c: PoolClient, actor: Actor) {
+export async function requireRecentPasskey(
+  c: PoolClient,
+  actor: Actor,
+  { existingCredential = false } = {},
+) {
+  const timestamp = existingCredential ? 'admin_passkey_authenticated_at' : 'admin_verified_at';
   const fresh = (
     await c.query(
       `SELECT 1 FROM app.auth_sessions WHERE id=$1 AND user_id=$2
-       AND admin_verified_at > clock_timestamp() - make_interval(mins => ${RECENT_PASSKEY_MINUTES})`,
+       AND ${timestamp} > clock_timestamp() - make_interval(mins => ${RECENT_PASSKEY_MINUTES})`,
       [actor.sessionId, actor.userId],
     )
   ).rowCount;

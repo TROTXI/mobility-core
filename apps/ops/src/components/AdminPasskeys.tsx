@@ -3,6 +3,7 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { useState } from 'react';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
+import { verifyExistingPasskey } from '../auth/verifyExistingPasskey';
 import { opsHeaders } from '../api/session';
 import { ErrorState, LoadingRows, Panel } from './Page';
 import { useQuery } from '../hooks/useQuery';
@@ -26,6 +27,7 @@ export function AdminPasskeys() {
     setWorking(true);
     setMessage('');
     try {
+      await verifyExistingPasskey(session);
       const options = await session.client.POST('/v1/auth/passkeys/registration/options', {
         params: { header: opsHeaders },
       });
@@ -59,8 +61,8 @@ export function AdminPasskeys() {
           </p>
           <p className="muted">
             This session is{' '}
-            {status.data?.verified ? 'verified for operational access' : 'not elevated'}. Add
-            another passkey only after verifying an existing one.
+            {status.data?.verified ? 'verified for operational access' : 'not elevated'}. To add
+            another passkey, first confirm with one you already use.
           </p>
           {message && <p role="status">{message}</p>}
           <Button

@@ -131,6 +131,7 @@ export class EmailAuth {
     version: number,
     purpose: string,
     sessionId: string | null,
+    names: ReturnType<typeof fullName> | null = null,
   ) {
     // No rapid resends and no unbounded mail to a single account. Re-requesting
     // never invalidates an earlier link; only successful completion does.
@@ -147,9 +148,20 @@ export class EmailAuth {
       token = newRefresh();
     const row = (
       await c.query(
-        `INSERT INTO app.email_auth_challenges(id,user_id,purpose,token_hash,credential_version,session_id,expires_at)
-      VALUES($1,$2,$3,$4,$5,$6,clock_timestamp()+interval '30 minutes') RETURNING expires_at`,
-        [id, userId, purpose, hashToken(token), version, sessionId],
+        `INSERT INTO app.email_auth_challenges(id,user_id,purpose,token_hash,credential_version,session_id,expires_at,
+        signup_first_name,signup_last_name,signup_other_names)
+      VALUES($1,$2,$3,$4,$5,$6,clock_timestamp()+interval '30 minutes',$7,$8,$9) RETURNING expires_at`,
+        [
+          id,
+          userId,
+          purpose,
+          hashToken(token),
+          version,
+          sessionId,
+          names?.firstName ?? null,
+          names?.lastName ?? null,
+          names?.otherNames ?? null,
+        ],
       )
     ).rows[0];
     // A newly issued challenge gets its full lifetime, even when the pending
@@ -292,13 +304,8 @@ export class EmailAuth {
             ).rowCount
           )
             return;
-          userId = (
-            await c.query(
-              `INSERT INTO app.users(role,display_name,first_name,last_name,other_names)
-            VALUES('commuter',$1,$2,$3,$4) RETURNING id`,
-              [names!.displayName, names!.firstName, names!.lastName, names!.otherNames],
-            )
-          ).rows[0].id;
+          userId = (await c.query("INSERT INTO app.users(role) VALUES('commuter') RETURNING id"))
+            .rows[0].id;
         }
       }
       const user = (
@@ -339,6 +346,7 @@ export class EmailAuth {
         version,
         reset ? 'reset' : actor ? 'link' : 'signup',
         actor?.sessionId ?? null,
+        names,
       );
     });
     // Never expose provider latency through a non-enumerating request response.
@@ -372,6 +380,7 @@ export class EmailAuth {
     if (
       !snapshot ||
       !['signup', 'link', 'reset'].includes(snapshot.purpose) ||
+      (snapshot.purpose === 'signup' && !snapshot.signup_first_name) ||
       (snapshot.purpose === 'link') !== !!actor ||
       (actor && (snapshot.user_id !== actor.userId || snapshot.session_id !== actor.sessionId))
     )
@@ -426,7 +435,19 @@ export class EmailAuth {
         'UPDATE app.email_credentials SET password_hash=$2,verified_at=COALESCE(verified_at,clock_timestamp()),signup_pending=false,version=version+1 WHERE user_id=$1',
         [user.id, password],
       );
-      await c.query('UPDATE app.users SET email=$2 WHERE id=$1', [user.id, cr.email]);
+      if (current.purpose === 'signup') {
+        const names = fullName({
+          firstName: current.signup_first_name,
+          lastName: current.signup_last_name,
+          otherNames: current.signup_other_names,
+        });
+        await c.query(
+          'UPDATE app.users SET email=$2,display_name=$3,first_name=$4,last_name=$5,other_names=$6 WHERE id=$1',
+          [user.id, cr.email, names.displayName, names.firstName, names.lastName, names.otherNames],
+        );
+      } else {
+        await c.query('UPDATE app.users SET email=$2 WHERE id=$1', [user.id, cr.email]);
+      }
       await this.revoke(c, user.id);
       await this.options.mail?.queuePasswordChanged(c, user.id, cr.email, current.id);
     });
