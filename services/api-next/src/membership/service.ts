@@ -352,6 +352,18 @@ export class MembershipService {
   coordinateReservations = async (c: PoolClient, change: ReservationChange) => {
     const t = change.before;
     if (change.operation === 'cancelTrip') {
+      // Charges are append-only and no ride-return path exists, so a trip
+      // that already debited riders (boarding is allowed before start on the
+      // service day) must be operated, not cancelled.
+      if (
+        (await c.query('SELECT 1 FROM app.reservation_charges WHERE trip_id=$1 LIMIT 1', [t.id]))
+          .rowCount
+      )
+        fail(
+          409,
+          'trip_has_charged_riders',
+          'Riders have already boarded this trip. Start and complete it instead of cancelling.',
+        );
       await c.query(
         "UPDATE app.reservations SET status='operator_cancelled' WHERE trip_id=$1 AND status IN ('reserved','pending','unseated')",
         [t.id],

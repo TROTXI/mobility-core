@@ -181,6 +181,10 @@ async function fixture(t: TestContext, auxFailure = false, through = files.lengt
         expected,
       )
     ).data;
+  const start = async (tid: string) =>
+    f.owner.query("UPDATE app.trips SET status='active',started_at=clock_timestamp() WHERE id=$1", [
+      tid,
+    ]);
   const counts = async () =>
     (
       await f.owner.query(`SELECT (SELECT count(*)::int FROM app.reservation_charges) charges,
@@ -206,6 +210,7 @@ async function fixture(t: TestContext, auxFailure = false, through = files.lengt
     pass,
     board,
     mark,
+    start,
     counts,
     scans: () => scans,
     setNow: (s: string) => {
@@ -393,6 +398,7 @@ test('BRD-28 expired boarding snapshots clear without removing a charge or its c
 });
 test('BRD-03: charged no-show can board late by photo, preserving its debit and settlement time', async (t) => {
   const f = await seat(t);
+  await f.start(f.run.id);
   await f.mark(f.run.id, f.reservation.id);
   const before = (await f.owner.query('SELECT * FROM app.reservation_charges')).rows;
   f.setNow('2026-01-02T06:40:00Z');
@@ -511,8 +517,9 @@ test('BRD-08/09: no cache dependency; auxiliary telemetry failure cannot roll ba
 });
 test('BRD-10: competing QR/photo/no-show sessions really contend and converge on one charge', async (t) => {
   const f = await seat(t),
-    p = await f.pass(f.reservation.id),
-    lock = await f.lock();
+    p = await f.pass(f.reservation.id);
+  await f.start(f.run.id);
+  const lock = await f.lock();
   const jobs = [
     f.board(f.run.id, { kind: 'qr', token: p.qrToken }),
     f.board(f.run.id, { kind: 'photo', reservationId: f.reservation.id }),
@@ -592,6 +599,7 @@ test('BRD-14: no-show maintenance scopes day/direction/route, is bounded and nev
     ret = await f.trip('return');
   f.setNow('2026-01-01T00:00:00Z');
   await f.reserve(f.actor, 'return');
+  for (const id of [f.run.id, ret.id]) await f.start(id);
   f.setNow('2026-01-02T06:35:00Z');
   const req = {
     travelDate: '2026-01-02',
@@ -950,6 +958,7 @@ test('BRD-25: overdue no-show catch-up works, future departures do not charge, a
   const f = await seat(t);
   const path = '/v1/ops/maintenance/no-shows',
     body = { travelDate: '2026-01-02', direction: 'outbound', limit: 1 };
+  await f.start(f.run.id);
   f.setNow('2026-01-02T06:00:00Z');
   assert.equal((await f.request('POST', path, body, 'ops')).data.considered, 0);
   f.setNow('2026-01-03T06:35:00Z');
@@ -1021,4 +1030,48 @@ test('BRD-27: proof variants cannot be mixed or renamed to skip validation, over
   ];
   for (const body of valid) await f.board(f.run.id, body, 404, 'foreign');
   assert.deepEqual(await f.counts(), { charges: 0, debits: 0, commands: 0, qr: 0, events: 0 });
+});
+test('BRD-28: a trip that never started cannot debit absent riders, and a trip that charged riders cannot be cancelled', async (t) => {
+  const f = await seat(t);
+  const sweep = { travelDate: '2026-01-02', direction: 'outbound', limit: 100 };
+  f.setNow('2026-01-02T06:35:00Z');
+  // Past departure but never started: neither the driver nor the sweep can charge.
+  const refused = await f.request(
+    'POST',
+    `/v1/driver/trips/${f.run.id}/reservations/${f.reservation.id}/no-show`,
+    undefined,
+    'driver',
+    409,
+  );
+  assert.equal(refused.error.code, 'trip_not_started');
+  assert.equal(
+    (await f.request('POST', '/v1/ops/maintenance/no-shows', sweep, 'ops')).data.considered,
+    0,
+  );
+  assert.deepEqual(await f.counts(), { charges: 0, debits: 0, commands: 0, qr: 0, events: 0 });
+  const transport = new TransportService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: Buffer.alloc(32, 7),
+    coordinateReservations: f.membership.coordinateReservations,
+  });
+  // Boarding before start is still allowed on the service day; once a ride
+  // was debited the trip must be operated, because cancelling returns nothing.
+  await f.board(f.run.id, { kind: 'photo', reservationId: f.reservation.id });
+  await assert.rejects(
+    transport.command(
+      f.actors.ops!,
+      'cancelTrip',
+      f.run.id,
+      { reason: 'Vehicle broke down' },
+      randomUUID(),
+      tripEditToken(f.run),
+    ),
+    (err: any) => err.status === 409 && err.code === 'trip_has_charged_riders',
+  );
+  assert.equal(
+    (await f.owner.query('SELECT status FROM app.trips WHERE id=$1', [f.run.id])).rows[0].status,
+    'scheduled',
+  );
+  assert.equal((await f.counts()).debits, 1);
 });
