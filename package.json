@@ -28,9 +28,9 @@
     "codegen:replacement": "openapi-generator-cli generate -i docs/design/contracts/replacement.openapi.json -g dart-dio -o apps/api_client --additional-properties=pubName=trotxi_api_client,pubAuthor=LFE --global-property apiTests=false,modelTests=false"
   },
   "devDependencies": {
-    "@openapitools/openapi-generator-cli": "^2.41.0",
+    "@openapitools/openapi-generator-cli": "^2.42.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "prettier": "^3.9.9"
+    "prettier": "^3.9.10"
   }
 }
