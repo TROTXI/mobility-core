@@ -383,6 +383,12 @@ export class BoardingService {
         trip.service_date !== this.now().toISOString().slice(0, 10)
       )
         fail(409, 'trip_not_boardable', 'This departure is not boarding today.');
+      // A no-show debits a prepaid ride, so it needs a trip that actually
+      // operated. An unstarted trip can still be cancelled, and cancellation
+      // returns nothing, so charging absence on it could take a ride for
+      // service that never ran.
+      if (method === 'no_show' && !['active', 'completed'].includes(trip.status))
+        fail(409, 'trip_not_started', 'Start the trip before marking no-shows.');
       if (method === 'no_show' && trip.scheduled_at > this.now())
         fail(409, 'departure_not_due', 'This departure has not reached its scheduled time.');
       const next =
@@ -491,7 +497,7 @@ export class BoardingService {
         JOIN app.trips t ON t.id=r.trip_id JOIN app.billing_periods b ON b.id=r.period_id
         JOIN app.memberships m ON m.id=b.membership_id JOIN app.users u ON u.id=r.user_id
         WHERE r.status='reserved' AND r.service_date=$1 AND r.direction=$2 AND ($3::uuid IS NULL OR s.route_id=$3)
-        AND t.status<>'cancelled' AND t.scheduled_at<=$5 AND b.state='open' AND m.lifecycle='open' AND u.deleted_at IS NULL
+        AND t.status IN ('active','completed') AND t.scheduled_at<=$5 AND b.state='open' AND m.lifecycle='open' AND u.deleted_at IS NULL
         AND NOT EXISTS(SELECT 1 FROM app.account_restrictions WHERE user_id=r.user_id AND released_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks WHERE period_id=r.period_id AND released_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses WHERE period_id=r.period_id AND ended_at IS NULL)
