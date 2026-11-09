@@ -875,6 +875,133 @@ test('OFFER-07 expiry releases an unpaid offer while a delayed provider collecti
   );
 });
 
+test('OFFER-09 an abandoned checkout stays payable until the offer expires, and a later payment grants coverage', async (t) => {
+  const f = await offeredFixture(t);
+  await f.verify();
+  const app = await f.join();
+  await f.offer(app.id);
+  const purchase = expectStatus(await f.accept(app.id), 201);
+  const attempt = (
+    await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  const secret = `sk_test_${randomBytes(16).toString('hex')}`;
+  const recovery = new PaymentRecovery({
+    pool: f.runtime,
+    // Paystack's verify answer for an initialized checkout nobody has paid yet.
+    provider: new PaystackEvidence(secret, randomBytes(32), async () =>
+      Response.json({
+        status: true,
+        data: {
+          reference: attempt.reference,
+          domain: 'test',
+          currency: 'GHS',
+          amount: purchase.cashDue.amountMinor,
+          status: 'abandoned',
+        },
+      }),
+    ),
+    foundation: f.financial,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: randomBytes(32),
+    reversePeriod: f.membership.reversePeriod,
+  });
+  const states = async () =>
+    (
+      await f.owner.query(
+        `SELECT p.state purchase,a.state attempt,s.state application FROM app.purchases p
+       JOIN app.payment_attempts a ON a.purchase_id=p.id
+       JOIN app.standby_applications s ON s.id=$2 WHERE p.id=$1`,
+        [purchase.id, app.id],
+      )
+    ).rows[0];
+  const before = await states();
+  const reconciled = await recovery.reconcile(new Date(Date.now() + 1000));
+  assert.equal(reconciled.blocked, 1);
+  assert.equal(reconciled.succeeded + reconciled.failed, 0);
+  assert.deepEqual(await states(), before, 'abandoned before the deadline changes nothing');
+  assert.equal(before.purchase, 'awaiting_payment');
+  const payload = Buffer.from(
+    JSON.stringify({
+      event: 'charge.success',
+      data: {
+        id: '1009',
+        reference: attempt.reference,
+        domain: 'test',
+        currency: 'GHS',
+        amount: purchase.cashDue.amountMinor,
+        status: 'success',
+        paid_at: new Date().toISOString(),
+      },
+    }),
+  );
+  await recovery.acceptWebhook(payload, createHmac('sha512', secret).update(payload).digest('hex'));
+  assert.equal((await recovery.processInbox()).succeeded, 1);
+  assert.equal((await states()).purchase, 'fulfilled');
+  assert.equal(
+    (
+      await f.owner.query('SELECT count(*)::int n FROM app.billing_periods WHERE purchase_id=$1', [
+        purchase.id,
+      ])
+    ).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.payment_reviews')).rows[0].n,
+    0,
+  );
+});
+
+test('OFFER-10 an abandoned checkout past its offer deadline fails and frees the rider', async (t) => {
+  const f = await offeredFixture(t);
+  await f.verify();
+  const app = await f.join();
+  await f.offer(app.id);
+  const purchase = expectStatus(await f.accept(app.id), 201);
+  const attempt = (
+    await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  // Simulate the clock passing the deadline; the offer guard forbids
+  // rewriting terms, so the fixture lifts it for this one owner update.
+  await f.owner.query('ALTER TABLE app.standby_offers DISABLE TRIGGER immutable_offer_terms');
+  await f.owner.query(
+    "UPDATE app.standby_offers SET expires_at=clock_timestamp()-interval '1 minute' WHERE purchase_id=$1",
+    [purchase.id],
+  );
+  await f.owner.query('ALTER TABLE app.standby_offers ENABLE TRIGGER immutable_offer_terms');
+  const recovery = new PaymentRecovery({
+    pool: f.runtime,
+    provider: new PaystackEvidence(
+      `sk_test_${randomBytes(16).toString('hex')}`,
+      randomBytes(32),
+      async () =>
+        Response.json({
+          status: true,
+          data: {
+            reference: attempt.reference,
+            domain: 'test',
+            currency: 'GHS',
+            amount: purchase.cashDue.amountMinor,
+            status: 'abandoned',
+          },
+        }),
+    ),
+    foundation: f.financial,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: randomBytes(32),
+    reversePeriod: f.membership.reversePeriod,
+  });
+  assert.equal((await recovery.reconcile(new Date(Date.now() + 1000))).succeeded, 1);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT p.state,p.failure_code,a.state attempt FROM app.purchases p JOIN app.payment_attempts a ON a.purchase_id=p.id WHERE p.id=$1',
+        [purchase.id],
+      )
+    ).rows[0],
+    { state: 'failed', failure_code: 'provider_failed', attempt: 'failed' },
+  );
+});
+
 test('OFFER-05 upgrade reconnects committed legacy checkouts and releases orphan acceptance claims', async (t) => {
   const f = await setup(t, {}, false, 41);
   const key = randomUUID(),
