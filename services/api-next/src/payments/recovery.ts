@@ -317,6 +317,15 @@ export class PaymentRecovery {
             return { outcome: 'failed', reason: 'late_success' };
           }
         } else if (fact.kind === 'failure') {
+          // Paystack reports an initialized checkout the rider has not paid yet
+          // as abandoned, and the same link stays payable. While the offer or
+          // renewal is still within its payment deadline, abandoned is not a
+          // failure: failing it here would turn a later payment into cash
+          // without coverage. Past the deadline, offer expiry owns the outcome.
+          if (fact.status === 'abandoned' && (await this.stillPayable(c, a.purchase_id))) {
+            await this.finish(c, id, 'processed', null, a.purchase_id);
+            return { outcome: 'blocked' };
+          }
           if (['pending', 'unknown'].includes(a.state)) {
             await c.query(
               "UPDATE app.credit_holds SET state='released',settled_at=clock_timestamp() WHERE purchase_id=$1 AND state='held'",
@@ -438,6 +447,22 @@ export class PaymentRecovery {
       }
     }
     return result;
+  }
+  /** The same deadline expireUnpaidOffers and fulfilment enforce: an offer
+   * until it expires, a renewal until the coverage it buys begins. Legacy
+   * purchases with neither have no deadline and keep failing on abandoned. */
+  private async stillPayable(c: PoolClient, purchaseId: string) {
+    return Boolean(
+      (
+        await c.query(
+          `SELECT 1 FROM app.purchases p LEFT JOIN app.standby_offers o ON o.id=p.offer_id
+         WHERE p.id=$1 AND p.state IN ('awaiting_payment','processing')
+           AND (o.expires_at>clock_timestamp() OR (p.renewal_of IS NOT NULL
+             AND ((p.offer_terms->>'coverageStart')::date::timestamp AT TIME ZONE 'Africa/Accra')>clock_timestamp()))`,
+          [purchaseId],
+        )
+      ).rowCount,
+    );
   }
   private async sourceReview(
     c: PoolClient,
