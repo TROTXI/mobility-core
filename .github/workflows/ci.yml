@@ -89,7 +89,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
-          name: api-postgres-${{ matrix.slug }}
+          name: ${{ matrix.slug == 'financial' && 'financial-foundation-evidence' || format('api-postgres-{0}', matrix.slug) }}
           path: .harness-artifacts/api/
           include-hidden-files: true
           if-no-files-found: error
@@ -202,8 +202,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r --if-present run typecheck
-      - run: pnpm -r --if-present run lint
+      # Ops build checks both TypeScript projects; its lint script repeats them.
+      - run: pnpm --filter '!@trotxi/ops' -r --if-present run typecheck
+      - run: pnpm --filter '!@trotxi/ops' -r --if-present run lint
       - run: pnpm -r --if-present run test:coverage
       - run: pnpm -r --if-present run build
         env:
@@ -268,4 +269,24 @@ jobs:
                 .value.result == "success" or
                 (.value.result == "skipped" and $selected[.key] == "false"))
             else false end
+          ' <<< "$RESULTS"
+
+  financial-required:
+    name: Financial foundation (Postgres)
+    if: ${{ always() }}
+    needs: [scope, postgres-inventory, api-postgres, node]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require the shared PostgreSQL and Node jobs for financial coverage
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e --arg event "$GITHUB_EVENT_NAME" '
+            .scope.result == "success" and .["postgres-inventory"].result == "success" and
+            (if $event == "pull_request" and .scope.outputs.backend == "false" then
+              .["api-postgres"].result == "skipped"
+             else
+              .["api-postgres"].result == "success" and .node.result == "success"
+             end)
           ' <<< "$RESULTS"
