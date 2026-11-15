@@ -271,6 +271,25 @@ void main() {
     },
   );
   test(
+    'a before-start refusal saved by an older build is dropped on load; others stay',
+    () async {
+      final storage = MemorySessionStorage();
+      final clock = () => DateTime.utc(2026, 9, 19, 9);
+      final queue = PositionQueue(storage: storage, now: clock);
+      await queue.bind('driver-a');
+      await queue.add(fix('pre-start', '2026-09-19T08:00:00Z'));
+      await queue.add(fix('too-old', '2026-09-19T08:00:05Z'));
+      await queue.add(fix('pending', '2026-09-19T08:00:10Z'));
+      await queue.reject('pre-start', 'capture_before_start');
+      await queue.reject('too-old', 'capture_too_old');
+      expect(queue.rejectedFixes, 2);
+      final updated = PositionQueue(storage: storage, now: clock);
+      await updated.bind('driver-a');
+      expect(updated.rows.map((r) => r['clientFixId']), ['too-old', 'pending']);
+      expect(updated.rejectedFixes, 1);
+    },
+  );
+  test(
     'GPS queue survives restart, sorts capture times and removes only acknowledged IDs',
     () async {
       final storage = MemorySessionStorage();

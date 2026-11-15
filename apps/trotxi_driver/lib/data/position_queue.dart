@@ -57,7 +57,12 @@ class PositionQueue {
             )
             .toList();
         expired += rows.length - retained.length;
-        rows = retained;
+        // A fix refused for predating its trip is the phone's cached location,
+        // not trip evidence. Builds before this one kept such refusals for
+        // review, which blocked ending the trip; drop any still saved.
+        rows = retained
+            .where((r) => r['rejected'] != 'capture_before_start')
+            .toList();
       }
     }
     // Never carry a previous driver's coordinates into the next login.
