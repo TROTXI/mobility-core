@@ -2,10 +2,8 @@ name: Mobile artifacts
 
 on:
   pull_request:
-    paths:
-      - 'apps/**'
-      - 'tool/**'
-      - '.github/workflows/mobile-*.yml'
+  merge_group:
+    types: [checks_requested]
   push:
     branches: [main]
     paths:
@@ -76,3 +74,15 @@ jobs:
           path: release-artifacts/
           if-no-files-found: error
           retention-days: 7
+
+  required:
+    name: Required mobile CI
+    if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    needs: [guards, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require success from guard tests and all unsigned builds
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$RESULTS"
