@@ -2,10 +2,8 @@ name: Mobile artifacts
 
 on:
   pull_request:
-    paths:
-      - 'apps/**'
-      - 'tool/**'
-      - '.github/workflows/mobile-*.yml'
+  merge_group:
+    types: [checks_requested]
   push:
     branches: [main]
     paths:
@@ -22,6 +20,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    uses: ./.github/workflows/ci-scope.yml
+
   guards:
     name: Release guard tests
     runs-on: ubuntu-latest
@@ -34,7 +35,8 @@ jobs:
 
   package:
     name: Unsigned ${{ matrix.app }} (${{ matrix.platform }})
-    needs: guards
+    needs: [scope, guards]
+    if: github.event_name != 'pull_request' || needs.scope.outputs.mobile != 'false'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
@@ -76,3 +78,24 @@ jobs:
           path: release-artifacts/
           if-no-files-found: error
           retention-days: 7
+
+  required:
+    name: Required mobile CI
+    if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    needs: [scope, guards, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require release guards and any selected unsigned builds
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e --arg event "$GITHUB_EVENT_NAME" '
+            .scope.result == "success" and .guards.result == "success" and
+            (if $event == "merge_group" then .package.result == "success"
+             elif $event == "pull_request" then
+               (.scope.outputs.mobile == "true" and .package.result == "success") or
+               (.scope.outputs.mobile == "false" and
+                 (.package.result == "skipped" or .package.result == "success"))
+             else false end)
+          ' <<< "$RESULTS"

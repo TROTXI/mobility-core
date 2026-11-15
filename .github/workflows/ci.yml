@@ -6,6 +6,8 @@ on:
   # Branch filters apply to the PR base. Run stacked PRs too, not only PRs that
   # already target main, so each layer receives the same merge gate.
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
@@ -17,38 +19,38 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    uses: ./.github/workflows/ci-scope.yml
+
+  postgres-inventory:
+    name: PostgreSQL suite inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.inventory.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - name: Require every PostgreSQL suite to be assigned exactly once
+        id: inventory
+        run: |
+          matrix=$(node .github/scripts/postgres-matrix.mjs)
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+
   api-postgres:
-    # The API's database suites, split three ways by their measured run time
-    # (about 150s of test work each) so a failure shows in about a minute rather
-    # than after the whole set. A new .pg.test.ts file needs adding to one part.
+    needs: [scope, postgres-inventory]
+    if: github.event_name != 'pull_request' || needs.scope.outputs.backend != 'false'
     name: API (Postgres) ${{ matrix.part }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       # Every part runs to the end, so one push shows every failure at once.
       fail-fast: false
-      matrix:
-        include:
-          - part: 1 of 3
-            slug: part-1
-            files: >-
-              tests/assembly.pg.test.ts tests/scheduler.pg.test.ts tests/gps.pg.test.ts tests/config.pg.test.ts
-              tests/pricing.pg.test.ts tests/overview.pg.test.ts tests/riders.pg.test.ts
-              tests/operations.pg.test.ts tests/payment-foundation.pg.test.ts
-              tests/refund-initiation.pg.test.ts tests/trip-generation.pg.test.ts
-          - part: 2 of 3
-            slug: part-2
-            files: >-
-              tests/transport-commands.pg.test.ts tests/driver-credentials.pg.test.ts
-              tests/catalog.pg.test.ts tests/fleet.pg.test.ts
-              tests/account-recovery.pg.test.ts tests/erasure-recovery.pg.test.ts tests/email.pg.test.ts tests/boarding.pg.test.ts
-              tests/payment-recovery.pg.test.ts
-          - part: 3 of 3
-            slug: part-3
-            files: >-
-              tests/transport.pg.test.ts tests/auth.pg.test.ts tests/account.pg.test.ts
-              tests/trips.pg.test.ts tests/personal-pauses.pg.test.ts tests/push.pg.test.ts
-              tests/membership.pg.test.ts tests/performance.pg.test.ts
+      matrix: ${{ fromJSON(needs.postgres-inventory.outputs.matrix) }}
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -77,10 +79,13 @@ jobs:
       - name: Database suites
         env:
           EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/api
+          SUITES: ${{ matrix.files }}
+        shell: bash
         run: |
           mkdir -p .harness-artifacts/api
           cd services/api-next
-          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/api/tests.xml ${{ matrix.files }}
+          read -r -a suites <<< "$SUITES"
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/api/tests.xml "${suites[@]}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
@@ -110,6 +115,7 @@ jobs:
           node docs/design/scripts/build-contract.mjs
           node docs/design/scripts/build-transport-contract.mjs
           node --test docs/design/scripts/contract.test.mjs
+          node --test .github/scripts/ci-scope.test.mjs
           git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/replacement.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
 
   format:
@@ -137,7 +143,7 @@ jobs:
     name: Lockfile guard
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -145,8 +151,8 @@ jobs:
 
       - name: Lockfile may only change alongside a manifest
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD: ${{ github.sha }}
         run: |
           changed=$(git diff --name-only "$BASE" "$HEAD")
           echo "$changed" | grep -qx 'pnpm-lock.yaml' || {
@@ -183,6 +189,8 @@ jobs:
   # without a script are skipped (--if-present).
   node:
     name: Node packages (workspace)
+    needs: scope
+    if: github.event_name != 'pull_request' || needs.scope.outputs.node != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -205,6 +213,8 @@ jobs:
 
   flutter:
     name: Flutter (${{ matrix.app }})
+    needs: scope
+    if: github.event_name != 'pull_request' || needs.scope.outputs.mobile != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -218,14 +228,44 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
+          # Match the SDK used to validate and package the mobile apps.
+          flutter-version: '3.44.1'
           channel: stable
           cache: true
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - name: Rider API client serialization
+      - name: Generated API client tests
         if: matrix.app == 'trotxi_client'
         working-directory: apps/api_client
         run: |
           dart pub get
-          dart test test/rider_services_serialization_test.dart test/reservation_detail_serialization_test.dart
+          dart test
+
+  required:
+    name: Required core CI
+    if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    needs:
+      [scope, postgres-inventory, api-postgres, design-contracts, format, lockfile, node, flutter]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require success from the selected PR jobs or the full merge suite
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e --arg event "$GITHUB_EVENT_NAME" '
+            if $event == "merge_group" then
+              length > 0 and all(.[]; .result == "success")
+            elif $event == "pull_request" then
+              {
+                "api-postgres": .scope.outputs.backend,
+                node: .scope.outputs.node,
+                flutter: .scope.outputs.mobile
+              } as $selected |
+              all($selected[]; . == "true" or . == "false") and
+              all(to_entries[];
+                .value.result == "success" or
+                (.value.result == "skipped" and $selected[.key] == "false"))
+            else false end
+          ' <<< "$RESULTS"

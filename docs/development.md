@@ -85,3 +85,24 @@ flows need separately authorized acceptance. Unit tests do not certify those.
 For documentation-only changes, check links, formatting and any executable
 examples/generators affected. There is no need to rerun unrelated database or
 mobile suites when no behavior or schema changed.
+
+## Required CI and merge queue
+
+Every PR runs format, contract, lockfile, PostgreSQL inventory, release guard,
+and security checks. Backend changes add Node, PostgreSQL and financial
+suites. Ops changes add Node. Mobile changes add Flutter tests and unsigned
+Android and iOS builds. Mixed changes combine the applicable suites.
+Shared inputs, unknown paths, and a diff that cannot be verified all select
+the full suite. The **Select PR checks** summary shows which suites were
+selected for the PR and which were deferred.
+
+The [main ruleset](../.github/ci/main-merge-queue-ruleset.json) requires four
+GitHub Actions results on both the PR and its merge candidate. On
+`merge_group`, every suite runs, and a skipped, cancelled or failed job
+blocks the merge. Keep the required check names stable. The queue uses squash
+merges and checks one candidate at a time. Merge candidates never deploy to
+staging.
+
+Assign each new `*.pg.test.ts` file once in
+[`postgres-shards.json`](../.github/ci/postgres-shards.json). Both API unit
+test commands discover the same files automatically.
