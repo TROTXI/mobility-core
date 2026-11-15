@@ -17,7 +17,7 @@ for (const { part, slug, files } of shards) {
     !part.trim() ||
     labels.has(part) ||
     typeof slug !== 'string' ||
-    !/^part-\d+$/.test(slug) ||
+    !/^(part-\d+|financial)$/.test(slug) ||
     slugs.has(slug) ||
     !Array.isArray(files) ||
     !files.length
