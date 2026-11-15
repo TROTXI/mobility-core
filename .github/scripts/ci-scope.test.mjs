@@ -28,6 +28,7 @@ test('PR scope includes affected suites and expands to full CI on shared or unkn
   for (const path of [
     '.github/workflows/ci.yml',
     'services/api-next/src/http/contract.json',
+    'services/api-next/src/boarding/proofs.ts',
     'docs/design/contracts/target-contract.mjs',
     'maps/styles.json',
     'pnpm-lock.yaml',

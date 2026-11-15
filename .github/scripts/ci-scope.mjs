@@ -1,13 +1,18 @@
 import { execFileSync } from 'node:child_process';
 
 const full = { backend: true, node: true, mobile: true };
+const sharedBackendInputs = new Set([
+  'services/api-next/src/http/contract.json',
+  // The driver's boarding_keypad_test.dart reads the server alphabet directly.
+  'services/api-next/src/boarding/proofs.ts',
+]);
 
 export function scopeForPaths(paths) {
   // An empty, unavailable, or ambiguous diff runs everything.
   if (!paths?.length) return full;
   const selected = { backend: false, node: false, mobile: false };
   for (const path of paths) {
-    if (path === 'services/api-next/src/http/contract.json') return full;
+    if (sharedBackendInputs.has(path)) return full;
     if (path.startsWith('services/api-next/')) {
       selected.backend = true;
       selected.node = true;
