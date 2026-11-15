@@ -88,21 +88,21 @@ mobile suites when no behavior or schema changed.
 
 ## Required CI and merge queue
 
-Every PR and merge candidate runs core CI, financial integration tests,
-security checks, and unsigned Android and iOS builds for both apps. Core CI
-checks the PostgreSQL shard inventory before starting any shard. Assign each
-new `*.pg.test.ts` file once in
+Every PR runs format, contract, lockfile, PostgreSQL inventory, release guard,
+and security checks. Backend changes add Node, PostgreSQL and financial
+suites. Ops changes add Node. Mobile changes add Flutter tests and unsigned
+Android and iOS builds. Mixed changes combine the applicable suites.
+Shared inputs, unknown paths, and a diff that cannot be verified all select
+the full suite. The **Select PR checks** summary shows which suites were
+selected for the PR and which were deferred.
+
+The [main ruleset](../.github/ci/main-merge-queue-ruleset.json) requires four
+GitHub Actions results on both the PR and its merge candidate. On
+`merge_group`, every suite runs, and a skipped, cancelled or failed job
+blocks the merge. Keep the required check names stable. The queue uses squash
+merges and checks one candidate at a time. Merge candidates never deploy to
+staging.
+
+Assign each new `*.pg.test.ts` file once in
 [`postgres-shards.json`](../.github/ci/postgres-shards.json). Both API unit
 test commands discover the same files automatically.
-
-The [main ruleset](../.github/ci/main-merge-queue-ruleset.json) requires the
-four GitHub Actions results on both the PR and its merge candidate. The
-summary jobs fail if any dependency is skipped, cancelled, or fails. Keep
-these check names stable. Merge candidates never deploy to staging.
-
-For the initial rollout, import the ruleset disabled. Once the four checks
-pass on the workflow PR, merge that PR normally to put the `merge_group`
-triggers on `main`. Then activate the ruleset in **Settings → Rules →
-Rulesets**. For the first queued PR, confirm all four checks report on the
-`merge_group` candidate and GitHub waits for them before merging. The queue
-uses squash merges and checks one candidate at a time.
