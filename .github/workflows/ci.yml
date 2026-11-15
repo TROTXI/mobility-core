@@ -19,6 +19,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    uses: ./.github/workflows/ci-scope.yml
+
   postgres-inventory:
     name: PostgreSQL suite inventory
     runs-on: ubuntu-latest
@@ -39,7 +42,8 @@ jobs:
           printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
 
   api-postgres:
-    needs: postgres-inventory
+    needs: [scope, postgres-inventory]
+    if: github.event_name != 'pull_request' || needs.scope.outputs.backend != 'false'
     name: API (Postgres) ${{ matrix.part }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -111,6 +115,7 @@ jobs:
           node docs/design/scripts/build-contract.mjs
           node docs/design/scripts/build-transport-contract.mjs
           node --test docs/design/scripts/contract.test.mjs
+          node --test .github/scripts/ci-scope.test.mjs
           git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/replacement.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
 
   format:
@@ -184,6 +189,8 @@ jobs:
   # without a script are skipped (--if-present).
   node:
     name: Node packages (workspace)
+    needs: scope
+    if: github.event_name != 'pull_request' || needs.scope.outputs.node != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -206,6 +213,8 @@ jobs:
 
   flutter:
     name: Flutter (${{ matrix.app }})
+    needs: scope
+    if: github.event_name != 'pull_request' || needs.scope.outputs.mobile != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -236,11 +245,27 @@ jobs:
   required:
     name: Required core CI
     if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
-    needs: [postgres-inventory, api-postgres, design-contracts, format, lockfile, node, flutter]
+    needs:
+      [scope, postgres-inventory, api-postgres, design-contracts, format, lockfile, node, flutter]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require success from every core job
+      - name: Require success from the selected PR jobs or the full merge suite
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$RESULTS"
+        run: |
+          jq -e --arg event "$GITHUB_EVENT_NAME" '
+            if $event == "merge_group" then
+              length > 0 and all(.[]; .result == "success")
+            elif $event == "pull_request" then
+              {
+                "api-postgres": .scope.outputs.backend,
+                node: .scope.outputs.node,
+                flutter: .scope.outputs.mobile
+              } as $selected |
+              all($selected[]; . == "true" or . == "false") and
+              all(to_entries[];
+                .value.result == "success" or
+                (.value.result == "skipped" and $selected[.key] == "false"))
+            else false end
+          ' <<< "$RESULTS"

@@ -15,8 +15,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    uses: ./.github/workflows/ci-scope.yml
+
   financial-foundation:
-    name: Financial foundation (Postgres)
+    name: Financial integration suite
+    needs: scope
+    if: github.event_name != 'pull_request' || needs.scope.outputs.backend != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -61,3 +66,21 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
+
+  required:
+    name: Financial foundation (Postgres)
+    if: ${{ always() }}
+    needs: [scope, financial-foundation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require the financial suite when selected
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e --arg event "$GITHUB_EVENT_NAME" '
+            .scope.result == "success" and
+            (.["financial-foundation"].result == "success" or
+              ($event == "pull_request" and .scope.outputs.backend == "false" and
+                .["financial-foundation"].result == "skipped"))
+          ' <<< "$RESULTS"

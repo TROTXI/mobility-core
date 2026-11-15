@@ -1,0 +1,51 @@
+name: CI scope
+
+on:
+  workflow_call:
+    outputs:
+      backend:
+        value: ${{ jobs.scope.outputs.backend }}
+      node:
+        value: ${{ jobs.scope.outputs.node }}
+      mobile:
+        value: ${{ jobs.scope.outputs.mobile }}
+
+permissions:
+  contents: read
+
+jobs:
+  scope:
+    name: Select PR checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.select.outputs.backend }}
+      node: ${{ steps.select.outputs.node }}
+      mobile: ${{ steps.select.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        if: github.event_name == 'pull_request'
+        with:
+          node-version: 24
+      - name: Report selected suites
+        id: select
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            scope=$(node .github/scripts/ci-scope.mjs "$PR_BASE")
+          else
+            scope=$'backend=true\nnode=true\nmobile=true'
+          fi
+          printf '%s\n' "$scope" >> "$GITHUB_OUTPUT"
+          {
+            echo 'Selected test areas (false means deferred to the full merge queue run):'
+            echo
+            printf '%s\n%s\n%s\n' '```text' "$scope" '```'
+          } >> "$GITHUB_STEP_SUMMARY"
