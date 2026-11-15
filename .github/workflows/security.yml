@@ -5,6 +5,8 @@ on:
     branches: [main]
   # Integration/stacked PRs need the same security gate as PRs targeting main.
   pull_request:
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '0 6 * * 1' # weekly, Monday 06:00 UTC — catch newly-disclosed issues
 
@@ -90,3 +92,15 @@ jobs:
       # vite, esbuild dev servers we never run in CI/prod) are handled by
       # Dependabot PRs instead of blocking every merge.
       - run: pnpm audit --prod --audit-level=high
+
+  required:
+    name: Required security CI
+    if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    needs: [secret-scan, codeql, audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require success from every security job
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$RESULTS"
