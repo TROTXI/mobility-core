@@ -362,6 +362,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             cursorSecret: config.keys.cursorSecret,
             mapTiles: config.mapTiles,
             support: config.support,
+            mobileFeatureRollouts: config.mobileFeatureRollouts,
             fallbackBuilds: { driver: config.floors.driver, commuter: config.floors.commuter },
             docsUrl: config.docsUrl,
             floorCacheMs: 30_000,

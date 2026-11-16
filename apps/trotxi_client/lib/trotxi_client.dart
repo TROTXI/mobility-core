@@ -109,6 +109,24 @@ class ClientMetadata {
   }
 }
 
+/// Selects the features the server has made available for this installed build.
+/// Each app opts in with an explicit check around code included in the release.
+Set<String> mobileFeaturesFor(Bootstrap config, ClientMetadata client) {
+  for (final app in config.applications) {
+    if (app.app.name == client.app &&
+        app.platform.name == client.platform &&
+        client.build >= app.minSupportedBuild) {
+      return Set.unmodifiable(
+        app.featureRollouts
+                ?.where((rollout) => client.build >= rollout.minimumBuild)
+                .map((rollout) => rollout.key) ??
+            const <String>[],
+      );
+    }
+  }
+  return const {};
+}
+
 /// Puts the metadata on every request. The server reads it before it reads the
 /// token, so this has to run whether or not the caller is signed in.
 class MetadataInterceptor extends Interceptor {

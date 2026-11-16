@@ -359,16 +359,35 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
 });
 
 test('ASM-11 the unauthenticated surface answers, and readiness tells the truth', async (t) => {
-  const { f, backend } = await assembled(t);
+  const { f, backend } = await assembled(t, {
+    MOBILE_FEATURE_ROLLOUTS: JSON.stringify([
+      { app: 'commuter', platform: 'ios', key: 'rider_feature', minimumBuild: 15 },
+      { app: 'driver', platform: 'android', key: 'driver_feature', minimumBuild: 20 },
+    ]),
+  });
   const bare = (url: string) => backend.app.inject({ method: 'GET', url });
   assert.deepEqual((await bare('/healthz')).json(), { status: 'ok' });
   assert.deepEqual((await bare('/readyz')).json(), { status: 'ok' });
   const build = (await bare('/version')).json();
   assert.equal(build.service, 'trotxi-api-next');
   assert.equal(build.commit, 'assembly-test');
-  const bootstrap = (await bare('/bootstrap')).json();
+  const bootstrapResponse = await bare('/bootstrap');
+  assert.equal(bootstrapResponse.headers['cache-control'], 'no-store');
+  const bootstrap = bootstrapResponse.json();
   assert.equal(bootstrap.mapTiles.url, 'https://tiles.trotxi.test/ghana.pmtiles');
-  assert.equal('flags' in bootstrap, false);
+  assert.deepEqual(
+    bootstrap.applications.map(({ app, platform, featureRollouts }: any) => [
+      app,
+      platform,
+      featureRollouts,
+    ]),
+    [
+      ['commuter', 'ios', [{ key: 'rider_feature', minimumBuild: 15 }]],
+      ['commuter', 'android', undefined],
+      ['driver', 'ios', undefined],
+      ['driver', 'android', [{ key: 'driver_feature', minimumBuild: 20 }]],
+    ],
+  );
   // Readiness reads a row, so a database this service can no longer read has
   // to change the answer. Liveness is about this process and must not start
   // lying about it, or a rolling deploy replaces a healthy instance with one

@@ -57,6 +57,19 @@ named(
         minSupportedBuild: count,
         storeUrl: z.url().nullable(),
         apiMajor: z.literal(1),
+        featureRollouts: z
+          .array(
+            obj({
+              key: z
+                .string()
+                .max(64)
+                .regex(/^[a-z][a-z0-9_]*$/),
+              minimumBuild: z.int().min(1).max(999_999_999),
+            }),
+          )
+          .max(64)
+          .optional()
+          .describe('Features available on this app and platform from the specified build onward.'),
       }),
     ),
     operations: obj({

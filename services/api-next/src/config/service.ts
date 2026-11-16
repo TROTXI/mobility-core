@@ -36,6 +36,12 @@ export interface SupportContacts {
   email: string | null;
   hours: string | null;
 }
+export interface MobileFeatureRollout {
+  app: 'commuter' | 'driver';
+  platform: 'ios' | 'android';
+  key: string;
+  minimumBuild: number;
+}
 export interface ConfigOptions {
   pool: Pool;
   authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
@@ -43,6 +49,7 @@ export interface ConfigOptions {
   cursorSecret: Buffer;
   mapTiles: MapTiles;
   support?: SupportContacts;
+  mobileFeatureRollouts?: readonly MobileFeatureRollout[];
   /** Used only where the database has no row for an app and platform. */
   fallbackBuilds: {
     driver: { ios: number; android: number };
@@ -58,8 +65,8 @@ type Row = Record<string, any>;
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = ['commuter', 'driver', 'admin'];
-const apps = ['commuter', 'driver'];
-const platforms = ['ios', 'android'];
+const apps = ['commuter', 'driver'] as const;
+const platforms = ['ios', 'android'] as const;
 const versionToken = (r: Row) => `"minversion:${r.app}:${r.platform}:${r.version}"`;
 const userToken = (r: Row) => `"user:${r.id}:${r.version}"`;
 
@@ -163,14 +170,16 @@ export class ConfigService {
     for (const app of apps)
       for (const platform of platforms) {
         const row = configured.get(`${app}:${platform}`);
+        const featureRollouts = this.options.mobileFeatureRollouts
+          ?.filter((rollout) => rollout.app === app && rollout.platform === platform)
+          .map(({ key, minimumBuild }) => ({ key, minimumBuild }));
         applications.push({
           app,
           platform,
-          minSupportedBuild:
-            row?.min_supported_build ??
-            this.options.fallbackBuilds[app as 'commuter'][platform as 'ios'],
+          minSupportedBuild: row?.min_supported_build ?? this.options.fallbackBuilds[app][platform],
           storeUrl: row?.store_url ?? null,
           apiMajor: 1,
+          ...(featureRollouts?.length ? { featureRollouts } : {}),
         });
       }
     return {
@@ -186,7 +195,7 @@ export class ConfigService {
         },
         mapTiles: { ...this.options.mapTiles },
       } as unknown as Body,
-      headers: {},
+      headers: { 'Cache-Control': 'no-store' },
     } as Outcome;
   }
 
@@ -295,7 +304,8 @@ export class ConfigService {
       // carrying a null byte is a bad request, not a database error.
       if (
         operation === 'setMinimumVersion' &&
-        (!apps.includes(String(params.app)) || !platforms.includes(String(params.platform)))
+        (!apps.some((app) => app === params.app) ||
+          !platforms.some((platform) => platform === params.platform))
       )
         fail(404, 'not_found', 'Resource not found.');
       if (operation === 'changeRole' && !uuid.test(String(params.id ?? '')))

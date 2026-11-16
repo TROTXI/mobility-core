@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **minSupportedBuild** | **int** |  | 
 **storeUrl** | **String** |  | 
 **apiMajor** | **int** |  | 
+**featureRollouts** | [**BuiltList&lt;BootstrapApplicationsInnerFeatureRolloutsInner&gt;**](BootstrapApplicationsInnerFeatureRolloutsInner.md) | Features available on this app and platform from the specified build onward. | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

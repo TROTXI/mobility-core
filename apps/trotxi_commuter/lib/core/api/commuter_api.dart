@@ -54,8 +54,15 @@ class CommuterApi extends CommuterDataClient {
   String? authNotice;
   wire.TrotxiException? startupError;
   wire.Bootstrap? configuration;
+  Set<String> _enabledFeatures = const {};
   bool _closed = false;
   int _loadAttempt = 0;
+
+  bool isFeatureEnabled(String key) =>
+      !upgradeRequired.value &&
+      (stage.value == CommuterStage.ready ||
+          stage.value == CommuterStage.signedOut) &&
+      _enabledFeatures.contains(key);
 
   void _cleared() {
     if (_closed) return;
@@ -69,6 +76,7 @@ class CommuterApi extends CommuterDataClient {
     final attempt = ++_loadAttempt;
     stage.value = CommuterStage.loading;
     startupError = null;
+    _enabledFeatures = const {};
     try {
       final response = await client.getPublicApi().getBootstrap();
       if (_closed || attempt != _loadAttempt) return;
@@ -85,6 +93,7 @@ class CommuterApi extends CommuterDataClient {
           return;
         }
       }
+      _enabledFeatures = wire.mobileFeaturesFor(config, metadata);
       final restored = await auth.restore();
       if (_closed || attempt != _loadAttempt) return;
       currentAccount = restored;

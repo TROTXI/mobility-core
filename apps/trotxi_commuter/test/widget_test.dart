@@ -36,6 +36,27 @@ void main() {
     f.api.dispose();
   }
 
+  test('a fresh bootstrap enables features only on eligible builds', () async {
+    final fixture = Fixture();
+    addTearDown(fixture.api.dispose);
+    const feature = 'rider_feature';
+    fixture.reply = (_) => jsonResponse(
+      bootstrap(
+        featureRollouts: [
+          {'key': feature, 'minimumBuild': 31},
+          {'key': 'future_feature', 'minimumBuild': 32},
+        ],
+      ),
+    );
+    expect(fixture.api.isFeatureEnabled(feature), isFalse);
+    await fixture.api.load();
+    expect(fixture.api.isFeatureEnabled(feature), isTrue);
+    expect(fixture.api.isFeatureEnabled('future_feature'), isFalse);
+    fixture.reply = (_) => jsonResponse(bootstrap());
+    await fixture.api.load();
+    expect(fixture.api.isFeatureEnabled(feature), isFalse);
+  });
+
   testWidgets('replacement account restores; theme is Material3', (
     tester,
   ) async {

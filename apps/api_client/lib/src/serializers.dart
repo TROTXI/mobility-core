@@ -34,6 +34,7 @@ import 'package:trotxi_api_client/src/model/boarding_result.dart';
 import 'package:trotxi_api_client/src/model/boarding_result_response.dart';
 import 'package:trotxi_api_client/src/model/bootstrap.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_applications_inner.dart';
+import 'package:trotxi_api_client/src/model/bootstrap_applications_inner_feature_rollouts_inner.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_map_tiles.dart';
 import 'package:trotxi_api_client/src/model/bootstrap_operations.dart';
 import 'package:trotxi_api_client/src/model/build.dart';
@@ -394,6 +395,7 @@ part 'serializers.g.dart';
   BoardingResultResponse,
   Bootstrap,
   BootstrapApplicationsInner,
+  BootstrapApplicationsInnerFeatureRolloutsInner,
   BootstrapMapTiles,
   BootstrapOperations,
   Build,

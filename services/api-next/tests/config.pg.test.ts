@@ -153,7 +153,7 @@ test('CFG-02 start-up tells a client what it needs and nothing private', async (
     ],
     'an unconfigured floor is the one the deployment was composed with',
   );
-  assert.equal('flags' in boot, false, 'unused rollout controls are not part of app bootstrap');
+  assert.ok(boot.applications.every((app: any) => !('featureRollouts' in app)));
 });
 
 test('CFG-03 a stored build floor governs admission, not a constructor value', async (t) => {

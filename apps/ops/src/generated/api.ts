@@ -2984,6 +2984,11 @@ export interface components {
         storeUrl: string | null;
         /** @enum {integer} */
         apiMajor: 1;
+        /** @description Features available on this app and platform from the specified build onward. */
+        featureRollouts?: {
+          key: string;
+          minimumBuild: number;
+        }[];
       }[];
       operations: {
         phone: string | null;

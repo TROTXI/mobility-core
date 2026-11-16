@@ -1,8 +1,14 @@
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import { existingStagingEnvironment, STAGING_SERVICE_ID } from './staging-profile.js';
 import { stagingDatabase } from './staging-database.js';
 import type { ConnectionOptions } from 'node:tls';
-import type { BuildIdentity, MapTiles, SupportContacts } from '../config/service.js';
+import type {
+  BuildIdentity,
+  MapTiles,
+  MobileFeatureRollout,
+  SupportContacts,
+} from '../config/service.js';
 import type { ErasureStoreConfig } from './erasure-journal-store.js';
 import { backendEnvironment } from './environment.js';
 
@@ -72,6 +78,7 @@ export interface RuntimeConfig {
   };
   mapTiles: MapTiles;
   support: SupportContacts;
+  mobileFeatureRollouts?: readonly MobileFeatureRollout[];
   /** Staging defaults to /docs; production defaults to the checked-in documentation. */
   docsUrl?: string;
   floors: {
@@ -113,6 +120,40 @@ export function readErasureJournalConfiguration(env: Env): ErasureStoreConfig | 
 }
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const mobileFeatureRollouts = z
+  .array(
+    z.strictObject({
+      app: z.enum(['commuter', 'driver']),
+      platform: z.enum(['ios', 'android']),
+      key: z
+        .string()
+        .max(64)
+        .regex(/^[a-z][a-z0-9_]*$/),
+      minimumBuild: z.int().min(1).max(999_999_999),
+    }),
+  )
+  .max(64);
+
+function readMobileFeatureRollouts(env: Env): MobileFeatureRollout[] {
+  const raw = env.MOBILE_FEATURE_ROLLOUTS;
+  if (raw === undefined || raw.trim() === '') return [];
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(raw);
+  } catch {
+    throw new ConfigurationError('MOBILE_FEATURE_ROLLOUTS must be a JSON array');
+  }
+  const parsed = mobileFeatureRollouts.safeParse(decoded);
+  if (!parsed.success)
+    throw new ConfigurationError(
+      'MOBILE_FEATURE_ROLLOUTS must contain at most 64 valid app, platform, key and minimumBuild entries',
+    );
+  const targets = new Set(parsed.data.map(({ app, platform, key }) => `${app}:${platform}:${key}`));
+  if (targets.size !== parsed.data.length)
+    throw new ConfigurationError('MOBILE_FEATURE_ROLLOUTS repeats an app, platform and key');
+  return parsed.data;
+}
 
 function required(env: Env, name: string): string {
   const value = env[name];
@@ -400,6 +441,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       email: optional(env, 'OPERATIONS_EMAIL'),
       hours: optional(env, 'OPERATIONS_HOURS'),
     },
+    mobileFeatureRollouts: readMobileFeatureRollouts(env),
     // Do not advertise the disabled production route through bootstrap.
     docsUrl: optional(env, 'DOCS_URL')
       ? url(env, 'DOCS_URL')

@@ -278,6 +278,7 @@ Class | Method | HTTP request | Description
  - [BoardingResultResponse](doc/BoardingResultResponse.md)
  - [Bootstrap](doc/Bootstrap.md)
  - [BootstrapApplicationsInner](doc/BootstrapApplicationsInner.md)
+ - [BootstrapApplicationsInnerFeatureRolloutsInner](doc/BootstrapApplicationsInnerFeatureRolloutsInner.md)
  - [BootstrapMapTiles](doc/BootstrapMapTiles.md)
  - [BootstrapOperations](doc/BootstrapOperations.md)
  - [Build](doc/Build.md)

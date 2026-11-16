@@ -302,6 +302,33 @@ test('maintenance exit policy detects 200 partial failures and contract drift, n
   assert.equal(logged.body.data.failures.length, 10);
 });
 /** One complete, valid deployment. Every scenario starts from this. */
+test('mobile rollout settings require unique app, platform and feature keys and valid builds', () => {
+  const env = environment();
+  const entry = { app: 'commuter', platform: 'ios', key: 'test_feature', minimumBuild: 18 };
+  const withRollouts = (value: unknown) =>
+    readConfiguration({ ...env, MOBILE_FEATURE_ROLLOUTS: JSON.stringify(value) });
+  assert.deepEqual(readConfiguration(env).mobileFeatureRollouts, []);
+  assert.deepEqual(withRollouts([entry, { ...entry, platform: 'android' }]).mobileFeatureRollouts, [
+    entry,
+    { ...entry, platform: 'android' },
+  ]);
+  for (const value of [
+    entry,
+    [entry, entry],
+    [{ ...entry, app: 'ops' }],
+    [{ ...entry, platform: 'web' }],
+    [{ ...entry, key: 'Invalid Key' }],
+    [{ ...entry, minimumBuild: 0 }],
+    [{ ...entry, extra: 'private' }],
+  ]) {
+    assert.throws(() => withRollouts(value), /MOBILE_FEATURE_ROLLOUTS/);
+  }
+  assert.throws(
+    () => readConfiguration({ ...env, MOBILE_FEATURE_ROLLOUTS: '[' }),
+    /MOBILE_FEATURE_ROLLOUTS/,
+  );
+});
+
 function environment(): Record<string, string> {
   return {
     RUNTIME_DATABASE_URL: 'postgres://runtime:pw@db.internal:5432/trotxi',

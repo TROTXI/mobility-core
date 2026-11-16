@@ -191,6 +191,9 @@ class _$BootstrapApplicationsInner extends BootstrapApplicationsInner {
   final String? storeUrl;
   @override
   final BootstrapApplicationsInnerApiMajorEnum apiMajor;
+  @override
+  final BuiltList<BootstrapApplicationsInnerFeatureRolloutsInner>?
+      featureRollouts;
 
   factory _$BootstrapApplicationsInner(
           [void Function(BootstrapApplicationsInnerBuilder)? updates]) =>
@@ -201,7 +204,8 @@ class _$BootstrapApplicationsInner extends BootstrapApplicationsInner {
       required this.platform,
       required this.minSupportedBuild,
       this.storeUrl,
-      required this.apiMajor})
+      required this.apiMajor,
+      this.featureRollouts})
       : super._();
   @override
   BootstrapApplicationsInner rebuild(
@@ -220,7 +224,8 @@ class _$BootstrapApplicationsInner extends BootstrapApplicationsInner {
         platform == other.platform &&
         minSupportedBuild == other.minSupportedBuild &&
         storeUrl == other.storeUrl &&
-        apiMajor == other.apiMajor;
+        apiMajor == other.apiMajor &&
+        featureRollouts == other.featureRollouts;
   }
 
   @override
@@ -231,6 +236,7 @@ class _$BootstrapApplicationsInner extends BootstrapApplicationsInner {
     _$hash = $jc(_$hash, minSupportedBuild.hashCode);
     _$hash = $jc(_$hash, storeUrl.hashCode);
     _$hash = $jc(_$hash, apiMajor.hashCode);
+    _$hash = $jc(_$hash, featureRollouts.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -242,7 +248,8 @@ class _$BootstrapApplicationsInner extends BootstrapApplicationsInner {
           ..add('platform', platform)
           ..add('minSupportedBuild', minSupportedBuild)
           ..add('storeUrl', storeUrl)
-          ..add('apiMajor', apiMajor))
+          ..add('apiMajor', apiMajor)
+          ..add('featureRollouts', featureRollouts))
         .toString();
   }
 }
@@ -275,6 +282,15 @@ class BootstrapApplicationsInnerBuilder
   set apiMajor(BootstrapApplicationsInnerApiMajorEnum? apiMajor) =>
       _$this._apiMajor = apiMajor;
 
+  ListBuilder<BootstrapApplicationsInnerFeatureRolloutsInner>? _featureRollouts;
+  ListBuilder<BootstrapApplicationsInnerFeatureRolloutsInner>
+      get featureRollouts => _$this._featureRollouts ??=
+          ListBuilder<BootstrapApplicationsInnerFeatureRolloutsInner>();
+  set featureRollouts(
+          ListBuilder<BootstrapApplicationsInnerFeatureRolloutsInner>?
+              featureRollouts) =>
+      _$this._featureRollouts = featureRollouts;
+
   BootstrapApplicationsInnerBuilder() {
     BootstrapApplicationsInner._defaults(this);
   }
@@ -287,6 +303,7 @@ class BootstrapApplicationsInnerBuilder
       _minSupportedBuild = $v.minSupportedBuild;
       _storeUrl = $v.storeUrl;
       _apiMajor = $v.apiMajor;
+      _featureRollouts = $v.featureRollouts?.toBuilder();
       _$v = null;
     }
     return this;
@@ -306,20 +323,34 @@ class BootstrapApplicationsInnerBuilder
   BootstrapApplicationsInner build() => _build();
 
   _$BootstrapApplicationsInner _build() {
-    final _$result = _$v ??
-        _$BootstrapApplicationsInner._(
-          app: BuiltValueNullFieldError.checkNotNull(
-              app, r'BootstrapApplicationsInner', 'app'),
-          platform: BuiltValueNullFieldError.checkNotNull(
-              platform, r'BootstrapApplicationsInner', 'platform'),
-          minSupportedBuild: BuiltValueNullFieldError.checkNotNull(
-              minSupportedBuild,
-              r'BootstrapApplicationsInner',
-              'minSupportedBuild'),
-          storeUrl: storeUrl,
-          apiMajor: BuiltValueNullFieldError.checkNotNull(
-              apiMajor, r'BootstrapApplicationsInner', 'apiMajor'),
-        );
+    _$BootstrapApplicationsInner _$result;
+    try {
+      _$result = _$v ??
+          _$BootstrapApplicationsInner._(
+            app: BuiltValueNullFieldError.checkNotNull(
+                app, r'BootstrapApplicationsInner', 'app'),
+            platform: BuiltValueNullFieldError.checkNotNull(
+                platform, r'BootstrapApplicationsInner', 'platform'),
+            minSupportedBuild: BuiltValueNullFieldError.checkNotNull(
+                minSupportedBuild,
+                r'BootstrapApplicationsInner',
+                'minSupportedBuild'),
+            storeUrl: storeUrl,
+            apiMajor: BuiltValueNullFieldError.checkNotNull(
+                apiMajor, r'BootstrapApplicationsInner', 'apiMajor'),
+            featureRollouts: _featureRollouts?.build(),
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'featureRollouts';
+        _featureRollouts?.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'BootstrapApplicationsInner', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

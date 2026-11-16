@@ -34,13 +34,18 @@ class OperationsContact {
 
 /// The client configuration served before sign-in.
 class AppConfig {
-  const AppConfig({required this.operations, required this.mapStyle});
+  const AppConfig({
+    required this.operations,
+    required this.mapStyle,
+    this.enabledFeatures = const {},
+  });
 
   final OperationsContact operations;
 
   /// Where the basemap comes from (#178, #180). Served rather than compiled in
   /// so moving the tile host is a config change instead of three app releases.
   final TrotxiMapStyle mapStyle;
+  final Set<String> enabledFeatures;
 
   static const empty = AppConfig(
     operations: OperationsContact.empty,
@@ -63,7 +68,7 @@ class ConfigRepository {
       wire.Bootstrap.serializer,
       jsonDecode(raw),
     );
-    return config == null ? null : _view(config);
+    return config == null ? null : _view(config, fresh: false);
   }
 
   Future<AppConfig> load() async {
@@ -81,10 +86,10 @@ class ConfigRepository {
     } catch (_) {
       // Cache failure must not discard a successful network response.
     }
-    return _view(config);
+    return _view(config, fresh: true);
   }
 
-  AppConfig _view(wire.Bootstrap config) {
+  AppConfig _view(wire.Bootstrap config, {required bool fresh}) {
     for (final app in config.applications) {
       if (app.app.name == 'driver' &&
           app.platform.name == client.metadata.platform &&
@@ -104,6 +109,9 @@ class ConfigRepository {
         darkUrl: _clean(config.mapTiles.darkStyleUrl),
         attribution: config.mapTiles.attribution,
       ),
+      enabledFeatures: fresh
+          ? wire.mobileFeaturesFor(config, client.metadata)
+          : const {},
     );
   }
 
