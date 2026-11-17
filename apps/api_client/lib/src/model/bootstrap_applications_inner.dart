@@ -4,6 +4,7 @@
 
 // ignore_for_file: unused_element
 import 'package:built_collection/built_collection.dart';
+import 'package:trotxi_api_client/src/model/bootstrap_applications_inner_feature_rollouts_inner.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -17,6 +18,7 @@ part 'bootstrap_applications_inner.g.dart';
 /// * [minSupportedBuild]
 /// * [storeUrl]
 /// * [apiMajor]
+/// * [featureRollouts] - Features available on this app and platform from the specified build onward.
 @BuiltValue()
 abstract class BootstrapApplicationsInner
     implements
@@ -38,6 +40,11 @@ abstract class BootstrapApplicationsInner
   @BuiltValueField(wireName: r'apiMajor')
   BootstrapApplicationsInnerApiMajorEnum get apiMajor;
   // enum apiMajorEnum {  1,  };
+
+  /// Features available on this app and platform from the specified build onward.
+  @BuiltValueField(wireName: r'featureRollouts')
+  BuiltList<BootstrapApplicationsInnerFeatureRolloutsInner>?
+      get featureRollouts;
 
   BootstrapApplicationsInner._();
 
@@ -96,6 +103,14 @@ class _$BootstrapApplicationsInnerSerializer
       object.apiMajor,
       specifiedType: const FullType(BootstrapApplicationsInnerApiMajorEnum),
     );
+    if (object.featureRollouts != null) {
+      yield r'featureRollouts';
+      yield serializers.serialize(
+        object.featureRollouts,
+        specifiedType: const FullType(BuiltList,
+            [FullType(BootstrapApplicationsInnerFeatureRolloutsInner)]),
+      );
+    }
   }
 
   @override
@@ -158,6 +173,14 @@ class _$BootstrapApplicationsInnerSerializer
                 const FullType(BootstrapApplicationsInnerApiMajorEnum),
           ) as BootstrapApplicationsInnerApiMajorEnum;
           result.apiMajor = valueDes;
+          break;
+        case r'featureRollouts':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList,
+                [FullType(BootstrapApplicationsInnerFeatureRolloutsInner)]),
+          ) as BuiltList<BootstrapApplicationsInnerFeatureRolloutsInner>;
+          result.featureRollouts.replace(valueDes);
           break;
         default:
           unhandled.add(key);

@@ -38,6 +38,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(BootstrapApplicationsInner.serializer)
       ..add(BootstrapApplicationsInnerApiMajorEnum.serializer)
       ..add(BootstrapApplicationsInnerAppEnum.serializer)
+      ..add(BootstrapApplicationsInnerFeatureRolloutsInner.serializer)
       ..add(BootstrapApplicationsInnerPlatformEnum.serializer)
       ..add(BootstrapMapTiles.serializer)
       ..add(BootstrapOperations.serializer)
@@ -530,6 +531,11 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(
               BuiltList, const [const FullType(BootstrapApplicationsInner)]),
           () => ListBuilder<BootstrapApplicationsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(BootstrapApplicationsInnerFeatureRolloutsInner)
+          ]),
+          () => ListBuilder<BootstrapApplicationsInnerFeatureRolloutsInner>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CommuteLeg)]),
           () => ListBuilder<CommuteLeg>())

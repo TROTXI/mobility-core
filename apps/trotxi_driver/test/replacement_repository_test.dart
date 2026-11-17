@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_driver/core/api/driver_api.dart';
+import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_driver/data/route_map_repository.dart';
 import 'package:trotxi_driver/data/incidents_repository.dart';
@@ -87,6 +88,7 @@ Map<String, Object?> bootstrap({
   String app = 'driver',
   String platform = 'android',
   int floor = 1,
+  List<Map<String, Object?>>? featureRollouts,
 }) => {
   'serverTime': at,
   'applications': [
@@ -96,6 +98,7 @@ Map<String, Object?> bootstrap({
       'minSupportedBuild': floor,
       'apiMajor': 1,
       'storeUrl': null,
+      if (featureRollouts != null) 'featureRollouts': featureRollouts,
     },
   ],
   'operations': {
@@ -753,6 +756,34 @@ void main() {
     expect(api.upgradeRequired.value, isTrue);
     expect(config.operations.phone, '+233200000000');
   });
+
+  test(
+    'rollouts require fresh configuration for the installed driver platform',
+    () async {
+      const feature = 'driver_feature';
+      const rollouts = [
+        {'key': feature, 'minimumBuild': 1},
+      ];
+      var body = bootstrap(platform: 'ios', featureRollouts: rollouts);
+      var status = 200;
+      final api = withAdapter(Adapter((_) => (status, body)));
+      final repo = ConfigRepository(client: api);
+      final controller = ConfigController(config: repo);
+      addTearDown(controller.dispose);
+
+      await controller.load();
+      expect(controller.isFeatureEnabled(feature), isFalse);
+      body = bootstrap(featureRollouts: rollouts);
+      await controller.load();
+      expect(controller.isFeatureEnabled(feature), isTrue);
+      expect((await repo.cached())!.enabledFeatures, isEmpty);
+
+      status = 503;
+      await controller.load();
+      expect(controller.isFeatureEnabled(feature), isFalse);
+      expect(controller.operations.phone, '+233200000000');
+    },
+  );
 
   test(
     '426 blocks the app without refreshing or clearing its session',

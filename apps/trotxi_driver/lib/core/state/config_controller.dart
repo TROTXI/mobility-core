@@ -37,6 +37,8 @@ class ConfigController extends ChangeNotifier {
 
   OperationsContact get operations => _value.operations;
 
+  bool isFeatureEnabled(String key) => _value.enabledFeatures.contains(key);
+
   /// The basemap style, or [TrotxiMapStyle.none] when the operator has not
   /// configured one — in which case map surfaces draw blank and the screens
   /// around them keep working.
@@ -63,6 +65,10 @@ class ConfigController extends ChangeNotifier {
       }
     } catch (_) {
       if (!_disposed) {
+        _value = AppConfig(
+          operations: _value.operations,
+          mapStyle: _value.mapStyle,
+        );
         error =
             'Map and support settings could not refresh. Check your connection and retry.';
       }

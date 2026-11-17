@@ -21,6 +21,7 @@ doc/BoardingResult.md
 doc/BoardingResultResponse.md
 doc/Bootstrap.md
 doc/BootstrapApplicationsInner.md
+doc/BootstrapApplicationsInnerFeatureRolloutsInner.md
 doc/BootstrapMapTiles.md
 doc/BootstrapOperations.md
 doc/Build.md
@@ -405,6 +406,7 @@ lib/src/model/boarding_result.dart
 lib/src/model/boarding_result_response.dart
 lib/src/model/bootstrap.dart
 lib/src/model/bootstrap_applications_inner.dart
+lib/src/model/bootstrap_applications_inner_feature_rollouts_inner.dart
 lib/src/model/bootstrap_map_tiles.dart
 lib/src/model/bootstrap_operations.dart
 lib/src/model/build.dart

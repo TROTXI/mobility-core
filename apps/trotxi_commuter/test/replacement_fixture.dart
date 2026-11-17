@@ -60,7 +60,10 @@ Map<String, Object?> account([String name = 'Ama']) => {
   'avatarUrl': null,
   'createdAt': timestamp,
 };
-Map<String, Object?> bootstrap({int floor = 1}) => {
+Map<String, Object?> bootstrap({
+  int floor = 1,
+  List<Map<String, Object?>>? featureRollouts,
+}) => {
   'serverTime': timestamp,
   'applications': [
     {
@@ -69,6 +72,7 @@ Map<String, Object?> bootstrap({int floor = 1}) => {
       'minSupportedBuild': floor,
       'storeUrl': null,
       'apiMajor': 1,
+      if (featureRollouts != null) 'featureRollouts': featureRollouts,
     },
   ],
   'operations': {'phone': null, 'whatsapp': null, 'email': null, 'hours': null},
